@@ -1,0 +1,11 @@
+# Cabeçalhos para o Cloudflare Pages (ignorado em outros hosts)
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+
+/data/*
+  Cache-Control: no-store
+
+/sw.js
+  Cache-Control: no-cache

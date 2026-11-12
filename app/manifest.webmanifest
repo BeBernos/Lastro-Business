@@ -1,0 +1,98 @@
+{
+  "id": "./",
+  "name": "Lastro — patrimônio da família",
+  "short_name": "Lastro",
+  "description": "Caixa, cartão e carteira da família num lugar só, a partir dos painéis do Agente Financeiro e do gestor de carteira.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0d0c",
+  "theme_color": "#0f0d0c",
+  "categories": [
+    "finance"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "share_target": {
+    "action": "./compartilhar",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "titulo",
+      "text": "texto",
+      "files": [
+        {
+          "name": "arquivo",
+          "accept": [
+            "text/html",
+            ".html",
+            ".htm",
+            "application/json",
+            ".json"
+          ]
+        }
+      ]
+    }
+  },
+  "shortcuts": [
+    {
+      "name": "Lançar gasto",
+      "short_name": "Lançar",
+      "description": "Compra no cartão, Pix, entrada ou investimento",
+      "url": "./?acao=lancar",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Colar SMS do Itaú",
+      "short_name": "Colar SMS",
+      "description": "Lança a compra a partir do SMS copiado",
+      "url": "./?acao=sms",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Atualizar valores dos investimentos",
+      "short_name": "Atualizar valores",
+      "description": "Valores de hoje do app do Itaú",
+      "url": "./?acao=valores",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

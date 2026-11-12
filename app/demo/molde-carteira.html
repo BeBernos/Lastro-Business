@@ -1,0 +1,2020 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Carteira de Investimentos</title>
+<style>
+:root{
+  /* --- tokens: Sistema de Design — Dashboards App (padrão) --- */
+  --void:#08070F; --deep:#0E0C1A; --raised:#161328;
+  --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.12);
+  --chalk:#F2F1F6; --muted:#8E8CA3; --dim:#5A5872;
+
+  /* par de gradiente ativo — trocado por seção via JS */
+  --accent:#8B7BFF; --accent-2:#4B3FCB;
+
+  --green:#22C55E; --green-soft:rgba(34,197,94,.14);
+  --red:#FF3B5C; --red-soft:rgba(255,59,92,.14);
+  --blue:#3B9BFF; --blue-soft:rgba(59,155,255,.14);
+
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--void);color:var(--chalk);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden;position:relative}
+
+.glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(70% 45% at 50% -8%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%),
+    radial-gradient(50% 30% at 100% 8%, color-mix(in srgb, var(--accent-2) 18%, transparent), transparent 70%);
+  transition:background .5s ease;
+}
+
+.wrap{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:22px 16px 108px}
+.topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-family:var(--mono);font-size:15px;font-weight:700;margin:0 0 4px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sub{color:var(--dim);margin:0;font-size:12px;line-height:1.5}
+.statuschip{display:inline-flex;align-items:center;padding:7px 13px;border-radius:9px;font-weight:700;font-size:11.5px;font-family:var(--mono);letter-spacing:.02em}
+.statuschip.crit{background:var(--red-soft);color:var(--red);border:1px solid rgba(255,59,92,.3)}
+.statuschip.warn{background:rgba(245,185,66,.14);color:#F5B942;border:1px solid rgba(245,185,66,.32)}
+.statuschip.ok{background:var(--green-soft);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.tpl-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.tplbtn{appearance:none;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.02em;
+  padding:7px 12px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid var(--line-2);color:var(--chalk)}
+.tplbtn:hover{background:rgba(255,255,255,.09)}
+.tplbtn.main{background:linear-gradient(135deg,#F5B942,#E0663D);border-color:transparent;color:#1a1206}
+.tpl-overlay{position:fixed;inset:0;z-index:50;background:rgba(4,3,10,.72);backdrop-filter:blur(6px);display:none;
+  align-items:flex-end;justify-content:center;padding:12px}
+.tpl-overlay.on{display:flex}
+.tpl-sheet{width:100%;max-width:760px;max-height:88vh;display:flex;flex-direction:column;gap:10px;
+  background:var(--deep);border:1px solid var(--line-2);border-radius:18px;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+.tpl-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.tpl-head b{font-size:15px}
+.tpl-sheet textarea{flex:1;min-height:46vh;width:100%;resize:vertical;background:rgba(255,255,255,.03);color:var(--chalk);
+  border:1px solid var(--line);border-radius:12px;padding:12px;font-family:var(--mono);font-size:12px;line-height:1.55}
+.tpl-status{font-size:12px;color:var(--muted);min-height:16px}
+@media(min-width:700px){.tpl-overlay{align-items:center}}
+.tpl-check{display:none;font-size:12.5px;line-height:1.5;border-radius:12px;padding:10px 12px;border:1px solid var(--line-2)}
+.tpl-check.on{display:block}
+.tpl-check.warn{background:rgba(245,185,66,.08);border-color:rgba(245,185,66,.45)}
+.tpl-check.ok{background:var(--green-soft);border-color:rgba(34,197,94,.3);color:var(--green)}
+.tpl-check ul{margin:6px 0 0;padding-left:18px}
+.tpl-check li{margin:3px 0}
+.tpl-check .troca{margin-top:8px;padding-top:8px;border-top:1px solid var(--line-2)}
+.tpl-check .tplbtn{margin-top:6px}
+
+/* ---------- HERO ---------- */
+.hero{position:relative;background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015));
+  border:1px solid var(--line-2);border-radius:18px;padding:20px 20px 18px;margin-bottom:18px;
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.hero-ring{position:relative;width:104px;height:104px;flex:none}
+.hero-ring svg{width:104px;height:104px;transform:rotate(-90deg)}
+.hero-ring circle{fill:none;stroke-width:9}
+.hero-ring .trk{stroke:rgba(255,255,255,.08)}
+.hero-ring .prg{stroke-linecap:round;transition:stroke-dashoffset .6s cubic-bezier(.22,.75,.3,1)}
+.hero-ring .ctr{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;transform:none}
+.hero-ring .ctr b{font-family:var(--mono);font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--chalk)}
+.hero-ring .ctr span{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-top:2px}
+.hero-num{flex:1;min-width:180px}
+.hero-eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.16em;color:var(--dim)}
+.hero-big{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1;margin-top:6px;
+  font-family:var(--mono);
+  background:linear-gradient(120deg,var(--chalk) 20%, var(--accent) 130%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.hero-big.long{font-size:34px}
+.hero-foot{margin-top:9px;font-size:12.5px;color:var(--muted)}
+.hero-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}
+.hero-chip{font-family:var(--mono);font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:9px;
+  background:rgba(255,255,255,.05);border:1px solid var(--line-2);color:var(--muted)}
+.hero-chip.bad{background:var(--red-soft);color:var(--red);border-color:rgba(255,59,92,.28)}
+.hero-chip.good{background:var(--green-soft);color:var(--green);border-color:rgba(34,197,94,.28)}
+@media(max-width:520px){.hero-big{font-size:32px}.hero-big.long{font-size:24px}.hero-ring,.hero-ring svg{width:80px;height:80px}.hero-ring .ctr b{font-size:17px}}
+
+/* ---------- KPIs ---------- */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px}
+.kpi{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:16px;padding:15px 16px;min-width:0}
+.kpi .label{color:var(--dim);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;line-height:1.35}
+.kpi .value{font-family:var(--mono);font-size:19px;font-weight:700;margin-top:7px;font-variant-numeric:tabular-nums;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .value.long{font-size:16.5px}
+.kpi .foot{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.45}
+.kpi.kpi-crit{border-color:rgba(255,59,92,.35);background:rgba(255,59,92,.05)}
+.green{color:var(--green)}.red{color:var(--red)}.yellow{color:#F5B942}
+
+/* ---------- Cards ---------- */
+.card{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:16px;padding:16px 17px;margin-bottom:9px;min-width:0}
+.card-title{font-size:11.5px;color:var(--chalk);font-weight:650;letter-spacing:.01em;margin-bottom:3px}
+.card-sub{font-size:12px;color:var(--dim);margin:0 0 13px;line-height:1.5}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.section-heading{font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--chalk);margin:2px 0 16px}
+@media(max-width:640px){.section-heading{font-size:21px;margin-bottom:13px}}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:11px;font-size:11.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* ---------- Bar chart (alocação + desempenho de mercado) ---------- */
+.barchart{display:grid;gap:9px}
+.barrow{display:grid;grid-template-columns:minmax(84px,116px) 1fr minmax(84px,104px);gap:9px;align-items:center;font-size:12.5px;min-width:0}
+.barrow>div:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.barrow>div:last-child{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;font-size:11.5px;color:var(--chalk)}
+.bartrack{position:relative;height:8px;background:rgba(255,255,255,.06);border-radius:99px;overflow:visible;min-width:20px}
+.barfill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+.barfill.red{background:linear-gradient(90deg,#FF3B5C,#B4185C)}
+.barfill.green{background:linear-gradient(90deg,#22C55E,#0E9F8F)}
+.barfill.blue{background:linear-gradient(90deg,#3B9BFF,#6C5CE7)}
+.barfill.gold{background:linear-gradient(90deg,#F5B942,#E0663D)}
+.barfill.dim{background:var(--dim);opacity:.6}
+.barmark{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--chalk);opacity:.55;border-radius:2px}
+.pctlabel{color:var(--dim);font-size:10px;margin-left:4px}
+
+/* ---------- Badges ---------- */
+.badge{display:inline-block;padding:3px 9px;border-radius:7px;font-size:10px;font-weight:700;font-family:var(--mono);white-space:nowrap}
+.b-red{background:var(--red-soft);color:var(--red)}
+.b-yellow{background:rgba(245,185,66,.14);color:#F5B942}
+.b-green{background:var(--green-soft);color:var(--green)}
+.b-blue{background:var(--blue-soft);color:var(--blue)}
+.b-gold{background:rgba(245,185,66,.14);color:#F5B942}
+.b-dim{background:rgba(255,255,255,.05);color:var(--muted)}
+
+/* ---------- Alerts / callouts ---------- */
+.alerts{display:flex;flex-direction:column;gap:9px}
+.alert{position:relative;display:grid;grid-template-columns:auto 1fr;gap:11px;align-items:start;
+  background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:14px;padding:13px 15px 13px 17px}
+.alert::before{content:"";position:absolute;left:0;top:13px;bottom:13px;width:3px;border-radius:0 3px 3px 0}
+.alert.crit::before{background:linear-gradient(180deg,#FF3B5C,#B4185C)}
+.alert.warn::before{background:linear-gradient(180deg,#F5B942,#E0663D)}
+.alert.ok::before{background:linear-gradient(180deg,#22C55E,#0E9F8F)}
+.alert b{font-size:14px;display:block;font-weight:650;margin-bottom:2px;color:var(--chalk)}
+.alert .desc{color:var(--muted);font-size:12.5px;line-height:1.55}
+.alert .desc b{display:inline;font-size:inherit;margin:0;font-weight:650}
+.legend-inline{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin:8px 2px 0}
+.legend-inline i{display:inline-block;width:18px;height:0;border-top:2px solid #3B9BFF;vertical-align:middle;margin-right:6px}
+.legend-inline i.dash{border-top:2px dashed #F5B942}
+.rota{padding:10px 0;border-top:1px solid var(--line)}
+.rota:first-of-type{border-top:0;padding-top:4px}
+.rota .rt{color:var(--chalk);font-weight:650}
+
+.note{color:var(--muted);font-size:13.5px;line-height:1.55;margin:10px 0 0}
+.note b{color:var(--chalk)}
+.callout{background:var(--red-soft);border:1px solid rgba(255,59,92,.28);border-left:3px solid var(--red);border-radius:16px;padding:14px 16px;margin-bottom:13px;font-size:12.5px;line-height:1.6;color:#EDE8F5}
+.callout b{color:var(--chalk)}
+.callout.good{background:var(--green-soft);border-color:rgba(34,197,94,.28);border-left-color:var(--green)}
+.callout.info{background:rgba(59,155,255,.1);border-color:rgba(59,155,255,.28);border-left-color:var(--blue)}
+.callout.gold{background:rgba(245,185,66,.1);border-color:rgba(245,185,66,.3);border-left-color:#F5B942}
+.callout .h{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--red);font-weight:700;margin-bottom:6px}
+.callout.good .h{color:var(--green)}.callout.info .h{color:var(--blue)}.callout.gold .h{color:#F5B942}
+
+.pill{display:inline-block;padding:6px 11px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid var(--line-2);font-size:11.5px;color:var(--muted);font-family:var(--mono);margin:0 6px 6px 0}
+
+/* ---------- Ação (plano) ---------- */
+.acao{position:relative;border-radius:18px;padding:17px 19px 17px 21px;margin-bottom:13px;overflow:hidden;
+  background:linear-gradient(135deg,rgba(245,185,66,.10),rgba(224,102,61,.05));border:1px solid rgba(245,185,66,.28)}
+.acao::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+.acao.crit::before{background:linear-gradient(180deg,#FF3B5C,#B4185C)}
+.acao.ok::before{background:linear-gradient(180deg,#22C55E,#0E9F8F)}
+.acao.warn::before{background:linear-gradient(180deg,#F5B942,#E0663D)}
+.acao-eyebrow{font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.16em;color:var(--dim)}
+.acao-title{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:7px 0 6px;color:var(--chalk);line-height:1.2}
+.acao-body{font-size:13px;line-height:1.6;color:var(--muted)}
+.acao-body b{color:var(--chalk)}
+@media(max-width:520px){.acao-title{font-size:17px}}
+
+/* ---------- Passos do plano ---------- */
+.step{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:9px}
+.step.done{opacity:.68}
+.step-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.step-n{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--dim);margin-bottom:3px}
+.step-t{font-size:14.5px;font-weight:650;color:var(--chalk)}
+.step-v{font-family:var(--mono);font-size:14px;font-weight:700;color:#F5B942}
+.step-m{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:8px}
+.pp-track{flex:1;height:5px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden}
+.pp-fill{height:100%;background:linear-gradient(90deg,#F5B942,#E0663D);border-radius:99px;transition:width .8s cubic-bezier(.22,.75,.3,1)}
+.pp-row{display:flex;align-items:center;gap:8px;margin:12px 0 16px}
+.pp-label{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+
+/* ---------- Tables ---------- */
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);
+  text-align:right;padding:0 0 11px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--mono);font-size:12.5px;text-align:right;padding:11px 0;border-bottom:1px solid var(--line);color:var(--muted)}
+td:first-child{font-family:var(--sans);font-size:13.5px;font-weight:600;color:var(--chalk)}
+tr:last-child td{border-bottom:none}
+td+td,th+th{padding-left:12px}
+@media(max-width:600px){.tscroll>table{min-width:540px}}
+tr.grp td{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);padding:18px 0 7px;border-bottom:none}
+
+/* ---------- Mercado: cards de ativo ---------- */
+.mkt-card{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:16px;padding:16px 17px;margin-bottom:10px}
+.mkt-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.mkt-name{font-size:15px;font-weight:700;color:var(--chalk)}
+.mkt-class{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-top:2px}
+.mkt-vals{display:flex;gap:8px;flex-shrink:0}
+.mkt-val{text-align:right}
+.mkt-val .l{font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.mkt-val .v{font-family:var(--mono);font-size:15px;font-weight:700;margin-top:2px}
+.mkt-expl{font-size:12.5px;line-height:1.6;color:var(--muted);margin-top:4px}
+.mkt-expl b{color:var(--chalk)}
+.mkt-acao{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.mkt-acao .ic{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);flex-shrink:0;padding-top:1px}
+.mkt-acao .tx{font-size:12.5px;line-height:1.55;color:var(--chalk)}
+
+/* ---------- Navbar ---------- */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:0 12px calc(12px + env(safe-area-inset-bottom));pointer-events:none}
+.navbar{pointer-events:auto;display:grid;grid-template-columns:repeat(10,1fr);gap:3px;max-width:720px;margin:0 auto;
+  background:rgba(16,14,28,.82);backdrop-filter:blur(24px) saturate(160%);
+  border:1px solid var(--line-2);border-radius:20px;padding:7px;box-shadow:0 14px 40px rgba(0,0,0,.55)}
+.navbtn{appearance:none;border:0;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  padding:9px 1px;border-radius:14px;color:var(--dim);min-height:46px;min-width:0;
+  transition:color .18s ease, background .25s ease}
+.navbtn svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.navbtn span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.navbtn[aria-selected="true"]{color:#fff;background:linear-gradient(135deg,var(--tc1),var(--tc2));
+  box-shadow:0 6px 18px -5px color-mix(in srgb, var(--tc1) 60%, transparent)}
+.navbtn:not([aria-selected="true"]):hover{color:var(--chalk);background:rgba(255,255,255,.06)}
+
+/* ---------- Motion ---------- */
+.panel[hidden]{display:none}
+.panel.slide-r{animation:slideR .34s cubic-bezier(.22,.75,.3,1) both}
+.panel.slide-l{animation:slideL .34s cubic-bezier(.22,.75,.3,1) both}
+@keyframes slideR{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes slideL{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+.panel.on > *{animation:rise .42s cubic-bezier(.22,.75,.3,1) both}
+.panel.on > *:nth-child(1){animation-delay:.01s}
+.panel.on > *:nth-child(2){animation-delay:.04s}
+.panel.on > *:nth-child(3){animation-delay:.07s}
+.panel.on > *:nth-child(4){animation-delay:.10s}
+.panel.on > *:nth-child(5){animation-delay:.13s}
+.panel.on > *:nth-child(6){animation-delay:.16s}
+.panel.on > *:nth-child(n+7){animation-delay:.19s}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){
+  .panel.on,.panel.on>*,.panel.slide-r,.panel.slide-l{animation:none!important}
+  *{transition:none!important}
+}
+@media(min-width:1100px){
+  body{padding-left:212px}
+  nav{top:0;bottom:0;right:auto;width:212px;padding:18px 12px;display:flex;align-items:center}
+  .navbar{display:flex;flex-direction:column;gap:3px;width:100%;max-width:none;border-radius:18px;padding:8px}
+  .navbtn{justify-content:flex-start;gap:11px;padding:12px 13px;border-radius:13px;min-height:46px;flex:0 0 auto}
+  .navbtn svg{width:18px;height:18px}
+  .navbtn span{position:static;width:auto;height:auto;overflow:visible;clip:auto;white-space:nowrap;font-size:13px;font-weight:650}
+  .wrap{padding-bottom:44px}
+}
+@media(max-width:1000px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .grid2{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .wrap{padding:16px 12px 116px}
+  .topbar{align-items:flex-start}
+  .kpis{gap:8px}
+  .kpi{padding:12px 13px}
+  .kpi .value{font-size:17px}
+  .kpi .value.long{font-size:14.5px}
+  .kpi .label{font-size:9.5px}
+  .card{padding:14px 14px}
+  .hero{padding:16px 16px 15px;gap:14px}
+  .barrow{grid-template-columns:76px 1fr 78px;gap:7px;font-size:12px}
+  .mkt-top{flex-wrap:wrap}
+  nav{padding:0 8px calc(8px + env(safe-area-inset-bottom))}
+}
+</style>
+</head>
+<body>
+<div class="glow" id="glow"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ic-plano" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+  <symbol id="ic-visao" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="ic-evol" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/></symbol>
+  <symbol id="ic-aloc" viewBox="0 0 24 24"><path d="M21 15.5A9 9 0 1 1 8.5 3"/><path d="M21.5 12A9.5 9.5 0 0 0 12 2.5V12z"/></symbol>
+  <symbol id="ic-ativos" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="ic-mkt" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></symbol>
+  <symbol id="ic-usd" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></symbol>
+  <symbol id="ic-bench" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="ic-renda" viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M5 8h9a3 3 0 0 1 0 6H5"/><path d="M5 14l7 8"/></symbol>
+  <symbol id="ic-alertas" viewBox="0 0 24 24"><path d="M12 3l9 16H3l9-16z"/><path d="M12 10v4M12 17.5v.01"/></symbol>
+</svg>
+
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <h1>Carteira de Investimentos</h1>
+      <p class="sub" id="hdr-sub">—</p>
+    </div>
+    <div class="tpl-actions">
+      <button class="tplbtn" id="btn-tpl-parcial" type="button">Atualização parcial</button>
+      <button class="tplbtn main" id="btn-tpl-fech" type="button">Fechamento do mês</button>
+      <span class="statuschip ok" id="hdr-chip">—</span>
+    </div>
+  </div>
+  <div class="tpl-overlay" id="tpl-overlay" role="dialog" aria-modal="true" aria-labelledby="tpl-titulo">
+    <div class="tpl-sheet">
+      <div class="tpl-head"><b id="tpl-titulo">Documento</b><button class="tplbtn" id="tpl-fechar" type="button">Fechar</button></div>
+      <p class="sub" style="margin:0">Já preenchido com o que o painel sabe. Complete os campos em branco (ou escreva "segue print"), depois cole o documento inteiro no chat.</p>
+      <textarea id="tpl-texto" spellcheck="false"></textarea>
+      <div class="tpl-check" id="tpl-check" aria-live="polite"></div>
+      <div class="tpl-actions">
+        <button class="tplbtn main" id="tpl-copiar" type="button">Copiar</button>
+        <button class="tplbtn" id="tpl-baixar" type="button">Baixar .md</button>
+        <span class="tpl-status" id="tpl-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <main id="panels">
+
+  <!-- ============ PLANO ============ -->
+  <section class="panel on" id="panel-plano" role="tabpanel" aria-labelledby="nav-plano">
+    <div class="eyebrow">Central de ação</div>
+    <h1 class="section-heading" style="margin-bottom:12px">Plano</h1>
+
+    <div id="urgent-section"></div>
+
+    <div class="eyebrow" style="margin:4px 0 10px">Roteiro</div>
+    <div class="hero">
+      <div class="hero-ring">
+        <svg viewBox="0 0 104 104">
+          <circle class="trk" cx="52" cy="52" r="45"/>
+          <circle class="prg" id="pring" cx="52" cy="52" r="45" stroke="url(#pg)" stroke-dasharray="283" stroke-dashoffset="283"/>
+          <defs><linearGradient id="pg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#F5B942"/><stop offset="100%" stop-color="#E0663D"/>
+          </linearGradient></defs>
+        </svg>
+        <div class="ctr"><b id="pring-v">—</b><span>passos</span></div>
+      </div>
+      <div class="hero-num">
+        <div class="hero-eyebrow">Reserva de emergência</div>
+        <div class="hero-big" id="hero-reserva">—</div>
+        <div class="hero-foot" id="hero-reserva-foot">—</div>
+        <div class="hero-chips" id="hero-chips"></div>
+      </div>
+    </div>
+
+    <div class="pp-row">
+      <div class="pp-track"><div class="pp-fill" id="pp-fill" style="width:0%"></div></div>
+      <div class="pp-label" id="pp-label">0/7</div>
+    </div>
+
+    <div class="acao" id="next-acao">
+      <div class="acao-eyebrow">Próximo passo do roteiro</div>
+      <div class="acao-title" id="next-title">—</div>
+      <div class="acao-body" id="next-detail">—</div>
+    </div>
+
+    <div id="steps"></div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="card-title">Se precisar sacar — a ordem</div>
+      <p class="card-sub" id="saque-regra">—</p>
+      <div id="saque-lista"></div>
+    </div>
+  </section>
+
+  <!-- ============ VISÃO ============ -->
+  <section class="panel" id="panel-visao" role="tabpanel" aria-labelledby="nav-visao" hidden>
+    <div class="callout info" id="v-narrativa" style="margin-bottom:14px">
+      <span class="h">Resumo do mês</span>
+      <span id="v-narrativa-txt">—</span>
+    </div>
+
+    <div id="v-urgent-pointer"></div>
+
+    <div class="hero">
+      <div class="hero-ring">
+        <svg viewBox="0 0 104 104">
+          <circle class="trk" cx="52" cy="52" r="45"/>
+          <circle class="prg" id="ring" cx="52" cy="52" r="45" stroke="url(#rg)" stroke-dasharray="283" stroke-dashoffset="283"/>
+          <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#FF3B5C"/><stop offset="100%" stop-color="#B4185C"/>
+          </linearGradient></defs>
+        </svg>
+        <div class="ctr"><b id="ring-v">—</b><span>aderência</span></div>
+      </div>
+      <div class="hero-num">
+        <div class="hero-eyebrow" id="v-per">—</div>
+        <div class="hero-big" id="v-pat">—</div>
+        <div class="hero-chips" id="v-chips"></div>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="label">Dividendos</div><div class="value" id="k-div">—</div></div>
+      <div class="kpi"><div class="label">Aportes</div><div class="value" id="k-apo">—</div></div>
+      <div class="kpi"><div class="label">Resgates</div><div class="value" id="k-res">—</div></div>
+      <div class="kpi"><div class="label">Result. mercado</div><div class="value" id="k-mkt">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Score da carteira</div>
+      <p class="card-sub" id="score-sub">—</p>
+      <div class="barchart" id="score-bars"></div>
+      <p class="note" id="score-serie" style="margin-top:12px"></p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Termômetro de longo prazo</div>
+      <p class="card-sub">Nov/25 → hoje · objetivo: renda passiva para aposentadoria (29 anos de horizonte)</p>
+      <div class="barchart" id="term-bars"></div>
+      <p class="note" id="term-conclusao" style="margin-top:12px"></p>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="proj-titulo">Dividendos projetados</div>
+      <p class="card-sub" id="proj-sub">—</p>
+      <div class="tscroll">
+        <table>
+          <thead><tr><th>FII</th><th>Cotas</th><th>R$/cota</th><th>Total</th></tr></thead>
+          <tbody id="proj-body"></tbody>
+        </table>
+      </div>
+      <p class="note" id="proj-nota" style="margin-top:12px"></p>
+    </div>
+  </section>
+
+  <!-- ============ EVOLUÇÃO ============ -->
+  <section class="panel" id="panel-evol" role="tabpanel" aria-labelledby="nav-evol" hidden>
+    <div class="section-heading">Evolução</div>
+    <div class="card">
+      <svg id="lc" viewBox="0 0 680 260" style="width:100%;height:auto;display:block;overflow:visible"></svg>
+    </div>
+    <div id="evo-cards"></div>
+    <div class="card-title" style="margin-top:18px">Mês a mês</div>
+    <div class="card tscroll">
+      <table>
+        <thead><tr><th>Mês</th><th>Patrimônio</th><th>Div.</th><th>Aportes</th><th>Resg.</th><th>Mercado</th></tr></thead>
+        <tbody id="hi-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ ALOCAÇÃO ============ -->
+  <section class="panel" id="panel-aloc" role="tabpanel" aria-labelledby="nav-aloc" hidden>
+    <div class="section-heading">Alocação vs. target</div>
+    <div class="pill" id="aloc-sub">—</div>
+    <div class="card" style="margin-top:9px">
+      <div class="barchart" id="aloc-bars"></div>
+    </div>
+    <div class="callout gold" id="aloc-acao">
+      <span class="h">O que fazer com isto</span>
+      <span id="aloc-acao-txt">—</span>
+    </div>
+    <div class="card" style="margin-top:9px">
+      <div class="card-title">Simulador de aporte</div>
+      <p class="card-sub">Digite quanto vai aportar — o painel divide pela prioridade da sua estratégia, preenchendo primeiro a classe mais atrasada.</p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <span class="pctlabel" style="font-size:13px">R$</span>
+        <input id="sim-valor" type="number" min="0" step="50" value="500" inputmode="decimal"
+          style="flex:1;max-width:200px;background:rgba(255,255,255,.05);border:1px solid var(--line-2);border-radius:10px;padding:9px 12px;color:var(--chalk);font-family:var(--mono);font-size:15px">
+      </div>
+      <div class="barchart" id="sim-out"></div>
+      <p class="note" id="sim-nota"></p>
+    </div>
+  </section>
+
+  <!-- ============ ATIVOS ============ -->
+  <section class="panel" id="panel-ativos" role="tabpanel" aria-labelledby="nav-ativos" hidden>
+    <div class="section-heading">Ativos</div>
+    <div class="pill" id="at-sub">—</div>
+
+    <div class="card" style="margin-top:9px">
+      <div class="card-title">Raio-X setorial dos FIIs</div>
+      <p class="card-sub">Papel (CRI/recebíveis) costuma segurar melhor em cenário de juros incertos; tijolo é mais sensível à curva de juros longa.</p>
+      <div class="barchart" id="setor-bars"></div>
+    </div>
+
+    <div class="card tscroll" style="margin-top:9px">
+      <table>
+        <thead><tr><th>Ativo</th><th id="th-p">—</th><th id="th-l">—</th><th id="th-d">Δ</th></tr></thead>
+        <tbody id="at-body"></tbody>
+      </table>
+    </div>
+
+    <div class="card-title" style="margin:18px 0 4px">Eficiência da Renda Fixa</div>
+    <div class="pill">Taxa cobrada × quanto rende do CDI × liquidez</div>
+    <div class="card tscroll" style="margin-top:9px">
+      <table>
+        <thead><tr><th>Fundo</th><th>Valor</th><th>Taxa</th><th>% CDI 12m</th><th>Liquidez</th></tr></thead>
+        <tbody id="rf-efic-body"></tbody>
+      </table>
+    </div>
+    <div class="callout" id="rf-efic-callout" style="margin-top:9px">
+      <span class="h">Leitura</span>
+      <span id="rf-efic-txt">—</span>
+    </div>
+
+    <div class="card-title" style="margin:18px 0 4px">Custo médio &amp; retorno real</div>
+    <div class="pill" id="cm-fonte">Fonte: posição consolidada do banco · não cobre Cripto, Dólar e Ouro (Itaú Index Gold)</div>
+    <div class="card tscroll" style="margin-top:9px">
+      <table>
+        <thead><tr><th>Ativo</th><th>Preço médio</th><th>Só preço</th><th>Com dividendo</th></tr></thead>
+        <tbody id="custo-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ MERCADO ============ -->
+  <section class="panel" id="panel-mkt" role="tabpanel" aria-labelledby="nav-mkt" hidden>
+    <div class="section-heading">Mercado</div>
+    <div class="callout info">
+      <span class="h">Como ler isto</span>
+      Análise de <b>Ouro, Dólar, FIIs e ETFs</b> individualmente — por que cada um se moveu e se isso pede alguma ação sua.
+      Renda Fixa fica de fora (não faz sentido essa leitura pra ela). Isto é uma <b>pesquisa pontual</b> que eu fiz na
+      data da atualização (<span id="mkt-data">—</span>), não um feed ao vivo — atualiza de novo quando você me pedir.
+    </div>
+
+    <div class="card" id="panorama-mes">
+      <div class="card-title" id="panorama-titulo">Panorama do mês</div>
+      <p class="card-sub" id="panorama-sub">—</p>
+      <div id="panorama-body"></div>
+    </div>
+
+    <div class="card-title" style="margin:18px 0 4px">Por ativo</div>
+    <div id="mkt-cards"></div>
+  </section>
+
+  <!-- ============ DOLARIZAÇÃO ============ -->
+  <section class="panel" id="panel-usd" role="tabpanel" aria-labelledby="nav-usd" hidden>
+    <div class="section-heading">Dolarização</div>
+    <div class="callout info">
+      <span class="h">Correção de premissa</span>
+      O dólar <b>não</b> está numa tendência clara de valorização frente ao real — em 2026 é o oposto (USD/BRL <b id="usd-ytd">—</b>).
+      Teve repiques pontuais (crise do Ibovespa em agosto, pesquisas eleitorais em setembro), mas isso foi proteção pontual, não tendência.
+      O argumento pra dolarizar tem que ser <b>diversificação e trade-offs</b>, não "o dólar só sobe".
+    </div>
+
+    <div class="card">
+      <div class="card-title">Sua exposição internacional hoje</div>
+      <p class="card-sub" id="usd-atual">—</p>
+      <div class="barchart" id="usd-atual-bars"></div>
+    </div>
+
+    <div class="card-title" style="margin:18px 0 4px">Os três ângulos, com trade-offs</div>
+    <div class="pill" style="margin-bottom:9px">Análise qualitativa de 19/08/2026 — os argumentos são estruturais; os números de mercado citados são daquela data</div>
+
+    <div class="card">
+      <div class="card-title">🛡 Proteção cambial (hedge)</div>
+      <div class="grid2">
+        <div><p class="note" style="margin-top:0"><b style="color:var(--green)">A favor</b><br>Diversifica risco-Brasil (fiscal, político, Selic). Em crises locais agudas (como a de agosto/26, 11 pregões negativos do Ibovespa), o dólar segurou melhor que ações e FIIs.</p></div>
+        <div><p class="note" style="margin-top:0"><b style="color:var(--red)">Contra</b><br>Em 2026 esse "seguro" custou caro: quem dolarizou muito perdeu poder de compra em reais, já que o dólar caiu <span class="usd-ytd-abs">—</span> no ano. Funciona como hedge pontual, não como aposta direcional.</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📈 Valorização de capital (crescimento)</div>
+      <div class="grid2">
+        <div><p class="note" style="margin-top:0"><b style="color:var(--green)">A favor</b><br>Nasdaq com 3 semanas seguidas de alta, +5,34% só em agosto/26. Mega caps de tecnologia americanas têm histórico de crescimento de lucro mais consistente, maior liquidez, menos concentração em commodities que a B3.</p></div>
+        <div><p class="note" style="margin-top:0"><b style="color:var(--red)">Contra</b><br>Valuation americano historicamente esticado (yield da S&P 500 em 1,06%, contra mediana histórica de 4,22% — ações "caras"). Concentração de risco em poucas mega techs. Enquanto isso, Ibovespa está em "extremo pessimismo" segundo XP/BTG — pode ser hora de não sair, não de dolarizar mais.</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💰 Renda via dividendos</div>
+      <div class="grid2">
+        <div><p class="note" style="margin-top:0"><b style="color:var(--green)">A favor</b><br>Empresas americanas consolidadas com histórico de "dividend growth" (aumentar dividendo ano a ano). ETFs de alta renda como HDV/FDL renderam 19-20% em 2026, batendo o S&P 500.</p></div>
+        <div><p class="note" style="margin-top:0"><b style="color:var(--red)">Contra — este é o ponto mais forte contra dolarizar pra você especificamente</b><br>Dividendo americano sofre <b>30% de retenção na fonte nos EUA</b> (Brasil não tem tratado tributário com os EUA) + IR aqui. FII brasileiro é <b>100% isento de IR</b>. Yield médio do S&P 500 é 1,06% ao ano; ETFs de alta renda americanos chegam a ~3-4%; FII brasileiro historicamente paga 6-13% ao ano, isento. Sua carteira inteira é desenhada pra gerar renda passiva isenta — trocar isso por dividendo americano taxado é remar contra o próprio objetivo.</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Yield comparado (ordem de grandeza)</div>
+      <p class="card-sub">Pesquisado em 19/08/2026 — são ordens de grandeza estruturais (isenção de IR, regime de retenção), não cotação do dia. Ainda assim, vale reconferir de tempos em tempos.</p>
+      <div class="barchart" id="usd-yield-bars"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Como dolarizar, se for o caminho</div>
+      <div class="note" style="margin-top:0">
+        <b>1. ETF/BDR na B3 (o que você já faz)</b> — IVVB11 (S&P 500), e existem outros (índices globais, Nasdaq). Compra em reais, sem abrir conta no exterior, IR normal de ações (15-20% sobre ganho, sem isenção). Mais simples, menos fricção.<br><br>
+        <b>2. Conta internacional</b> (Avenue, Interactive Brokers, XP Internacional etc) — acesso a ações individuais e ETFs de dividendo americano (SCHD, VYM, HDV). Precisa declarar bens no exterior no IRPF, ganho de capital tributado à parte, dividendo sofre a retenção de 30% nos EUA.<br><br>
+        <b>3. Ouro (GLDI11/Index Gold)</b> — você já tem. É exposição indireta a dólar, já que o preço do ouro é cotado em USD. Conta como parte da sua "dolarização" mesmo sem ser dólar diretamente.
+      </div>
+    </div>
+
+    <div class="callout gold">
+      <span class="h">Minha avaliação, já que você pediu transição gradual</span>
+      Dado que seu objetivo declarado é renda passiva isenta pra aposentadoria, eu não aumentaria a fatia de <b>dividendo americano</b> — o desconto tributário (30% + IR aqui vs 0% do FII) é grande demais pra compensar. Onde faz mais sentido dolarizar aos poucos, dentro do que você já pensa, é em <b>proteção + crescimento</b> (ETF de índice como o IVVB11, e Ouro) — não em busca de renda. Isso já está parcialmente refletido no seu alvo atual (Dólar 5% + parte do Ouro), então a "transição gradual" pode ser simplesmente: quando a prioridade de aporte chegar em Dólar/Ouro (hoje o passo 7 do plano), considerar direcionar uma fração extra pra IVVB11 em vez de só Dólar puro — sem mexer no que já gera sua renda.
+    </div>
+  </section>
+
+  <!-- ============ ALERTAS ============ -->
+  <!-- ============ BENCHMARK ============ -->
+  <section class="panel" id="panel-bench" role="tabpanel" aria-labelledby="nav-bench" hidden>
+    <div class="section-heading">Benchmark</div>
+    <div class="callout info">
+      <span class="h">Por que isto existe</span>
+      Sua carteira contra o que você teria ganhado só ficando parado nos índices — a pergunta que uma análise de "mercado" tem que responder e a de "ativo por ativo" não responde sozinha.
+    </div>
+
+    <div class="card">
+      <div class="card-title">Retorno de mercado vs. índices</div>
+      <p class="card-sub" id="bench-sub">—</p>
+      <div class="barchart" id="bench-bars"></div>
+      <p class="note" id="bench-diagnostico" style="margin-top:12px"></p>
+    </div>
+
+    <div class="card-title" style="margin:18px 0 4px">Evolução de cada ativo no ano</div>
+    <div class="pill" id="evol-sub">—</div>
+    <div class="card tscroll" style="margin-top:9px">
+      <table>
+        <thead><tr><th>Ativo</th><th>Rendeu (R$)</th><th>No ano</th><th>Referência</th><th id="th-hoje">Hoje</th></tr></thead>
+        <tbody id="evol-body"></tbody>
+      </table>
+    </div>
+
+    <div class="card-title" style="margin:18px 0 4px">Renda Fixa vs. CDI</div>
+    <div class="card tscroll" style="margin-top:9px">
+      <table>
+        <thead><tr><th>Fundo</th><th>% do CDI (12m)</th><th>Situação</th></tr></thead>
+        <tbody id="bench-rf-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ RENDA PASSIVA ============ -->
+  <section class="panel" id="panel-renda" role="tabpanel" aria-labelledby="nav-renda" hidden>
+    <div class="section-heading">Renda passiva</div>
+
+    <div class="hero">
+      <div class="hero-num">
+        <div class="hero-eyebrow">Dividendo médio mensal (isento de IR)</div>
+        <div class="hero-big" id="rp-media">—</div>
+        <div class="hero-foot" id="rp-foot">—</div>
+        <div class="hero-chips" id="rp-chips"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Evolução dos dividendos</div>
+      <p class="card-sub">Mês a mês — este é o indicador que mais importa pro objetivo de aposentadoria.</p>
+      <svg id="rp-chart" viewBox="0 0 680 240" style="width:100%;height:auto;display:block;overflow:visible"></svg>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Quem paga o quê</div>
+      <p class="card-sub" id="rp-quem-sub">—</p>
+      <div class="barchart" id="rp-quem"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Yield on cost — quanto cada FII paga sobre o que você pagou</div>
+      <p class="card-sub" id="yoc-sub">—</p>
+      <div class="tscroll"><table>
+        <thead><tr><th>FII</th><th>Preço médio</th><th>R$/cota</th><th>YoC mês</th><th>YoC ano</th><th>Yield mercado</th></tr></thead>
+        <tbody id="yoc-body"></tbody></table></div>
+      <p class="note" id="yoc-nota" style="margin-top:12px"></p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Projeção de aposentadoria</div>
+      <p class="card-sub" id="rp-proj-sub">—</p>
+      <div class="tscroll">
+        <table>
+          <thead><tr><th>Cenário</th><th>Patrimônio em <span id="rp-ano">—</span></th><th>Renda mensal (nominal)</th><th>Renda em R$ de hoje</th></tr></thead>
+          <tbody id="rp-proj-body"></tbody>
+        </table>
+      </div>
+      <p class="note" id="rp-proj-nota" style="margin-top:12px"></p>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-alertas" role="tabpanel" aria-labelledby="nav-alertas" hidden>
+    <div class="section-heading">Alertas</div>
+    <div class="alerts" id="al-body"></div>
+  </section>
+
+  </main>
+</div>
+
+<nav>
+  <div class="navbar" role="tablist">
+    <button class="navbtn" role="tab" id="nav-plano" data-panel="panel-plano" aria-selected="true" style="--tc1:#F5B942;--tc2:#E0663D"><svg><use href="#ic-plano"/></svg><span>Plano</span></button>
+    <button class="navbtn" role="tab" id="nav-visao" data-panel="panel-visao" aria-selected="false" style="--tc1:#FF3B5C;--tc2:#B4185C"><svg><use href="#ic-visao"/></svg><span>Visão</span></button>
+    <button class="navbtn" role="tab" id="nav-evol" data-panel="panel-evol" aria-selected="false" style="--tc1:#3B9BFF;--tc2:#6C5CE7"><svg><use href="#ic-evol"/></svg><span>Evolução</span></button>
+    <button class="navbtn" role="tab" id="nav-aloc" data-panel="panel-aloc" aria-selected="false" style="--tc1:#8B7BFF;--tc2:#4B3FCB"><svg><use href="#ic-aloc"/></svg><span>Alocação</span></button>
+    <button class="navbtn" role="tab" id="nav-ativos" data-panel="panel-ativos" aria-selected="false" style="--tc1:#22C55E;--tc2:#0E9F8F"><svg><use href="#ic-ativos"/></svg><span>Ativos</span></button>
+    <button class="navbtn" role="tab" id="nav-mkt" data-panel="panel-mkt" aria-selected="false" style="--tc1:#F5B942;--tc2:#C2410C"><svg><use href="#ic-mkt"/></svg><span>Mercado</span></button>
+    <button class="navbtn" role="tab" id="nav-usd" data-panel="panel-usd" aria-selected="false" style="--tc1:#22C55E;--tc2:#3B9BFF"><svg><use href="#ic-usd"/></svg><span>Dolarização</span></button>
+    <button class="navbtn" role="tab" id="nav-bench" data-panel="panel-bench" aria-selected="false" style="--tc1:#3B9BFF;--tc2:#6C5CE7"><svg><use href="#ic-bench"/></svg><span>Benchmark</span></button>
+    <button class="navbtn" role="tab" id="nav-renda" data-panel="panel-renda" aria-selected="false" style="--tc1:#22C55E;--tc2:#0E9F8F"><svg><use href="#ic-renda"/></svg><span>Renda</span></button>
+    <button class="navbtn" role="tab" id="nav-alertas" data-panel="panel-alertas" aria-selected="false" style="--tc1:#C7CBD6;--tc2:#6E7689"><svg><use href="#ic-alertas"/></svg><span>Alertas</span></button>
+  </div>
+</nav>
+
+<script type="application/json" id="carteira-data">{}</script>
+<script>
+
+
+
+
+
+
+
+
+
+
+
+const D = JSON.parse(document.getElementById('carteira-data').textContent);
+const brl = v => (v===null||v===undefined) ? '—' : v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const num = v => (v ?? 0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct = v => num(v)+'%';
+const spct = v => (v>=0?'+':'')+num(v)+'%';
+
+const TARGET = D.target_allocation;
+const CM = {
+  renda_fixa:{l:'Renda Fixa',c:'#3B9BFF'},
+  etfs_fiis :{l:'ETFs/FIIs', c:'#FF3B5C'},
+  ouro      :{l:'Ouro',      c:'#F5B942'},
+  dolar     :{l:'Dólar',     c:'#22C55E'},
+  cripto    :{l:'Cripto',    c:'#8B7BFF'}
+};
+const MESX = {'01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'};
+const keys = Object.keys(D.historico_mensal).sort();
+/* rótulo de mês legível: '2026-10' -> 'Out/26' */
+const mesLbl = k => k ? `${MESX[k.slice(5)]}/${k.slice(2,4)}` : '—';
+/* transferências entre ativos (ex.: migração do ouro) não são aporte nem saque de verdade */
+const transf = (m,tipo) => (m.fluxos||[]).filter(x=>x.tipo===tipo && (x.motivo==='transferencia'||x.origem==='transferencia')).reduce((s,x)=>s+x.valor,0);
+const L = D.historico_mensal[keys[keys.length-1]];
+const P = D.historico_mensal[keys[keys.length-2]];
+const Lp = L.patrimonio_total ?? L.patrimonio_parcial;
+const Pp = P.patrimonio_total ?? P.patrimonio_parcial;
+
+/* ============ NÚCLEO DE CÁLCULO ============
+   Tudo que é derivável é calculado aqui a partir do histórico — nada fica congelado no JSON.
+   Regra de mercado (D.regras_calculo): dividendos caem no caixa, então
+   mercado = variação − aportes + resgates; retorno total = mercado + dividendos. */
+const HM = D.historico_mensal;
+const somaF = (m,tipo,f) => (m.fluxos||[]).filter(x=>x.tipo===tipo && (!f||f(x))).reduce((s,x)=>s+x.valor,0);
+(function(){
+  let prev = null;
+  keys.forEach(k=>{
+    const m = HM[k], pat = m.patrimonio_total ?? m.patrimonio_parcial;
+    if(m.fluxos){ m.aportes = +somaF(m,'aporte').toFixed(2); m.resgates = +somaF(m,'resgate').toFixed(2); }
+    if(prev!==null && m.aportes!=null && m.resgates!=null){
+      m._mercado = pat - prev - m.aportes + m.resgates;
+      m._base = prev + 0.5*(m.aportes - m.resgates);
+      m._ret_preco = m._mercado/m._base*100;
+      m._ret_total = (m._mercado + (m.dividendos||0))/m._base*100;
+      if(m.status!=='em_andamento') m.resultado_mercado = +m._mercado.toFixed(2);
+    }
+    prev = pat;
+  });
+})();
+function twr(desde, ate, campo){
+  let f = 1, n = 0;
+  keys.filter(k=>k>=desde && k<=ate).forEach(k=>{ const v = HM[k][campo]; if(v!=null){ f *= 1+v/100; n++; } });
+  return n ? (f-1)*100 : null;
+}
+function dataBR(iso){ if(!iso) return '—'; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function dias(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+function flat(m){
+  if(!m || !m.ativos) return null;
+  const o = {};
+  ['renda_fixa','fiis','etfs'].forEach(g=>Object.entries(m.ativos[g]||{}).forEach(([k,v])=>{ if(v>0) o[k]=v; }));
+  if(m.ativos_ouro_detalhe) Object.assign(o, m.ativos_ouro_detalhe); else o.ouro = m.ativos.ouro;
+  o.dolar = m.ativos.dolar; o.cripto = m.ativos.cripto;
+  return o;
+}
+const NOME = {active_fix_all:'Active Fix All', index_simples_selic:'Index Simples Selic', credito_bancario_rf:'Crédito Bancário RF',
+  optimus_rf:'Optimus RF', hglg11:'HGLG11', irim11:'IRIM11', knri11:'KNRI11', mxrf11:'MXRF11', trxf11:'TRXF11',
+  ivvb11:'IVVB11', smal11:'SMAL11', divo11:'DIVO11', itau_index_gold:'Itaú Index Gold', gldi11:'GLDI11', ouro:'Ouro', dolar:'Dólar', cripto:'Cripto'};
+/* ativo desatualizado: valor não informado há mais de 14 dias em relação à última marcação */
+const STALE = k => { const t = (L.ativos_atualizado_em||{})[k]; return t ? dias(t, L.atualizado_em) > 14 : false; };
+/* variação de cada posição no mês, ajustada por aportes/resgates daquele ativo */
+/* Mês recém-aberto e sem marcação própria: a referência de "variação no mês" passa a ser o último mês fechado. */
+const SEM_MARC = L.status==='em_andamento' && Math.abs(Lp-Pp)<0.01 && !(L.fluxos||[]).length && keys.length>=3;
+const VAR_KEY = SEM_MARC ? keys[keys.length-2] : keys[keys.length-1];
+const VAR_B = HM[VAR_KEY], VAR_A = SEM_MARC ? HM[keys[keys.length-3]] : P;
+const VAR_LBL = SEM_MARC ? `em ${({'01':'jan','02':'fev','03':'mar','04':'abr','05':'mai','06':'jun','07':'jul','08':'ago','09':'set','10':'out','11':'nov','12':'dez'})[VAR_KEY.slice(5)]}` : 'no mês';
+const VAR_ATIVO = (function(){
+  const a = flat(VAR_A), b = flat(VAR_B), out = {};
+  if(!a || !b) return out;
+  Object.keys(b).forEach(k=>{
+    const ant = a[k]||0, ap = somaF(VAR_B,'aporte',x=>x.ativo===k), rs = somaF(VAR_B,'resgate',x=>x.ativo===k);
+    const base = ant + ap; if(base<=0) return;
+    const v = b[k] - ant - ap + rs;
+    out[k] = {ant, atual:b[k], ap, rs, v, pct:v/base*100, stale:STALE(k)};
+  });
+  return out;
+})();
+const RESERVA = (function(){
+  const r = D.perfil.reserva_emergencia, rf = L.ativos.renda_fixa, comp = {};
+  (r.ativos_que_compoem||[]).forEach(k=>comp[k]=rf[k]||0);
+  const atual = Object.values(comp).reduce((s,v)=>s+v,0);
+  return {alvo:r.alvo, atual, pct:atual/r.alvo*100, falta:Math.max(0,r.alvo-atual), composicao:comp, regra:r.regra};
+})();
+/* renda passiva: meses fechados + mês corrente só se os dividendos dele já foram pagos */
+const RENDA = (function(){
+  const pj = D.projecao_dividendos||{};
+  const ms = keys.filter(k=>{ const m=HM[k]; if(!(m.dividendos>0)) return false;
+    return m.status!=='em_andamento' || (pj[k] && pj[k].status==='pago'); });
+  const vs = ms.map(k=>HM[k].dividendos), ult6 = vs.slice(-6);
+  const media = vs.reduce((s,v)=>s+v,0)/vs.length;
+  return {meses:ms, valores:vs, media, media6:ult6.reduce((s,v)=>s+v,0)/ult6.length, ultimo:vs[vs.length-1],
+          yieldPat: media*12/Lp*100};
+})();
+function gapAporte(){
+  const cc = exReserva(L.composicao), t = Object.values(cc).reduce((a,b)=>a+b,0);
+  return Object.keys(TARGET).reduce((s,k)=>{ const f = TARGET[k]/100*t - cc[k]; return s + (f>0?f:0); }, 0);
+}
+/* quanto de dinheiro NOVO é preciso para todas as classes chegarem ao alvo sem vender nada:
+   a classe mais acima do alvo define o tamanho que a carteira precisa ter */
+function aporteNecessario(){
+  const cc = exReserva(L.composicao), t = Object.values(cc).reduce((a,b)=>a+b,0);
+  const Tn = Math.max(t, ...Object.keys(TARGET).filter(k=>TARGET[k]>0).map(k=>cc[k]/(TARGET[k]/100)));
+  return Tn - t;
+}
+function valorRef(ref){
+  if(ref==='gap_aporte') return gapAporte();
+  const f = flat(L); return f ? f[ref] : undefined;
+}
+
+/* ---------- TOPBAR ---------- */
+document.getElementById('hdr-sub').textContent = `Posições de ${dataBR(L.atualizado_em || D.meta_arquivo.versao)} · mercado de ${dataBR((D.analise_mercado||{}).data_geral)} · mês em ${L.status==='em_andamento'?'andamento':'fechado'}`;
+/* aviso quando o mês corrente ainda não tem movimentação própria — evita que os números do
+   mês anterior sejam lidos como se fossem atuais */
+(function(){
+  const semMovimento = SEM_MARC; /* antes olhava só dividendos/aportes/resgates e disparava mesmo com o mês já marcado */
+  if(!semMovimento) return;
+  const anterior = keys[keys.length-2];
+  const [ay,am] = anterior.split('-');
+  const MESN = {'01':'janeiro','02':'fevereiro','03':'março','04':'abril','05':'maio','06':'junho',
+                '07':'julho','08':'agosto','09':'setembro','10':'outubro','11':'novembro','12':'dezembro'};
+  const aviso = document.createElement('div');
+  aviso.className = 'callout info';
+  aviso.style.marginBottom = '14px';
+  aviso.innerHTML = `<span class="h">Mês recém-iniciado</span>` +
+    `Os valores exibidos são o <b>fechamento de ${MESN[am]}</b> usado como ponto de partida — ainda não houve marcação a mercado nem movimentação própria neste mês. ` +
+    `Dividendos, aportes e resgates estão zerados porque ainda não aconteceram, não porque faltam dados.`;
+  const panels = document.getElementById('panels');
+  if(panels && panels.firstElementChild) panels.firstElementChild.prepend(aviso);
+})();
+const chip = document.getElementById('hdr-chip');
+if(RESERVA.pct>=100){ chip.textContent='Reserva completa'; chip.className='statuschip ok'; }
+else { chip.textContent=`Reserva ${RESERVA.pct.toFixed(0)}%`; chip.className='statuschip warn'; }
+
+/* ---------- exclui reserva da conta de alocação ---------- */
+function exReserva(compObj){
+  const cc={};
+  Object.keys(compObj).forEach(k=>{ cc[k] = compObj[k].valor; });
+  cc.renda_fixa = Math.max(0, cc.renda_fixa-RESERVA.atual);
+  return cc;
+}
+function aderencia(c){
+  const cc=exReserva(c);
+  const t=Object.values(cc).reduce((a,b)=>a+b,0);
+  const s=Object.keys(CM).reduce((ac,k)=>ac+Math.abs(cc[k]/t*100-TARGET[k]),0);
+  return Math.max(0,100-s/2);
+}
+
+/* ============ PLANO ============ */
+(function(){
+  const passos = D.plano_acao.passos;
+  const STATUS_CLASS = {CONCLUIDO:'done', 'EM TRANSITO':'', decidido:'done', pendente:'', SUPERSEDIDO:'done'};
+  const STATUS_BADGE = {CONCLUIDO:'b-green', 'EM TRANSITO':'b-yellow', decidido:'b-green', pendente:'b-dim', SUPERSEDIDO:'b-dim'};
+  const STATUS_LABEL = {CONCLUIDO:'concluído', 'EM TRANSITO':'em trânsito', decidido:'decidido', pendente:'pendente', SUPERSEDIDO:'supersedido'};
+  const done = passos.filter(p=>['CONCLUIDO','decidido','SUPERSEDIDO'].includes(p.status)).length;
+
+  document.getElementById('pring-v').textContent = `${done}/${passos.length}`;
+  document.getElementById('pp-label').textContent = `${done}/${passos.length}`;
+  const ringPct = done/passos.length*100;
+  document.getElementById('pp-fill').style.width = ringPct+'%';
+  setTimeout(()=>{ document.getElementById('pring').style.strokeDashoffset = 283-(283*ringPct/100); }, 150);
+
+  document.getElementById('hero-reserva').textContent = brl(RESERVA.atual);
+  document.getElementById('hero-reserva-foot').textContent = `de ${brl(RESERVA.alvo)} · ${RESERVA.composicao ? Object.entries(RESERVA.composicao).map(([k,v])=>`${k.replace(/_/g,' ')} ${brl(v)}`).join(' + ') : ''}`;
+  document.getElementById('hero-chips').innerHTML =
+    (RESERVA.pct>=100? `<span class="hero-chip good">Completa — 100%</span>` : `<span class="hero-chip bad">Faltam ${brl(RESERVA.falta)}</span>`) +
+    `<span class="hero-chip">Fora da conta de alocação</span>`;
+
+  document.getElementById('steps').innerHTML = passos.map(p=>{
+    const cls = STATUS_CLASS[p.status]||'';
+    const badge = STATUS_BADGE[p.status]||'b-dim';
+    const label = STATUS_LABEL[p.status]||p.status;
+    const val = p.valor_ref ? valorRef(p.valor_ref) : (p.valor ?? p.valor_recebido ?? p.valor_total ?? p.valor_projetado ?? p.atual);
+    return `<div class="step ${cls}">
+      <div class="step-row">
+        <div><div class="step-n">PASSO ${String(p.n).padStart(2,'0')}</div><div class="step-t">${p.titulo}</div></div>
+        <span class="badge ${badge}">${label}</span>
+      </div>
+      ${val!==undefined?`<div class="step-v" style="margin-top:8px">${brl(val)}</div>`:''}
+      ${p.nota?`<div class="step-m">${p.nota}</div>`:''}
+    </div>`;
+  }).join('');
+
+  const next = passos.find(p=>!['CONCLUIDO','decidido','SUPERSEDIDO'].includes(p.status));
+  const na = document.getElementById('next-acao');
+  if(next){
+    na.className='acao warn';
+    document.getElementById('next-title').textContent = next.titulo;
+    document.getElementById('next-detail').innerHTML = [next.valor_ref ? `<b>${brl(valorRef(next.valor_ref))}</b>` : '', next.nota||''].filter(Boolean).join(' — ');
+  } else {
+    na.className='acao ok';
+    document.getElementById('next-title').textContent = 'Tudo em dia';
+    document.getElementById('next-detail').textContent = 'Nenhuma ação pendente no momento.';
+  }
+})();
+
+/* ============ VISÃO ============ */
+(function(){
+  const MESLBL = {'01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'};
+  const [vy,vm] = keys[keys.length-1].split('-');
+  document.getElementById('v-per').textContent =
+    `${L.status==='em_andamento'?'Em andamento':'Fechamento'} · ${MESLBL[vm]}/${vy}`;
+  document.getElementById('v-pat').textContent = brl(Lp);
+
+  const ad = aderencia(L.composicao);
+  document.getElementById('ring-v').textContent = ad.toFixed(0)+'%';
+  setTimeout(()=>{ document.getElementById('ring').style.strokeDashoffset = 283-(283*ad/100); }, 150);
+
+  const dl = Lp-Pp, dp = dl/Pp*100;
+  document.getElementById('v-chips').innerHTML =
+    `<span class="hero-chip ${dl>=0?'good':'bad'}">${dl>=0?'▲':'▼'} ${brl(Math.abs(dl))} · ${pct(Math.abs(dp))}</span>
+     <span class="hero-chip">vs ${mesLbl(keys[keys.length-2])}</span>`;
+
+  document.getElementById('k-div').textContent = brl(L.dividendos);
+  document.getElementById('k-apo').textContent = brl(L.aportes);
+  document.getElementById('k-res').textContent = brl(L.resgates);
+  const km = document.getElementById('k-mkt');
+  const mk = L.resultado_mercado ?? L._mercado;
+  if(mk==null){ km.textContent='—'; }
+  else {
+    km.textContent = brl(mk); km.className = 'value '+(mk>=0?'green':'red');
+    if(L.status==='em_andamento'){ const f=document.createElement('div'); f.className='foot'; f.textContent='parcial do mês'; km.parentElement.appendChild(f); }
+  }
+})();
+
+/* ============ EVOLUÇÃO ============ */
+(function(){
+  const svg = document.getElementById('lc');
+  const W=680,H=260,pl=54,pr=14,pt=16,pb=34;
+  let fluxoAc = 0;
+  const series = keys.map((k,i)=>{ const m = D.historico_mensal[k], p = m.patrimonio_total ?? m.patrimonio_parcial;
+    if(i>0) fluxoAc += (m.resgates||0) - (m.aportes||0);
+    return {k, l:k, p, adj: p + fluxoAc}; });
+  const vs = series.flatMap(s=>[s.p, s.adj]), mn=Math.min(...vs)*.975, mx=Math.max(...vs)*1.02;
+  const X = i => pl+(i/(series.length-1))*(W-pl-pr);
+  const Y = v => H-pb-((v-mn)/(mx-mn))*(H-pt-pb);
+  let g='';
+  for(let i=0;i<=3;i++){
+    const gv=mn+(i/3)*(mx-mn), gy=Y(gv);
+    g+=`<line x1="${pl}" y1="${gy}" x2="${W-pr}" y2="${gy}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`;
+    g+=`<text x="${pl-8}" y="${gy+3.5}" text-anchor="end" font-family="ui-monospace,monospace" font-size="9.5" fill="#5A5872">${(gv/1000).toFixed(0)}k</text>`;
+  }
+  const path = series.map((s,i)=>`${i?'L':'M'} ${X(i)} ${Y(s.p)}`).join(' ');
+  const area = path+` L ${X(series.length-1)} ${H-pb} L ${X(0)} ${H-pb} Z`;
+  /* linha tracejada: patrimônio se não tivesse havido saques nem aportes (fluxos líquidos devolvidos) */
+  const adjPath = series.map((s,i)=>`${i?'L':'M'} ${X(i)} ${Y(s.adj)}`).join(' ');
+  let lb='', dd='';
+  series.forEach((s,i)=>{
+    const [y,m]=s.k.split('-');
+    lb+=`<text x="${X(i)}" y="${H-13}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#5A5872">${m}/${y.slice(2)}</text>`;
+    const isL=i===series.length-1;
+    dd+=`<circle cx="${X(i)}" cy="${Y(s.p)}" r="${isL?4.5:3.2}" fill="${isL?'#3B9BFF':'#08070F'}" stroke="#3B9BFF" stroke-width="1.8"/>`;
+  });
+  svg.innerHTML = `<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#3B9BFF" stop-opacity=".28"/><stop offset="100%" stop-color="#3B9BFF" stop-opacity="0"/>
+    </linearGradient></defs>${g}<path d="${area}" fill="url(#ag)"/>
+    <path d="${adjPath}" fill="none" stroke="#F5B942" stroke-width="1.6" stroke-dasharray="5 4" opacity=".85"/>
+    <path d="${path}" fill="none" stroke="#3B9BFF" stroke-width="2.2" stroke-linejoin="round"/>${lb}${dd}`;
+  const ult = series[series.length-1], custoSaques = ult.adj - ult.p;
+  svg.insertAdjacentHTML('afterend', `<div class="legend-inline"><span><i></i>Patrimônio real</span><span><i class="dash"></i>Sem saques nem aportes (mesmo mercado)</span>` +
+    `<span>Distância hoje: <b style="color:var(--chalk)">${brl(custoSaques)}</b> — é o que os saques líquidos tiraram da carteira</span></div>`);
+
+  const first = series[0].p, tot = Lp-first, totp = tot/first*100;
+  const withM = keys.map(k=>D.historico_mensal[k]).filter(m=>m.resultado_mercado!=null && m.resultado_mercado!==undefined);
+  const best = withM.reduce((a,b)=>b.resultado_mercado>a.resultado_mercado?b:a);
+  const worst = withM.reduce((a,b)=>b.resultado_mercado<a.resultado_mercado?b:a);
+  const bestK = keys.find(k=>D.historico_mensal[k]===best), worstK = keys.find(k=>D.historico_mensal[k]===worst);
+  const twrT = twr(keys[1], keys[keys.length-1], '_ret_total'), twrP = twr(keys[1], keys[keys.length-1], '_ret_preco');
+  document.getElementById('evo-cards').innerHTML = `
+    <div class="grid2">
+      <div class="kpi"><div class="label">Variação do patrimônio desde ${mesLbl(keys[0])}</div><div class="value ${tot>=0?'green':'red'}">${(tot>=0?'+':'')+pct(totp)}</div><div class="foot">${brl(first)} → ${brl(Lp)} · inclui os saques</div></div>
+      <div class="kpi"><div class="label">Rentabilidade desde ${mesLbl(keys[0])}</div><div class="value ${twrT>=0?'green':'red'}">${spct(twrT)}</div><div class="foot">${spct(twrP)} só preço · ponderada no tempo, sem efeito de saques · ${keys.length} meses</div></div>
+    </div>
+    <div class="grid2" style="margin-top:9px">
+      <div class="kpi"><div class="label">Melhor mês de mercado</div><div class="value green">+${brl(best.resultado_mercado).replace('R$','').trim()}</div><div class="foot">${mesLbl(bestK)}</div></div>
+      <div class="kpi"><div class="label">Pior mês de mercado</div><div class="value red">${brl(worst.resultado_mercado).replace('R$','').trim()}</div><div class="foot">${mesLbl(worstK)}</div></div>
+    </div>`;
+
+  document.getElementById('hi-body').innerHTML = keys.map(k=>{
+    const m = D.historico_mensal[k];
+    const p = m.patrimonio_total ?? m.patrimonio_parcial;
+    const c = v=> (v===null||v===undefined) ? '<span style="color:#5A5872">—</span>' : brl(v).replace('R$','').trim();
+    const tr = transf(m,'resgate'), tn = tr>0 ? ` <span class="pctlabel" title="transferência entre ativos">${brl(tr).replace('R$','').trim()} transf.</span>` : '';
+    return `<tr><td>${mesLbl(k)}</td><td>${brl(p).replace('R$','').trim()}</td><td>${c(m.dividendos)}</td><td>${c(m.aportes)}</td><td>${c(m.resgates)}${tn}</td>
+      ${(function(){ const v = m.resultado_mercado ?? m._mercado; if(v==null) return '<td><span style="color:#5A5872">—</span></td>';
+        return `<td class="${v>=0?'green':'red'}">${(v>=0?'+':'')+brl(v).replace('R$','').trim()}${m.resultado_mercado==null?' <span class="pctlabel">parcial</span>':''}</td>`; })()}</tr>`;
+  }).join('');
+})();
+
+/* ============ ALOCAÇÃO ============ */
+(function(){
+  document.getElementById('aloc-sub').textContent = `${mesLbl(keys[keys.length-1])} · exclui reserva de emergência`;
+  const cc = exReserva(L.composicao);
+  const t = Object.values(cc).reduce((a,b)=>a+b,0);
+  const colorClass = {renda_fixa:'blue', etfs_fiis:'red', ouro:'gold', dolar:'green', cripto:''};
+  document.getElementById('aloc-bars').innerHTML = Object.keys(CM).map(k=>{
+    const at = cc[k]/t*100, tg = TARGET[k], gap = at-tg, over = gap>0;
+    const scale = Math.max(at,tg)*1.35+3;
+    const fillPct = Math.min(100, at/scale*100);
+    const markPct = Math.min(100, tg/scale*100);
+    return `<div class="barrow">
+      <div>${CM[k].l}</div>
+      <div class="bartrack"><div class="barfill ${colorClass[k]||''}" style="width:${fillPct}%"></div><div class="barmark" style="left:${markPct}%"></div></div>
+      <div>${pct(at)} <span class="pctlabel">${over?'+':''}${num(gap)} pp</span></div>
+    </div>`;
+  }).join('');
+
+  // guia acionável: conecta os gaps com a prioridade de aporte do JSON
+  const gaps = Object.keys(CM).map(k=>({k, l:CM[k].l, at:cc[k]/t*100, gap:cc[k]/t*100-TARGET[k],
+                                        falta:(TARGET[k]/100*t)-cc[k]}));
+  const abaixo = gaps.filter(g=>g.gap<-0.5).sort((a,b)=>a.gap-b.gap);
+  const acima = gaps.filter(g=>g.gap>0.5).sort((a,b)=>b.gap-a.gap);
+  const prio = D.estrategia.prioridade_aporte;
+  let txt = '';
+  if(abaixo.length){
+    const totalFalta = abaixo.reduce((s,g)=>s+g.falta,0);
+    const maior = abaixo[0];
+    txt += `Rebalanceando de forma perfeita (vendendo o excesso), faltariam <b>${brl(totalFalta)}</b> em ${abaixo.map(g=>g.l).join(', ')}. ` +
+           `A ordem definida na sua estratégia é <b>${prio.join(' → ')}</b>. ` +
+           `O maior buraco hoje é <b>${maior.l}</b> (${num(maior.gap)} pp, faltam ${brl(maior.falta)}).`;
+  }
+  if(acima.length){
+    txt += `<br><br><b>${acima.map(g=>g.l).join(', ')}</b> ${acima.length>1?'estão':'está'} acima do alvo — não aportar aí. ` +
+           `Vender para corrigir não é o caminho: a estratégia diz "evitar retirar de ${D.estrategia.evitar_retirar_de.join(', ')}".`;
+    const nec = aporteNecessario(), meses = RENDA.media>0 ? Math.ceil(nec/RENDA.media) : null;
+    const dom = acima.map(g=>({k:g.k, l:g.l, r:cc[g.k]/(TARGET[g.k]/100)})).reduce((a,b)=>b.r>a.r?b:a);
+    const podeRF = !D.estrategia.evitar_retirar_de.map(s=>s.toLowerCase()).some(s=>s.includes('renda'));
+    const exRF = Math.max(0, cc.renda_fixa - TARGET.renda_fixa/100*t);
+    const gapProt = abaixo.reduce((s,g)=>s+g.falta,0);
+    txt += `<br><br><b>Como fechar sem vender renda variável — três rotas:</b>` +
+      `<div class="rota"><span class="rt">1. Só com dinheiro novo:</span> são <b>${brl(nec)}</b>, não ${brl(gapProt)}. ` +
+      `Como <b>${dom.l}</b> já passou do alvo, o total da carteira precisa crescer até ${dom.l} voltar a ${pct(TARGET[dom.k])} — e todo esse crescimento tem que ir para as outras classes.</div>` +
+      (meses ? `<div class="rota"><span class="rt">2. Redirecionando os dividendos</span> (~${brl(RENDA.media)}/mês) para ${prio.join(' → ')}: ~<b>${meses} meses</b> sozinhos, sem contar o mercado. Somados a qualquer aporte, encurtam proporcionalmente.</div>` : '') +
+      (podeRF && exRF>50 ? `<div class="rota"><span class="rt">3. Transferência dentro da regra:</span> a renda fixa está <b>${brl(exRF)}</b> acima do alvo e não está na lista de "evitar retirar". ` +
+        `Mover esse excedente para ${prio[0]}/${prio[1]} fecha ~${(exRF/gapProt*100).toFixed(0)}% do buraco de proteção sem dinheiro novo. ` +
+        `Candidato natural: <b>Active Fix All</b> (${pct(L.ativos.renda_fixa.active_fix_all/Lp*100)} do patrimônio, ${num((D.fundos_renda_fixa.active_fix_all||{}).pct_cdi_12m||0)}% do CDI).</div>` : '');
+  }
+  if(!txt) txt = 'Todas as classes dentro da tolerância. Nenhuma ação necessária.';
+  document.getElementById('aloc-acao-txt').innerHTML = txt;
+})();
+
+/* ============ ATIVOS ============ */
+const LABELS = {
+  active_fix_all:'Active Fix All', index_simples_selic:'Index Simples Selic', credito_bancario_rf:'Crédito Bancário RF',
+  optimus_rf:'Optimus RF', lumina_soberano:'Lumina Soberano (eliminado)',
+  hglg11:'HGLG11', irim11:'IRIM11', knri11:'KNRI11', mxrf11:'MXRF11', trxf11:'TRXF11',
+  ivvb11:'IVVB11', smal11:'SMAL11', divo11:'DIVO11'
+};
+(function(){
+  document.getElementById('at-sub').textContent = `${mesLbl(keys[keys.length-1])} · ${L.status==='em_andamento'?'parcial':'fechado'}`;
+  const thd = document.getElementById('th-d'); if(thd) thd.textContent = `Δ ${VAR_LBL}`;
+  const dCel = k => { const v = VAR_ATIVO[k]; if(!v || v.stale) return '<td><span class="pctlabel">—</span></td>';
+    return `<td class="${v.v>=0?'green':'red'}" title="${brl(v.v)}">${spct(v.pct)}</td>`; };
+  document.getElementById('th-p').textContent = 'Valor';
+  document.getElementById('th-l').textContent = '% carteira';
+  const at = L.ativos;
+  const GRP = [
+    {l:'Renda Fixa', i:Object.keys(at.renda_fixa)},
+    {l:'FIIs', i:Object.keys(at.fiis)},
+    {l:'ETFs', i:Object.keys(at.etfs)}
+  ];
+  const total = Lp;
+  let rows='';
+  GRP.forEach(g=>{
+    rows += `<tr class="grp"><td colspan="4">${g.l}</td></tr>`;
+    g.i.forEach(k=>{
+      const v = at[g.l==='Renda Fixa'?'renda_fixa':(g.l==='FIIs'?'fiis':'etfs')][k];
+      if(v>0) rows += `<tr><td>${LABELS[k]||k}${STALE(k)?' <span class="badge b-red">desatualizado</span>':''}</td><td>${brl(v)}</td><td>${pct(v/total*100)}</td>${dCel(k)}</tr>`;
+    });
+  });
+  rows += `<tr class="grp"><td colspan="4">Outros</td></tr>`;
+  if(L.ativos_ouro_detalhe){
+    rows += `<tr><td>Ouro · Itaú Index Gold</td><td>${brl(L.ativos_ouro_detalhe.itau_index_gold)}</td><td>${pct(L.ativos_ouro_detalhe.itau_index_gold/total*100)}</td>${dCel('itau_index_gold')}</tr>`;
+    rows += `<tr><td>Ouro · ETF GLDI11</td><td>${brl(L.ativos_ouro_detalhe.gldi11)}</td><td>${pct(L.ativos_ouro_detalhe.gldi11/total*100)}</td>${dCel('gldi11')}</tr>`;
+  } else {
+    rows += `<tr><td>Ouro</td><td>${brl(at.ouro)}</td><td>${pct(at.ouro/total*100)}</td>${dCel('ouro')}</tr>`;
+  }
+  rows += `<tr><td>Dólar</td><td>${brl(at.dolar)}</td><td>${pct(at.dolar/total*100)}</td>${dCel('dolar')}</tr>`;
+  rows += `<tr><td>Cripto${STALE('cripto')?' <span class="badge b-red">sem atualização desde '+dataBR(L.ativos_atualizado_em.cripto)+'</span>':''}</td><td>${brl(at.cripto)}</td><td>${pct(at.cripto/total*100)}</td>${dCel('cripto')}</tr>`;
+  document.getElementById('at-body').innerHTML = rows;
+})();
+
+/* ============ CUSTO MÉDIO & RETORNO REAL ============ */
+(function(){
+  const cmf = document.getElementById('cm-fonte');
+  if(cmf && D.custo_medio) cmf.textContent = `Fonte: posição consolidada do banco · preço médio de ${dataBR(D.custo_medio.atualizado_em)} · cotação de ${dataBR(L.atualizado_em)} · não cobre Cripto, Dólar e Ouro (Itaú Index Gold)`;
+  const cm = D.custo_medio;
+  if(!cm){ return; }
+  const LBL = {smal11:'SMAL11', irim11:'IRIM11', divo11:'DIVO11', gldi11:'GLDI11', ivvb11:'IVVB11',
+               hglg11:'HGLG11', trxf11:'TRXF11', knri11:'KNRI11', mxrf11:'MXRF11'};
+  const rows = Object.keys(cm.ativos).map(k=>{
+    const a = cm.ativos[k];
+    const custo = a.qtd * a.pm;
+    const custoProv = a.qtd * a.pm_prov;
+    const valorAtual = L.ativos.fiis?.[k] ?? L.ativos.etfs?.[k] ?? (k==='gldi11' ? L.ativos_ouro_detalhe?.gldi11 : null);
+    const rentSoPreco = ((custo>0 && valorAtual!=null) ? (valorAtual-custo)/custo*100 : null);
+    const rentComProv = ((custoProv>0 && valorAtual!=null) ? (valorAtual-custoProv)/custoProv*100 : null);
+    const divRecebido = (a.pm - a.pm_prov) * a.qtd;
+    return {k, custo, divRecebido, rentSoPreco, rentComProv};
+  });
+  document.getElementById('custo-body').innerHTML = rows.map(r=>`
+    <tr><td>${LBL[r.k]}</td><td>${brl(r.custo/ (D.custo_medio.ativos[r.k].qtd)).replace('R$','').trim()}/cota</td>
+    <td class="${r.rentSoPreco>=0?'green':'red'}">${r.rentSoPreco!=null?spct(r.rentSoPreco):'—'}</td>
+    <td class="${r.rentComProv>=0?'green':'red'}">${r.rentComProv!=null?spct(r.rentComProv):'—'}${r.divRecebido>0.5?` <span class="pctlabel">(+${brl(r.divRecebido).replace('R$','').trim()} já recebido)</span>`:''}</td></tr>`
+  ).join('');
+})();
+
+/* ============ MERCADO ============ */
+const AM = D.analise_mercado || {data_geral:null, ativos:[]};
+const RB_FIM = (function(){ const r = [...keys].reverse().map(k=>HM[k].rendimento_banco_ytd).find(Boolean); return r ? r.periodo.split(' a ').pop().slice(0,5) : null; })();
+const MKT_DATA = dataBR(AM.data_geral);
+const MERCADO = AM.ativos;
+(function(){
+  document.getElementById('mkt-data').textContent = MKT_DATA;
+
+  const MESNOME = {'01':'janeiro','02':'fevereiro','03':'março','04':'abril','05':'maio','06':'junho',
+                   '07':'julho','08':'agosto','09':'setembro','10':'outubro','11':'novembro','12':'dezembro'};
+  const [py2,pm2] = keys[keys.length-1].split('-');
+  const tituloEl = document.getElementById('panorama-titulo');
+  if(tituloEl) tituloEl.textContent = `Panorama de ${MESNOME[pm2]}/${py2}`;
+  document.getElementById('panorama-sub').textContent = 'A história do mês inteiro, não só da última atualização — pra você não perder o fio entre as pesquisas pontuais.';
+  // panorama vem do JSON (D.panorama_mensal), não é texto fixo no código
+  const panoBody = document.getElementById('panorama-body');
+  const pmAll = D.panorama_mensal || {};
+  // usa o panorama do último mês FECHADO que tenha narrativa registrada
+  const pmChaves = Object.keys(pmAll).filter(k=>/^\d{4}-\d{2}$/.test(k)).sort();
+  const pmChave = pmChaves.length ? pmChaves[pmChaves.length-1] : null;
+  const pm = pmChave ? pmAll[pmChave] : null;
+  if(tituloEl && pmChave){
+    const [ay,am] = pmChave.split('-');
+    tituloEl.textContent = `Panorama de ${MESNOME[am]}/${ay}`;
+  }
+  if(pm){
+    const maxPeso = Math.max(...pm.indicadores.map(i=>i.peso));
+    panoBody.innerHTML =
+      `<div class="barchart" style="margin-bottom:14px">` +
+      pm.indicadores.map(i=>
+        `<div class="barrow"><div>${i.nome}</div><div class="bartrack"><div class="barfill ${i.cor}" style="width:${i.peso/maxPeso*100}%"></div></div><div>${i.valor}</div></div>`
+      ).join('') + `</div>` +
+      `<p class="note" style="margin-top:0">` +
+      pm.fases.map(f=>`<b>${f.periodo}:</b> ${f.texto}`).join('<br><br>') + `</p>` +
+      `<p class="note"><b>O que isso significou pra sua carteira:</b> ${pm.conclusao}</p>`;
+  } else {
+    panoBody.innerHTML = '<p class="note">Sem panorama registrado para este mês ainda.</p>';
+  }
+
+  document.getElementById('mkt-cards').innerHTML = MERCADO.map(a=>{
+    const dadoLabel = a.dado==='direto' ? 'dado direto' : 'estimado via índice';
+    const showD7 = a.d7!==null, showDm = a.dm!==null;
+    return `<div class="mkt-card">
+      <div class="mkt-top">
+        <div><div class="mkt-name">${a.n}</div><div class="mkt-class">${a.classe}</div></div>
+        <div class="mkt-vals">
+          ${showD7?`<div class="mkt-val"><div class="l">7 dias</div><div class="v ${a.d7>=0?'green':'red'}">${spct(a.d7)}</div></div>`:''}
+          ${showDm?`<div class="mkt-val"><div class="l">no ano (banco${RB_FIM?', '+RB_FIM:''})</div><div class="v ${a.dm>=0?'green':'red'}">${spct(a.dm)}</div></div>`:''}
+        </div>
+      </div>
+      <div><span class="badge ${a.badge}">${dadoLabel}</span> <span class="pctlabel">benchmark: ${a.bench}</span>
+        ${a.data_ref ? (dias(a.data_ref, AM.data_geral)>7 ? `<span class="badge b-red">análise de ${dataBR(a.data_ref)} — desatualizada</span>` : `<span class="pctlabel">· dado de ${dataBR(a.data_ref)}</span>`) : ''}</div>
+      ${(function(){ const va = a.ativo==='ouro'
+            ? (function(){ const ks=['itau_index_gold','gldi11'].filter(k=>VAR_ATIVO[k]); if(!ks.length) return null;
+                const v=ks.reduce((s,k)=>s+VAR_ATIVO[k].v,0), base=ks.reduce((s,k)=>s+VAR_ATIVO[k].ant+VAR_ATIVO[k].ap,0); return {v, pct:v/base*100, stale:false}; })()
+            : VAR_ATIVO[a.ativo];
+          if(!va) return '';
+          if(va.stale) return `<div class="mkt-acao"><div class="ic">Sua posição</div><div class="tx"><span class="badge b-red">valor não atualizado desde ${dataBR((L.ativos_atualizado_em||{})[a.ativo])}</span></div></div>`;
+          return `<div class="mkt-acao"><div class="ic">Sua posição</div><div class="tx">${VAR_LBL}: <b class="${va.v>=0?'green':'red'}">${spct(va.pct)}</b> (${va.v>=0?'+':''}${brl(va.v)}), já descontando aportes/resgates</div></div>`; })()}
+      <div class="mkt-expl">${a.expl}</div>
+      <div class="mkt-acao"><div class="ic">Ação</div><div class="tx">${a.acao}</div></div>
+    </div>`;
+  }).join('');
+})();
+
+/* ============ SCORE DA CARTEIRA ============ */
+/* Disciplina de resgate: janela móvel dos últimos 3 meses, calculada a partir dos fluxos com motivo.
+   Transferências (resgatar um ativo para reaplicar em outro) não contam como saque. */
+const SCORE_HIST = (function(){
+  const out = {}, fech = keys.filter(k=>HM[k].status!=='em_andamento'), cur = keys[keys.length-1];
+  /* mês em andamento só entra se já tiver saque real — mês sem dados não é evidência de disciplina */
+  const temSaque = HM[cur].status==='em_andamento' && (HM[cur].fluxos||[]).some(x=>x.tipo==='resgate' && x.motivo!=='transferencia');
+  (temSaque ? [...fech.slice(-2), cur] : fech.slice(-3)).forEach(k=>{
+    const m = HM[k], real = x => x.motivo!=='transferencia';
+    out[k] = {total: somaF(m,'resgate',real), caixa: somaF(m,'resgate',x=>x.motivo==='caixa')};
+  });
+  return out;
+})();
+/* Snapshots do Score em meses fechados agora vivem no JSON (D.score_historico), não mais
+   hardcoded aqui. Ainda precisam ser gravados manualmente a cada fechamento de mês. */
+const SCORE_SERIE = D.score_historico || {};
+const SCORE_PERIODOS = Object.keys(SCORE_SERIE).filter(k=>/^\d{4}-\d{2}$/.test(k)).sort();
+/* compara com o último mês fechado que NÃO seja o mês exibido — se agosto está sendo exibido
+   e agosto já está no histórico, a comparação relevante é contra julho, não contra ele mesmo */
+const SCORE_REF = (function(){
+  const atual = Object.keys(D.historico_mensal).sort().pop();
+  const anteriores = SCORE_PERIODOS.filter(p => p < atual);
+  const alvo = anteriores.length ? anteriores[anteriores.length-1]
+             : (SCORE_PERIODOS.length ? SCORE_PERIODOS[SCORE_PERIODOS.length-1] : null);
+  return alvo ? { periodo: alvo, total: SCORE_SERIE[alvo].total } : { periodo:'—', total:0 };
+})();
+const SCORE_ANTERIOR = SCORE_REF;
+const perLbl = p => /^\d{4}-\d{2}$/.test(p) ? `${MESX[p.slice(5)]}/${p.slice(2,4)}` : p;
+let SCORE_ATUAL = 0;
+(function(){
+  const adPct = aderencia(L.composicao);
+  const reservaComp = 30 * Math.min(1, RESERVA.pct/100);
+  const aderenciaComp = 40 * (adPct/100);
+  const fracs = Object.values(SCORE_HIST).map(m => m.total ? m.caixa/m.total : 0);
+  const avgCaixaFrac = fracs.reduce((a,b)=>a+b,0)/fracs.length;
+  const disciplinaComp = 30 * (1-avgCaixaFrac);
+  const total = reservaComp + aderenciaComp + disciplinaComp;
+  SCORE_ATUAL = total;
+
+  const delta = total - SCORE_ANTERIOR.total;
+  document.getElementById('score-sub').innerHTML = `<b style="color:var(--chalk);font-size:22px;font-family:var(--mono)">${total.toFixed(0)}</b><span style="color:var(--dim)">/100</span> ` +
+    (Math.round(delta)===0 ? `<span class="badge b-dim">= estável vs ${perLbl(SCORE_ANTERIOR.periodo)}</span><br>`
+     : `<span class="badge ${delta>0?'b-green':'b-red'}">${delta>0?'▲':'▼'} ${Math.abs(delta).toFixed(0)} vs ${perLbl(SCORE_ANTERIOR.periodo)}</span><br>`) +
+    `reserva + aderência ao alvo + disciplina de resgate (janela ${Object.keys(SCORE_HIST).map(k=>MESX[k.slice(5)]).join('/')})`;
+  document.getElementById('score-bars').innerHTML = `
+    <div class="barrow"><div>Reserva</div><div class="bartrack"><div class="barfill green" style="width:${Math.min(100,RESERVA.pct)}%"></div></div><div>${reservaComp.toFixed(0)}/30</div></div>
+    <div class="barrow"><div>Aderência ao alvo</div><div class="bartrack"><div class="barfill blue" style="width:${adPct}%"></div></div><div>${aderenciaComp.toFixed(0)}/40</div></div>
+    <div class="barrow"><div>Disciplina de resgate</div><div class="bartrack"><div class="barfill ${avgCaixaFrac>0.5?'red':'gold'}" style="width:${(1-avgCaixaFrac)*100}%"></div></div><div>${disciplinaComp.toFixed(0)}/30</div></div>`;
+
+  // série histórica do Score
+  const serieEl = document.getElementById('score-serie');
+  if(serieEl && SCORE_PERIODOS.length){
+    const MESL = {'01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'};
+    const pts = SCORE_PERIODOS.map(p=>{
+      const [y,mo]=p.split('-');
+      return `<b>${MESL[mo]}/${y.slice(2)}</b> ${SCORE_SERIE[p].total.toFixed(0)}`;
+    });
+    const [cy,cm2] = keys[keys.length-1].split('-');
+    const chaveAtual = keys[keys.length-1];
+    // se o mês atual já está no histórico (mês fechado), não duplica a entrada
+    if(!SCORE_SERIE[chaveAtual]){
+      pts.push(`<b>${MESL[cm2]}/${cy.slice(2)}</b> ${total.toFixed(0)} <span class="pctlabel">(atual)</span>`);
+    }
+    const primeiro = SCORE_SERIE[SCORE_PERIODOS[0]].total;
+    const evolucao = total - primeiro;
+    serieEl.innerHTML = `Série: ${pts.join(' → ')}. ` +
+      `${evolucao>=0?'Subiu':'Caiu'} <b>${Math.abs(evolucao).toFixed(0)} pontos</b> desde o primeiro registro — ` +
+      `puxado principalmente pela reserva de emergência, que saiu de ${SCORE_SERIE[SCORE_PERIODOS[0]].reserva.toFixed(0)}/30 para ${reservaComp.toFixed(0)}/30.`;
+  }
+})();
+
+
+/* ============ DOLARIZAÇÃO ============ */
+(function(){
+  const ivvb11 = L.ativos.etfs.ivvb11, dolar = L.ativos.dolar, cripto = L.ativos.cripto, ouro = L.ativos.ouro;
+  const intlNarrow = ivvb11 + dolar + cripto;
+  const intlBroad = intlNarrow + ouro;
+  document.getElementById('usd-atual').innerHTML =
+    `Exposição internacional direta (IVVB11 + Dólar + Cripto): <b>${brl(intlNarrow)}</b> (${pct(intlNarrow/Lp*100)} do patrimônio). ` +
+    `Somando Ouro (cotado em USD, exposição indireta a dólar): <b>${brl(intlBroad)}</b> (${pct(intlBroad/Lp*100)}).`;
+  document.getElementById('usd-atual-bars').innerHTML = `
+    <div class="barrow"><div>IVVB11 (S&P 500)</div><div class="bartrack"><div class="barfill blue" style="width:${ivvb11/Lp*100*4}%"></div></div><div>${brl(ivvb11)}</div></div>
+    <div class="barrow"><div>Dólar</div><div class="bartrack"><div class="barfill green" style="width:${dolar/Lp*100*4}%"></div></div><div>${brl(dolar)}</div></div>
+    <div class="barrow"><div>Cripto</div><div class="bartrack"><div class="barfill" style="width:${cripto/Lp*100*4}%"></div></div><div>${brl(cripto)}</div></div>
+    <div class="barrow"><div>Ouro (indireto)</div><div class="bartrack"><div class="barfill gold" style="width:${ouro/Lp*100*4}%"></div></div><div>${brl(ouro)}</div></div>`;
+
+  const yields = [
+    {l:'FII brasileiro (médio)', v:9.5, c:'green', note:'isento de IR'},
+    {l:'ETF alta renda EUA (HDV/FDL)', v:3.5, c:'gold', note:'30% retenção EUA + IR aqui'},
+    {l:'S&P 500 (média do índice)', v:1.06, c:'red', note:'30% retenção EUA + IR aqui'}
+  ];
+  const maxY = Math.max(...yields.map(y=>y.v));
+  document.getElementById('usd-yield-bars').innerHTML = yields.map(y=>
+    `<div class="barrow"><div>${y.l}</div><div class="bartrack"><div class="barfill ${y.c}" style="width:${y.v/maxY*100}%"></div></div><div>${y.v}%/ano <span class="pctlabel">${y.note}</span></div></div>`
+  ).join('');
+})();
+
+
+(function(){
+  const urgentes = MERCADO.filter(a => a.urgencia === 'alta');
+  const box = document.getElementById('urgent-section');
+  if(!urgentes.length){ box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="eyebrow" style="color:var(--red);margin-bottom:8px">⚠ Precisa da sua atenção (${urgentes.length})</div>` +
+    urgentes.map(a=>{
+      const headline = a.d7!==null ? `${spct(a.d7)} em 7 dias` : (a.dm!==null ? `${spct(a.dm)} no período` : 'Movimento fora do padrão');
+      return `<div class="acao crit">
+        <div class="acao-eyebrow">${a.n} · ${a.classe}</div>
+        <div class="acao-title">${headline}</div>
+        <div class="acao-body">${a.expl}</div>
+        <div class="acao-body" style="margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,59,92,.2)"><b>Ação:</b> ${a.acao}</div>
+      </div>`;
+    }).join('') +
+    `<p class="note" style="margin-top:2px">Análise completa de todos os ativos na aba <b>Mercado</b>.</p>`;
+})();
+
+/* ============ SÍNTESE DA VISÃO (narrativa + ponteiro urgente + termômetro) ============ */
+(function(){
+  // --- narrativa ---
+  const movers = Object.entries(VAR_ATIVO).filter(([k,x])=>!x.stale && !['active_fix_all','index_simples_selic','credito_bancario_rf','optimus_rf'].includes(k)).map(([k,x])=>({n:NOME[k]||k, v:x.pct}));
+  const best = movers.length ? movers.reduce((a,b)=>b.v>a.v?b:a) : null;
+  const worst = movers.length ? movers.reduce((a,b)=>b.v<a.v?b:a) : null;
+  const dl = Lp-Pp;
+  const [py,pm] = keys[keys.length-2].split('-');
+  const prevLabel = `${MESX[pm]||pm}/${py.slice(2)}`;
+  let destaques = 'Sem variação individual própria confirmada nesta atualização.';
+  if(best && worst && best.n===worst.n){
+    destaques = `Único destaque ${VAR_LBL}: <b>${best.n}</b> (${spct(best.v)}).`;
+  } else if(best && worst){
+    const bestLabel = best.v>=0 ? `Melhor posição ${VAR_LBL}` : `Menos negativa ${VAR_LBL}`;
+    destaques = `${bestLabel}: <b>${best.n}</b> (${spct(best.v)}). Pior posição ${VAR_LBL}: <b>${worst.n}</b> (${spct(worst.v)}). `;
+  }
+  document.getElementById('v-narrativa-txt').innerHTML =
+    (SEM_MARC
+      ? (function(){ const pa = HM[keys[keys.length-3]], pp = pa.patrimonio_total ?? pa.patrimonio_parcial, dd = Pp - pp, mr = P.resultado_mercado;
+          return `<b>${MESX[VAR_KEY.slice(5)]}/${VAR_KEY.slice(2,4)} fechou</b> com patrimônio de <b>${brl(Pp)}</b> (${dd>=0?'+':'−'}${brl(Math.abs(dd))} vs ${MESX[keys[keys.length-3].slice(5)]}/${keys[keys.length-3].slice(2,4)}); ` +
+                 `mercado ${mr>=0?'+':'−'}${brl(Math.abs(mr??0))} e dividendos ${brl(P.dividendos||0)}. ${MESX[keys[keys.length-1].slice(5)]} ainda sem marcação. `; })()
+      : `Patrimônio ${dl>=0?'subiu':'caiu'} <b>${brl(Math.abs(dl))}</b> em relação a ${prevLabel}, para <b>${brl(Lp)}</b>. `) +
+    destaques +
+    `Score da carteira em <b>${SCORE_ATUAL.toFixed(0)}/100</b> (${(function(){const dd=Math.round(SCORE_ATUAL-SCORE_ANTERIOR.total); return dd===0?'estável':(dd>0?'+'+dd:dd);})()} vs ${perLbl(SCORE_ANTERIOR.periodo)}). ` +
+    `Reserva de emergência: <b>${RESERVA.pct>=100?'completa':RESERVA.pct.toFixed(0)+'%'}</b>.`;
+
+  // --- ponteiro urgente (condensado) ---
+  const urgentes = MERCADO.filter(a=>a.urgencia==='alta');
+  const ptr = document.getElementById('v-urgent-pointer');
+  if(urgentes.length){
+    ptr.innerHTML = `<div class="callout" style="margin-bottom:14px">
+      <span class="h">⚠ Atenção</span>
+      ${urgentes.map(a=>`<b>${a.n}</b> ${a.dm!==null?spct(a.dm):spct(a.d7)} — ${a.acao.replace(/<[^>]+>/g,'')} <span style="color:var(--dim)">(detalhes na aba Plano ou Mercado)</span>`).join('<br>')}
+    </div>`;
+  } else { ptr.innerHTML = ''; }
+
+  // --- termômetro de longo prazo ---
+  const somaH = campo => keys.reduce((s,k)=>s+((HM[k][campo] ?? 0)),0);
+  const trA = keys.reduce((s,k)=>s+transf(HM[k],'aporte'),0), trR = keys.reduce((s,k)=>s+transf(HM[k],'resgate'),0);
+  const cumDiv = somaH('dividendos'), cumApo = somaH('aportes')-trA, cumRes = -(somaH('resgates')-trR);
+  const cumMkt = keys.reduce((s,k)=>s+(HM[k].resultado_mercado ?? HM[k]._mercado ?? 0),0);
+  const semResgates = cumDiv + cumApo + cumMkt;
+  const maxAbs = Math.max(Math.abs(cumDiv), Math.abs(cumApo), Math.abs(cumRes), Math.abs(cumMkt));
+  const barPct = v => Math.min(100, Math.abs(v)/maxAbs*100);
+  document.getElementById('term-bars').innerHTML = `
+    <div class="barrow"><div>Dividendos</div><div class="bartrack"><div class="barfill green" style="width:${barPct(cumDiv)}%"></div></div><div>+${brl(cumDiv).replace('R$','').trim()}</div></div>
+    <div class="barrow"><div>Aportes</div><div class="bartrack"><div class="barfill blue" style="width:${barPct(cumApo)}%"></div></div><div>+${brl(cumApo).replace('R$','').trim()}</div></div>
+    <div class="barrow"><div>Resultado mercado</div><div class="bartrack"><div class="barfill ${cumMkt>=0?'green':'red'}" style="width:${barPct(cumMkt)}%"></div></div><div>${cumMkt>=0?'+':''}${brl(cumMkt).replace('R$','').trim()}</div></div>
+    <div class="barrow"><div>Resgates</div><div class="bartrack"><div class="barfill red" style="width:${barPct(cumRes)}%"></div></div><div>${brl(cumRes).replace('R$','').trim()}</div></div>`;
+  document.getElementById('term-conclusao').innerHTML =
+    `Desde nov/25 até agora: o mercado ${cumMkt>=0?'rendeu':'custou'} <b>${brl(Math.abs(cumMkt))}</b>, os dividendos somaram <b>${brl(cumDiv)}</b> (foram pro caixa) e os resgates retiraram <b>${brl(-cumRes)}</b>${trR>0?` <span class="pctlabel">(sem contar ${brl(trR)} de transferências entre ativos, como a migração do ouro)</span>`:''}. ` +
+    `A queda do patrimônio veio dos saques, não do mercado: <b>o problema nunca foi a seleção de ativos, foi não ter uma reserva separada</b> — o que a partir de agora está resolvido (reserva completa em 14/08). O teste real é se os próximos meses conseguem ficar sem resgate por necessidade de caixa.`;
+})();
+
+/* ============ DIVIDENDOS PROJETADOS (próximo mês não pago) ============ */
+(function(){
+  const pj = D.projecao_dividendos || {};
+  const mesesPj = Object.keys(pj).sort();
+  const alvo = mesesPj.find(k=>pj[k].status!=='pago') || mesesPj[mesesPj.length-1];
+  if(!alvo) return;
+  const proj = pj[alvo];
+  const MESN = {'01':'janeiro','02':'fevereiro','03':'março','04':'abril','05':'maio','06':'junho','07':'julho','08':'agosto','09':'setembro','10':'outubro','11':'novembro','12':'dezembro'};
+  const tt = document.getElementById('proj-titulo'); if(tt) tt.textContent = `Dividendos projetados — ${MESN[alvo.slice(5)]}`;
+  const n = Object.keys(proj.ativos).length, conf = Object.values(proj.ativos).filter(a=>a.confirmado).length;
+  document.getElementById('proj-sub').innerHTML = `<b style="color:var(--chalk);font-size:20px;font-family:var(--mono)">${brl(proj.total_projetado)}</b> <span class="pctlabel">— ${conf} de ${n} confirmados oficialmente${conf<n?', resto estimado pelo último pagamento':''}</span>`;
+  document.getElementById('proj-body').innerHTML = Object.keys(proj.ativos).map(k=>{
+    const a = proj.ativos[k];
+    return `<tr><td>${NOME[k]} ${a.pago?'<span class="badge b-green">pago</span>':(a.confirmado?'<span class="badge b-green">confirmado</span>':'<span class="badge b-yellow">estimado</span>')}</td>
+      <td>${a.cotas}</td><td>${a.valor_cota.toFixed(2)}</td><td>${brl(a.total)}</td></tr>`;
+  }).join('');
+  const trx = proj.ativos.trxf11;
+  document.getElementById('proj-nota').innerHTML = `Isto é <b>projeção, não fato consumado</b> — só vira dinheiro quando cair na conta.` +
+    (trx && !trx.confirmado ? ` <b>Atenção ao TRXF11:</b> ${trx.fonte}` : '');
+})();
+
+
+/* ============ ALERTAS ============ */
+(function(){
+  const A = [];
+  if(L.status==='em_andamento'){
+    A.push({t:'ok', h:'Mês em andamento', d:`Aportes até agora: <b>${brl(L.aportes)}</b>. Resgates: <b>${brl(L.resgates)}</b>. Resultado de mercado só fecha no fim do mês.`});
+  }
+  const cc = exReserva(L.composicao);
+  const t = Object.values(cc).reduce((a,b)=>a+b,0);
+  const LC = D.limites_concentracao||{};
+  const LIMG = {acima: LC.gap_alocacao_acima_pp ?? 3.5, abaixo: LC.gap_alocacao_abaixo_pp ?? 1.0};
+  Object.keys(CM).forEach(k=>{
+    const at = cc[k]/t*100, gap = at-TARGET[k];
+    if(gap>LIMG.acima) A.push({t:'warn', h:`${CM[k].l} acima do alvo`, d:`${pct(at)} vs ${pct(TARGET[k])} de target (+${num(gap)} pp). Evitar aportes aqui até o gap fechar.`});
+    if(gap<-LIMG.abaixo) A.push({t:'warn', h:`${CM[k].l} abaixo do alvo`, d:`${pct(at)} vs ${pct(TARGET[k])} de target (${num(gap)} pp, faltam ${brl(TARGET[k]/100*t-cc[k])}). Prioridade de aporte: ${D.estrategia.prioridade_aporte.join(' → ')}.`});
+  });
+  if(D.plano_acao.passos.some(p=>p.status==='EM TRANSITO')){
+    const em = D.plano_acao.passos.find(p=>p.status==='EM TRANSITO');
+    A.push({t:'warn', h:'Valor em trânsito', d:`${em.titulo} — ${brl(em.valor)}, cai em ${em.cai_em}.`});
+  }
+  concentracaoAlertas().forEach(a=>A.push(a));
+  Object.keys(L.ativos_atualizado_em||{}).filter(STALE).forEach(k=>A.push({t:'warn', h:`${NOME[k]||k}: valor desatualizado`,
+    d:`Último valor informado em ${dataBR(L.ativos_atualizado_em[k])}, ${dias(L.ativos_atualizado_em[k], L.atualizado_em)} dias antes da última marcação. Patrimônio, alocação e Score usam esse número velho até ser atualizado.`}));
+  MERCADO.filter(a=>a.urgencia==='alta').forEach(a=>{
+    const headline = a.d7!==null ? spct(a.d7)+' em 7 dias' : (a.dm!==null ? spct(a.dm)+' no período' : 'movimento fora do padrão');
+    A.push({t:'crit', h:`${a.n} precisa de atenção`, d:`${headline} — ${a.acao.replace(/<[^>]+>/g,'')} Ver aba Mercado para a análise completa.`});
+  });
+  if(!A.length) A.push({t:'ok', h:'Sem desvios', d:'Alocação dentro da tolerância e nada pendente no momento.'});
+  const SEV = {crit:0, warn:1, ok:2}; A.sort((a,b)=>SEV[a.t]-SEV[b.t]);
+  document.getElementById('al-body').innerHTML = A.map(a=>
+    `<div class="alert ${a.t}"><div></div><div><b>${a.h}</b><div class="desc">${a.d}</div></div></div>`).join('');
+})();
+
+/* ============ RAIO-X SETORIAL DOS FIIS ============ */
+const SETOR_FII = {hglg11:'tijolo', irim11:'papel', knri11:'tijolo', mxrf11:'papel', trxf11:'tijolo'};
+(function(){
+  const fiis = L.ativos.fiis;
+  const total = Object.values(fiis).reduce((a,b)=>a+b,0);
+  let papel=0, tijolo=0;
+  Object.keys(fiis).forEach(k=>{ if(SETOR_FII[k]==='papel') papel+=fiis[k]; else tijolo+=fiis[k]; });
+  document.getElementById('setor-bars').innerHTML = `
+    <div class="barrow"><div>Tijolo (HGLG11, KNRI11, TRXF11)</div><div class="bartrack"><div class="barfill red" style="width:${tijolo/total*100}%"></div></div><div>${pct(tijolo/total*100)}</div></div>
+    <div class="barrow"><div>Papel (IRIM11, MXRF11)</div><div class="bartrack"><div class="barfill blue" style="width:${papel/total*100}%"></div></div><div>${pct(papel/total*100)}</div></div>`;
+})();
+
+/* ============ CONCENTRAÇÃO ============ */
+function concentracaoAlertas(){
+  const out=[];
+  const lim = D.limites_concentracao || {por_classe_atencao_pct:25, por_classe_critico_pct:40,
+                                         por_ativo_no_patrimonio_atencao_pct:12, por_ativo_no_patrimonio_critico_pct:18};
+  // (a) concentração DENTRO da classe
+  const fiis = L.ativos.fiis, fiisT = Object.values(fiis).reduce((a,b)=>a+b,0);
+  const etfs = L.ativos.etfs, etfsT = Object.values(etfs).reduce((a,b)=>a+b,0);
+  [['FIIs',fiis,fiisT],['ETFs',etfs,etfsT]].forEach(([grupo,obj,tot])=>{
+    const lider = Object.keys(obj).reduce((a,b)=>obj[b]>obj[a]?b:a);
+    Object.keys(obj).forEach(k=>{
+      const p = obj[k]/tot*100;
+      if(k!==lider && p<lim.por_classe_critico_pct) return;
+      if(p>=lim.por_classe_critico_pct) out.push({t:'warn', h:`${(LABELS[k]||k).toUpperCase()} concentrado em ${grupo}`, d:`${pct(p)} da fatia de ${grupo} está num ativo só. Não é errado (é comum ${grupo==='ETFs'?'o S&P 500 ser o núcleo':'ter um fundo âncora'}), mas vale ter consciência antes de aportar mais aqui.`});
+      else if(p>=lim.por_classe_atencao_pct) out.push({t:'ok', h:`${(LABELS[k]||k).toUpperCase()} é o maior de ${grupo}`, d:`${pct(p)} da fatia de ${grupo}. Dentro do razoável, só de olho.`});
+    });
+  });
+  // (b) concentração no PATRIMÔNIO TOTAL — ângulo que a visão por classe esconde
+  const todos = {};
+  ['renda_fixa','fiis','etfs'].forEach(g=>Object.keys(L.ativos[g]).forEach(k=>{ if(L.ativos[g][k]>0) todos[k]=L.ativos[g][k]; }));
+  todos['ouro']=L.ativos.ouro; todos['dolar']=L.ativos.dolar; todos['cripto']=L.ativos.cripto;
+  Object.keys(todos).forEach(k=>{
+    const p = todos[k]/Lp*100;
+    if(p>=lim.por_ativo_no_patrimonio_critico_pct){
+      const info = (D.fundos_renda_fixa||{})[k];
+      const extra = info ? ` Detalhe relevante: rende ${num(info.pct_cdi_12m)}% do CDI nos últimos 12 meses e tem liquidez ${info.liquidez}.` : '';
+      const plano = k==='active_fix_all' ? ` O plano registra MANTER (passo 4); a forma de reduzir sem contrariar a estratégia é transferir o excedente da renda fixa para Cripto/Dólar — ver aba Alocação.` : '';
+      out.push({t:'crit', h:`${(LABELS[k]||k).toUpperCase()} é ${pct(p)} de TODO o patrimônio`, d:`${brl(todos[k])} num único ativo, acima do limite crítico de ${pct(lim.por_ativo_no_patrimonio_critico_pct)} — a visão por classe esconde isso.${extra}${plano}`});
+    } else if(p>=lim.por_ativo_no_patrimonio_atencao_pct){
+      out.push({t:'ok', h:`${(LABELS[k]||k).toUpperCase()}: ${pct(p)} do patrimônio total`, d:`${brl(todos[k])}, acima do nível de atenção de ${pct(lim.por_ativo_no_patrimonio_atencao_pct)}. Só acompanhar.`});
+    }
+  });
+  return out;
+}
+
+/* ============ ORDEM DE SAQUE (Plano) ============ */
+(function(){
+  const est = D.estrategia;
+  const el = document.getElementById('saque-lista');
+  if(!el) return;
+  document.getElementById('saque-regra').textContent = est.regra_saque;
+  const rfInfo = D.fundos_renda_fixa || {};
+  const mapa = {'Index Simples Selic (acima do teto da reserva)':'index_simples_selic',
+                'Credito Bancario RF':'credito_bancario_rf', 'Optimus RF':'optimus_rf', 'Active Fix All':'active_fix_all'};
+  el.innerHTML = est.prioridade_resgate.map((nome,i)=>{
+    const chave = mapa[nome];
+    const info = chave ? rfInfo[chave] : null;
+    const exc = /acima do teto/i.test(nome) ? Math.max(0, RESERVA.atual-RESERVA.alvo) : null;
+    const disp = exc!==null ? ` · <b style="color:var(--chalk)">${brl(exc)}</b> acima da reserva (o resto é a própria reserva)`
+               : (chave && L.ativos.renda_fixa[chave] ? ` · ${brl(L.ativos.renda_fixa[chave])} disponível` : '');
+    const det = info ? `<span class="pctlabel">liquidez ${info.liquidez} · ${num(info.pct_cdi_12m)}% do CDI${disp}</span>` : '';
+    return `<div class="barrow" style="grid-template-columns:28px 1fr;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)">
+      <div style="font-family:var(--mono);color:var(--dim);font-size:13px">${i+1}º</div>
+      <div style="color:var(--chalk);font-size:13.5px;text-align:left">${nome}<br>${det}</div>
+    </div>`;
+  }).join('');
+})();
+
+/* ============ EFICIÊNCIA DA RENDA FIXA (Ativos) ============ */
+(function(){
+  const rf = D.fundos_renda_fixa;
+  const body = document.getElementById('rf-efic-body');
+  if(!body || !rf) return;
+  const LBL = {index_simples_selic:'Index Simples Selic', credito_bancario_rf:'Crédito Bancário RF',
+               optimus_rf:'Optimus RF', active_fix_all:'Active Fix All'};
+  const linhas = Object.keys(LBL).filter(k=>rf[k]).map(k=>({k, ...rf[k], valor_atual: L.ativos.renda_fixa[k]}));
+  linhas.sort((a,b)=>(b.valor_atual||0)-(a.valor_atual||0));
+  body.innerHTML = linhas.map(f=>{
+    const cdiClass = f.pct_cdi_12m>=99 ? 'green' : (f.pct_cdi_12m<96 ? 'red' : '');
+    return `<tr><td>${LBL[f.k]}</td><td>${f.valor_atual?brl(f.valor_atual):'—'}</td>
+      <td>${num(f.taxa_produto)}%</td><td class="${cdiClass}">${num(f.pct_cdi_12m)}%</td><td>${f.liquidez}</td></tr>`;
+  }).join('');
+
+  // leitura automática: a maior posição é a mais eficiente?
+  const maior = linhas[0];
+  const melhorCDI = [...linhas].sort((a,b)=>b.pct_cdi_12m-a.pct_cdi_12m)[0];
+  let txt = '';
+  if(maior && melhorCDI && maior.k !== melhorCDI.k && melhorCDI.pct_cdi_12m - maior.pct_cdi_12m > 2){
+    const dif = melhorCDI.pct_cdi_12m - maior.pct_cdi_12m;
+    txt = `Sua maior posição de RF é o <b>${LBL[maior.k]}</b> (${brl(maior.valor_atual)}), que rende <b>${num(maior.pct_cdi_12m)}% do CDI</b> ` +
+          `e tem a pior liquidez da lista (${maior.liquidez}). O <b>${LBL[melhorCDI.k]}</b> rende <b>${num(melhorCDI.pct_cdi_12m)}%</b> ` +
+          `(${num(dif)} pontos a mais), cobra menos taxa (${num(melhorCDI.taxa_produto)}% vs ${num(maior.taxa_produto)}%) e é ${melhorCDI.liquidez}.<br><br>` +
+          `<b>Ressalva importante:</b> o ${LBL[maior.k]} rende ${rf[maior.k].pct_cdi_desde_inicio||'—'}% do CDI <i>desde o início</i> — os 12 meses recentes foram ruins, ` +
+          `mas o histórico longo é bom, e por isso a decisão registrada no plano foi MANTER. Não é uma recomendação de trocar agora, é um ponto pra reavaliar se os 12 meses seguintes continuarem fracos.`;
+  } else {
+    txt = 'Distribuição de RF sem ineficiência gritante entre taxa, rendimento e liquidez.';
+  }
+  document.getElementById('rf-efic-txt').innerHTML = txt;
+
+  // custo dos fundos de proteção (dado que estava no JSON sem uso)
+  const fp = D.fundos_protecao || {};
+  const gold = fp.index_gold ? {...fp.index_gold, valor_atual:(L.ativos_ouro_detalhe||{}).itau_index_gold} : null;
+  if(gold && gold.valor_atual){
+    const custoAno = gold.valor_atual * (gold.taxa_produto/100);
+    const el = document.createElement('div');
+    el.className = 'callout gold';
+    el.style.marginTop = '9px';
+    el.innerHTML = `<span class="h">Migração do Ouro — quanto custa não terminar</span>` +
+      `Ainda há <b>${brl(gold.valor_atual)}</b> no Itaú Index Gold (taxa ${num(gold.taxa_produto)}%/ano${gold.come_cotas?' + come-cotas semestral':''}, liquidez ${gold.liquidez}), ` +
+      `contra <b>${brl(L.ativos_ouro_detalhe?L.ativos_ouro_detalhe.gldi11:0)}</b> já no ETF GLDI11 (taxa menor, sem come-cotas). ` +
+      `Só de taxa, o fundo antigo custa cerca de <b>${brl(custoAno)}/ano</b> — sem contar o come-cotas, que antecipa IR e reduz o efeito dos juros compostos. ` +
+      `Valor pequeno em termos absolutos, mas é dinheiro saindo todo ano por algo que já foi decidido migrar (passo do plano ainda pendente).`;
+    document.getElementById('rf-efic-callout').after(el);
+  }
+})();
+
+/* ============ BENCHMARK ============ */
+/* Rentabilidade ponderada no tempo (Dietz modificado mensal, encadeado): aportes e resgates não
+   distorcem. Índices (CDI, IFIX, Ibovespa) são de retorno total, então a régua justa é o retorno
+   total da carteira (mercado + dividendos). Só os índices vêm do JSON; a carteira é calculada aqui. */
+(function(){
+  const b = D.benchmark;
+  if(!b || !document.getElementById('bench-bars')) return;
+  const fim = keys[keys.length-1], ano = fim.slice(0,4), ini = ano+'-01';
+  const fechados = keys.filter(k=>HM[k].status!=='em_andamento' && k>=ini), fimF = fechados[fechados.length-1];
+  const ytdT = twr(ini,fim,'_ret_total'), ytdP = twr(ini,fim,'_ret_preco');
+  const fT = twr(ini,fimF,'_ret_total'), fP = twr(ini,fimF,'_ret_preco');
+  const I = b.indices;
+  document.getElementById('bench-sub').innerHTML =
+    `Sua carteira em ${ano}, até ${dataBR(L.atualizado_em)}: <b>retorno total ${spct(ytdT)}</b> ` +
+    `<span class="pctlabel">(${spct(ytdP)} só preço, sem dividendos)</span>. Rentabilidade ponderada no tempo — aportes e resgates não distorcem.`;
+  const linhas = [
+    {l:'Sua carteira (total)', v:ytdT, cor:ytdT>=0?'green':'red', destaque:true, per:`até ${dataBR(L.atualizado_em)}`},
+    {l:'Sua carteira (só preço)', v:ytdP, cor:ytdP>=0?'green':'red', per:'sem dividendos'},
+    ...Object.keys(I).map(k=>({l:k.toUpperCase(), v:I[k].ytd_pct, cor:I[k].ytd_pct>=0?'blue':'gold', per:`até ${dataBR(I[k].data_ref)}`}))
+  ];
+  const maxAbs = Math.max(...linhas.map(x=>Math.abs(x.v)));
+  document.getElementById('bench-bars').innerHTML = linhas.map(x=>
+    `<div class="barrow"><div>${x.destaque?'<b>'+x.l+'</b>':x.l}</div>
+     <div class="bartrack"><div class="barfill ${x.cor}" style="width:${Math.abs(x.v)/maxAbs*100}%"></div></div>
+     <div>${spct(x.v)} <span class="pctlabel">${x.per}</span></div></div>`).join('');
+
+  const dIfix = ytdT - I.ifix.ytd_pct, dCdi = ytdT - I.cdi.ytd_pct;
+  const mesesTab = keys.filter(k=>k>=ini && HM[k]._ret_total!=null).map(k=>{
+    const m = HM[k];
+    return `<tr><td>${MESX[k.slice(5)]}/${k.slice(2,4)}${m.status==='em_andamento'?' <span class="pctlabel">parcial</span>':''}</td>
+      <td class="${m._ret_preco>=0?'green':'red'}">${spct(m._ret_preco)}</td>
+      <td class="${m._ret_total>=0?'green':'red'}">${spct(m._ret_total)}</td></tr>`; }).join('');
+  document.getElementById('bench-diagnostico').innerHTML =
+    `<b>Leitura:</b> contra o <b>IFIX</b> — o benchmark que importa, porque FIIs são o motor da sua renda — a carteira está ` +
+    `<b class="${dIfix>=0?'green':'red'}">${dIfix>=0?'à frente':'atrás'} em ${num(Math.abs(dIfix))} pontos</b>. ` +
+    `Contra o <b>CDI</b> está ${num(Math.abs(dCdi))} pontos ${dCdi>=0?'à frente':'atrás'}: com a Selic acima de 13% o ano todo, ficar parado em renda fixa pura teria rendido mais — o custo de carregar renda variável num ano de juro alto. ` +
+    `O Ibovespa é referência distante — a carteira não tem objetivo de crescimento em ações.<br><br>` +
+    `<b>Só meses fechados (jan–${MESX[(fimF||'-12').slice(5)]}):</b> carteira ${spct(fT)} total (${spct(fP)} só preço) ${Object.keys(I).filter(k=>I[k].jan_ago_pct!=null).map(k=>` · ${k.toUpperCase()} ${spct(I[k].jan_ago_pct)}`).join('')}.` +
+    `<div class="tscroll" style="margin-top:12px"><table><thead><tr><th>Mês</th><th>Só preço</th><th>Total</th></tr></thead><tbody>${mesesTab}</tbody></table></div>`;
+
+  // evolução de cada ativo no ano: dado oficial do banco (rendimento_banco_ytd) comparado ao índice de referência
+  const RB = L.rendimento_banco_ytd || [...keys].reverse().map(k=>HM[k].rendimento_banco_ytd).find(Boolean);
+  if(RB){
+    /* o dado do banco tem data própria: comparar com índices da MESMA data, não com os de hoje */
+    const BI = RB.benchmarks_mesma_data || {cdi:I.cdi.ytd_pct, ifix:I.ifix.ytd_pct, ibovespa:I.ibovespa.ytd_pct};
+    const cdi = BI.cdi, grupo = k => ['active_fix_all','index_simples_selic','credito_bancario_rf','optimus_rf'].includes(k) ? 'rf'
+      : (['hglg11','irim11','knri11','mxrf11','trxf11'].includes(k) ? 'fii' : (['smal11','divo11'].includes(k) ? 'acao' : 'outro'));
+    const ref = (k,p) => { const g = grupo(k);
+      if(g==='rf') return `<span class="${p/cdi>=1?'green':'red'}">${num(p/cdi*100)}% do CDI</span>`;
+      if(g==='fii') return `<span class="${p>=BI.ifix?'green':'red'}">${p>=BI.ifix?'+':''}${num(p-BI.ifix)} pp vs IFIX</span>`;
+      if(g==='acao') return `<span class="${p>=BI.ibovespa?'green':'red'}">${p>=BI.ibovespa?'+':''}${num(p-BI.ibovespa)} pp vs Ibov</span>`;
+      return '<span class="pctlabel">—</span>'; };
+    /* FIIs: no ano até a última posição, pela cotação de início do ano x cotação atual (posição ÷ cotas) */
+    const EA = ((D.evolucao_ativos||{}).fiis)||{}, QQ = (D.custo_medio||{}).ativos||{}, fa = flat(L)||{};
+    const hoje = k => { const ci = (EA[k]||{}).cotacao_inicio_ano, q = (QQ[k]||{}).qtd;
+      if(!ci || !q || !fa[k]) return '<td><span class="pctlabel">—</span></td>';
+      const v = (fa[k]/q/ci-1)*100; return `<td class="${v>=0?'green':'red'}">${spct(v)}</td>`; };
+    const fimRB = RB.periodo.split(' a ').pop();
+    document.getElementById('evol-sub').textContent = `Rendimento no ano calculado pelo banco (${RB.periodo}) · só preço · referência = índice na mesma data (${BI.data||fimRB})`;
+    const thh = document.getElementById('th-hoje'); if(thh) thh.textContent = `Até ${dataBR(L.atualizado_em).slice(0,5)}`;
+    const ordem = Object.keys(RB.ativos).sort((a,b)=>RB.ativos[b][1]-RB.ativos[a][1]);
+    document.getElementById('evol-body').innerHTML = ordem.map(k=>{
+      const [rs,p] = RB.ativos[k], fl = (RB.com_fluxo_no_ano||[]).includes(k), desde = (RB.desde_diferente||{})[k];
+      return `<tr><td>${NOME[k]}${fl?' <span class="pctlabel">fluxo no ano</span>':''}${desde?` <span class="pctlabel">desde ${desde}</span>`:''}</td>
+        <td class="${rs>=0?'green':'red'}">${rs>=0?'+':''}${brl(rs).replace('R$','').trim()}</td>
+        <td class="${p>=0?'green':'red'}">${spct(p)}</td><td>${ref(k,p)}</td>${hoje(k)}</tr>`; }).join('');
+  }
+
+  const rf = D.fundos_renda_fixa;
+  if(rf){
+    const LBLR = {index_simples_selic:'Index Simples Selic', credito_bancario_rf:'Crédito Bancário RF', optimus_rf:'Optimus RF', active_fix_all:'Active Fix All'};
+    document.getElementById('bench-rf-body').innerHTML = Object.keys(LBLR).map(k=>{
+      const f = rf[k]; if(!f) return '';
+      /* depois de taxa, ~98-100% do CDI é o normal de um bom fundo DI — não é "perder" */
+      const p = f.pct_cdi_12m, fx = p>=98 ? ['green','b-green','em linha com o CDI'] : (p>=96 ? ['','b-yellow','um pouco abaixo'] : ['red','b-red','abaixo do CDI']);
+      return `<tr><td>${LBLR[k]}</td><td class="${fx[0]}">${num(p)}%</td>
+        <td><span class="badge ${fx[1]}">${fx[2]}</span></td></tr>`;
+    }).join('');
+  }
+})();
+
+/* ============ YIELD ON COST (Renda) ============ */
+(function(){
+  const body = document.getElementById('yoc-body'); if(!body) return;
+  const cm = (D.custo_medio||{}).ativos||{}, fl = flat(L);
+  const mesDiv = keys.filter(k=>HM[k].dividendos_detalhe).pop(); if(!mesDiv) return;
+  const det = HM[mesDiv].dividendos_detalhe;
+  const lin = Object.keys(det).filter(k=>cm[k]).map(k=>{
+    const q = cm[k].qtd, dpc = det[k]/q, cot = fl[k]/q;
+    return {k, pm:cm[k].pm, dpc, yoc:dpc/cm[k].pm*100, ym:dpc/cot*100};
+  }).sort((a,b)=>b.yoc-a.yoc);
+  document.getElementById('yoc-sub').textContent = `Dividendo de ${MESX[mesDiv.slice(5)]}/${mesDiv.slice(2,4)} ÷ preço médio que você pagou. Responde "qual FII remunera melhor o meu dinheiro", que o yield de mercado não responde.`;
+  body.innerHTML = lin.map(x=>`<tr><td>${NOME[x.k]}</td><td>${brl(x.pm)}</td><td>${x.dpc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:3})}</td>
+    <td class="green">${num(x.yoc)}%</td><td><b>${num(x.yoc*12)}%</b></td><td>${num(x.ym*12)}%</td></tr>`).join('');
+  const melhor = lin[0], pior = lin[lin.length-1];
+  document.getElementById('yoc-nota').innerHTML =
+    `<b>${NOME[melhor.k]}</b> paga ${num(melhor.yoc*12)}% a.a. sobre o seu custo; <b>${NOME[pior.k]}</b>, ${num(pior.yoc*12)}%. ` +
+    `Quando o yield de mercado é bem maior que o yield on cost (caso de fundos que caíram, como o TRXF11), significa que a cota ficou barata em relação ao dividendo — ` +
+    `bom pra quem compra agora, mas não muda o que você recebe sobre o que já pagou. Todos isentos de IR.`;
+})();
+
+/* ============ SIMULADOR DE APORTE (Alocação) ============ */
+(function(){
+  const inp = document.getElementById('sim-valor'); if(!inp) return;
+  const mapa = {cripto:'cripto', dolar:'dolar', 'dólar':'dolar', ouro:'ouro'};
+  const destino = {cripto:'cesta de cripto', dolar:'Index Cambial Dólar', ouro:'ETF GLDI11 (não o fundo antigo)',
+                   renda_fixa:'renda fixa', etfs_fiis:'ETFs/FIIs'};
+  function calc(){
+    const V = Math.max(0, parseFloat(inp.value)||0);
+    const cc = exReserva(L.composicao), t = Object.values(cc).reduce((a,b)=>a+b,0), T = t+V;
+    const falta = k => Math.max(0, TARGET[k]/100*T - cc[k]);
+    let resto = V; const out = [];
+    D.estrategia.prioridade_aporte.forEach(n=>{
+      const k = mapa[n.toLowerCase()]; if(!k) return;
+      const x = Math.min(resto, falta(k)); if(x>0.005){ out.push({k, x}); resto -= x; }
+    });
+    if(resto>0.005){
+      const outras = Object.keys(TARGET).filter(k=>!out.find(o=>o.k===k)).map(k=>({k, f:falta(k)})).filter(o=>o.f>0);
+      const tf = outras.reduce((s,o)=>s+o.f,0);
+      if(tf>0){ outras.forEach(o=>out.push({k:o.k, x:resto*o.f/tf})); resto = 0; }
+    }
+    const mx = Math.max(1,...out.map(o=>o.x));
+    document.getElementById('sim-out').innerHTML = out.length ? out.map(o=>
+      `<div class="barrow"><div>${CM[o.k].l}</div><div class="bartrack"><div class="barfill gold" style="width:${o.x/mx*100}%"></div></div><div>${brl(o.x)}</div></div>`).join('')
+      : '<p class="note">Digite um valor.</p>';
+    const nec = aporteNecessario();
+    document.getElementById('sim-nota').innerHTML = V<=0 ? '' :
+      `Onde colocar: ${out.map(o=>`<b>${brl(o.x)}</b> em ${destino[o.k]}`).join(', ')}. ` +
+      (V < nec-0.5 ? `Isso cobre ${(V/nec*100).toFixed(0)}% do que falta para equilibrar só com aportes (${brl(nec)}).` : `Com esse valor todas as classes chegam ao alvo.`) +
+      ` Regra da estratégia: só aportar nas classes abaixo do alvo, na ordem ${D.estrategia.prioridade_aporte.join(' → ')}.`;
+  }
+  inp.addEventListener('input', calc); calc();
+})();
+
+/* ============ RENDA PASSIVA ============ */
+(function(){
+  const rp = {dividendo_medio_mensal:RENDA.media, meses_considerados:RENDA.meses.length, dividendo_medio_6m:RENDA.media6,
+              ultimo_mes:RENDA.ultimo, yield_anualizado_sobre_patrimonio:+RENDA.yieldPat.toFixed(2)};
+  if(!document.getElementById('rp-media')) return;
+  const MESL = {'01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'};
+
+  document.getElementById('rp-media').textContent = brl(rp.dividendo_medio_mensal);
+  document.getElementById('rp-foot').innerHTML =
+    `média de ${rp.meses_considerados} meses · últimos 6 meses: <b>${brl(rp.dividendo_medio_6m)}</b> · último mês: ${brl(rp.ultimo_mes)}`;
+  document.getElementById('rp-chips').innerHTML =
+    `<span class="hero-chip good">Isento de IR</span>` +
+    `<span class="hero-chip">${num(rp.yield_anualizado_sobre_patrimonio)}% a.a. sobre patrimônio</span>` +
+    `<span class="hero-chip">${brl(rp.dividendo_medio_mensal*12)}/ano</span>`;
+
+  // gráfico de linha dos dividendos
+  const histDiv = k => { const m=D.historico_mensal[k]; return (m && m.dividendos!==undefined && m.dividendos!==null)?m.dividendos:null; };
+  /* mês corrente só entra se o dividendo dele já caiu; senão vira ponto projetado (tracejado) */
+  const pjAll = D.projecao_dividendos||{}, cur = keys[keys.length-1];
+  const pago = k => HM[k].status!=='em_andamento' || (pjAll[k] && pjAll[k].status==='pago');
+  const serie = keys.filter(k=>histDiv(k)!==null && histDiv(k)>0 && pago(k)).map(k=>({k, v:histDiv(k)}));
+  const proj = (!pago(cur) && pjAll[cur] && pjAll[cur].total_projetado) ? {k:cur, v:pjAll[cur].total_projetado} : null;
+  if(serie.length>1){
+    const W=680,H=240,pl=56,pr=14,pt=18,pb=34;
+    const vs=serie.map(s=>s.v).concat(proj?[proj.v]:[]), mn=Math.min(...vs)*0.85, mx=Math.max(...vs)*1.08;
+    const nPts = serie.length + (proj?1:0);
+    const X=i=>pl+(i/(nPts-1))*(W-pl-pr);
+    const Y=v=>H-pb-((v-mn)/(mx-mn))*(H-pt-pb);
+    let g='';
+    for(let i=0;i<=3;i++){
+      const gv=mn+(i/3)*(mx-mn), gy=Y(gv);
+      g+=`<line x1="${pl}" y1="${gy}" x2="${W-pr}" y2="${gy}" stroke="rgba(255,255,255,.06)"/>`;
+      g+=`<text x="${pl-8}" y="${gy+3.5}" text-anchor="end" font-family="ui-monospace,monospace" font-size="9.5" fill="#5A5872">${gv.toFixed(0)}</text>`;
+    }
+    // linha da média
+    const my=Y(rp.dividendo_medio_mensal);
+    g+=`<line x1="${pl}" y1="${my}" x2="${W-pr}" y2="${my}" stroke="#22C55E" stroke-width="1.2" stroke-dasharray="4 4" opacity=".7"/>`;
+    g+=`<text x="${pl+6}" y="${my-6}" text-anchor="start" font-family="ui-monospace,monospace" font-size="9" fill="#22C55E">média ${rp.dividendo_medio_mensal.toFixed(0)}</text>`;
+    const path=serie.map((s,i)=>`${i?'L':'M'} ${X(i)} ${Y(s.v)}`).join(' ');
+    let dots='',lbl='';
+    serie.forEach((s,i)=>{
+      const [y,mo]=s.k.split('-');
+      lbl+=`<text x="${X(i)}" y="${H-13}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#5A5872">${MESL[mo]}</text>`;
+      const last=i===serie.length-1;
+      dots+=`<circle cx="${X(i)}" cy="${Y(s.v)}" r="${last?4.5:3.2}" fill="${last?'#22C55E':'#08070F'}" stroke="#22C55E" stroke-width="1.8"/>`;
+    });
+    let projSvg = '';
+    if(proj){ const i0 = serie.length-1, i1 = serie.length, [,pm] = proj.k.split('-');
+      projSvg = `<path d="M ${X(i0)} ${Y(serie[i0].v)} L ${X(i1)} ${Y(proj.v)}" fill="none" stroke="#22C55E" stroke-width="1.8" stroke-dasharray="4 4" opacity=".75"/>` +
+        `<circle cx="${X(i1)}" cy="${Y(proj.v)}" r="4" fill="#08070F" stroke="#22C55E" stroke-width="1.6" stroke-dasharray="2 2"/>` +
+        `<text x="${X(i1)}" y="${H-13}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#5A5872">${MESL[pm]}</text>` +
+        `<text x="${X(i1)}" y="${Y(proj.v)-10}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#22C55E">proj.</text>`; }
+    document.getElementById('rp-chart').innerHTML =
+      `<defs><linearGradient id="rpg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#22C55E" stop-opacity=".25"/><stop offset="100%" stop-color="#22C55E" stop-opacity="0"/>
+      </linearGradient></defs>${g}
+      <path d="${path} L ${X(serie.length-1)} ${H-pb} L ${X(0)} ${H-pb} Z" fill="url(#rpg)"/>
+      <path d="${path}" fill="none" stroke="#22C55E" stroke-width="2.2" stroke-linejoin="round"/>${lbl}${dots}${projSvg}`;
+  }
+
+  // quem paga o quê
+  const dpa = {}; keys.forEach(k=>{ if(HM[k].dividendos_detalhe) dpa[k] = HM[k].dividendos_detalhe; });
+  const mesesDpa = Object.keys(dpa).filter(k=>/^\d{4}-\d{2}$/.test(k)).sort();
+  const quemEl = document.getElementById('rp-quem');
+  if(mesesDpa.length){
+    const ultimo = mesesDpa[mesesDpa.length-1];
+    const dados = dpa[ultimo];
+    const tot = Object.values(dados).reduce((a,b)=>a+b,0);
+    const LBLF = {hglg11:'HGLG11', irim11:'IRIM11', knri11:'KNRI11', mxrf11:'MXRF11', trxf11:'TRXF11'};
+    const [uy,um] = ultimo.split('-');
+    document.getElementById('rp-quem-sub').innerHTML =
+      `${MESL[um]}/${uy.slice(2)} · total ${brl(tot)}. <span class="pctlabel">A série por ativo começa em agosto — antes disso só temos o total mensal.</span>`;
+    const ordenado = Object.keys(dados).sort((a,b)=>dados[b]-dados[a]);
+    const maxV = dados[ordenado[0]];
+    quemEl.innerHTML = ordenado.map(k=>
+      `<div class="barrow"><div>${LBLF[k]||k}</div>
+       <div class="bartrack"><div class="barfill green" style="width:${dados[k]/maxV*100}%"></div></div>
+       <div>${brl(dados[k])} <span class="pctlabel">${(dados[k]/tot*100).toFixed(0)}%</span></div></div>`).join('');
+  } else { quemEl.innerHTML = '<p class="note">Sem quebra por ativo registrada ainda.</p>'; }
+
+  // projeção de aposentadoria
+  const horizonte = D.perfil.horizonte_aposentadoria_anos;
+  const anoAlvo = new Date().getFullYear() + horizonte;
+  document.getElementById('rp-ano').textContent = anoAlvo;
+  const patAtual = Lp;
+  const yieldAtual = rp.yield_anualizado_sobre_patrimonio/100;
+  const projCfg = D.projecao_aposentadoria || {taxa_retorno_anual:0.08, cenarios_aporte_mensal:[0,500,1000], aviso:''};
+  const taxaAA = projCfg.taxa_retorno_anual, INF = projCfg.inflacao_anual ?? 0.04;
+  document.getElementById('rp-proj-sub').innerHTML =
+    `Horizonte de <b>${horizonte} anos</b> (objetivo: ${D.perfil.objetivo}). Partindo de <b>${brl(patAtual)}</b>.`;
+  const cenarios = projCfg.cenarios_aporte_mensal.map(a=>({
+    l: a===0 ? 'Só o que já tem, sem aportar' : `Aportando ${brl(a)}/mês`,
+    taxa: taxaAA, aporte: a
+  }));
+  document.getElementById('rp-proj-body').innerHTML = cenarios.map(c=>{
+    const n = horizonte*12, i = Math.pow(1+c.taxa,1/12)-1;
+    const fvPat = patAtual*Math.pow(1+i,n);
+    const fvAporte = c.aporte>0 ? c.aporte*((Math.pow(1+i,n)-1)/i) : 0;
+    const total = fvPat+fvAporte;
+    const rendaMensal = total*yieldAtual/12, deflator = Math.pow(1+INF, horizonte);
+    return `<tr><td>${c.l}</td><td>${brl(total)}</td><td>${brl(rendaMensal)}/mês</td><td class="green"><b>${brl(rendaMensal/deflator)}/mês</b></td></tr>`;
+  }).join('');
+  document.getElementById('rp-proj-nota').innerHTML =
+    `<b>Premissas — leia antes de acreditar nos números:</b> retorno de ${(taxaAA*100).toFixed(0)}% ao ano` +
+    `${projCfg.taxa_e_nominal?' (nominal, não descontada a inflação)':''}, ` +
+    `yield de ${num(rp.yield_anualizado_sobre_patrimonio)}% ao ano mantido constante, aportes regulares sem falha (e sem reajuste), nenhum resgate. ` +
+    `A última coluna desconta inflação de ${(INF*100).toFixed(1).replace('.',',')}% ao ano: é o poder de compra em dinheiro de hoje — <b>a coluna que vale para planejar</b>. ` +
+    `${projCfg.aviso||''} ` +
+    `<b>Isto é uma projeção matemática, não uma previsão.</b> Serve pra mostrar a ordem de grandeza do efeito dos aportes, não pra planejar em cima do número exato.`;
+})();
+
+
+
+/* ============ GERADOR DE DOCUMENTOS (atualização parcial / fechamento) ============
+   Monta o documento a partir dos dados do próprio painel: último valor de cada ativo como referência
+   (evita erro de digitação), movimentações já registradas no mês, dividendos projetados e a linha-gatilho
+   que, colada no chat, dispara o processamento e a análise completa. */
+(function(){
+  const MESN = {'01':'janeiro','02':'fevereiro','03':'março','04':'abril','05':'maio','06':'junho','07':'julho',
+                '08':'agosto','09':'setembro','10':'outubro','11':'novembro','12':'dezembro'};
+  const hoje = new Date(), hojeBR = hoje.toLocaleDateString('pt-BR');
+  const mesAberto = L.status==='em_andamento' ? keys[keys.length-1] : (function(){
+    const [y,m] = keys[keys.length-1].split('-').map(Number); return m===12 ? `${y+1}-01` : `${y}-${String(m+1).padStart(2,'0')}`; })();
+  const nomeMes = k => `${MESN[k.slice(5)]}/${k.slice(0,4)}`;
+  const mesAtual = L.status==='em_andamento' ? L : {};
+  const fl = flat(L) || {}, dt = L.ativos_atualizado_em || {};
+  const QTD = k => (((D.custo_medio||{}).ativos||{})[k]||{}).qtd;
+  const ult = k => fl[k]!=null ? `(último: ${brl(fl[k])}${dt[k]?' em '+dataBR(dt[k]).slice(0,5):''}${QTD(k)?` · ${QTD(k)} cotas × ${brl(fl[k]/QTD(k))}`:''})` : '(novo)';
+  const linhaAtivo = k => `- ${NOME[k]}: R$ ______ ${ult(k)}`;
+  const grupos = [
+    ['Renda Fixa', ['active_fix_all','index_simples_selic','credito_bancario_rf','optimus_rf']],
+    ['FIIs', ['hglg11','irim11','knri11','mxrf11','trxf11']],
+    ['ETFs', ['ivvb11','smal11','divo11']],
+    ['Proteção', ['itau_index_gold','gldi11','dolar']]
+  ];
+  function blocoValores(){
+    let t = `## 1. Valor de cada ativo${'\n'}Preencha o valor atual — ou escreva "segue print" e anexe os prints do banco (são a melhor fonte: trazem o rendimento do ano).${'\n'}`;
+    grupos.forEach(([g,ks])=>{ t += `\n### ${g}\n` + ks.filter(k=>fl[k]!=null || g!=='Renda Fixa').map(linhaAtivo).join('\n') + '\n'; });
+    const cu = mesAtual.cripto_detalhe_usd || (HM[keys[keys.length-1]]||{}).cripto_detalhe_usd;
+    t += `\n### Cripto (valor em US$ de cada moeda, ou print da corretora)\n`;
+    t += cu ? ['btc','bnb','eth','sol'].map(m=>`- ${m.toUpperCase()}: US$ ______ (último: US$ ${cu[m].toLocaleString('pt-BR',{minimumFractionDigits:2})})`).join('\n')
+            : `- Total: R$ ______ ${ult('cripto')}`;
+    return t + '\n';
+  }
+  function blocoMovimentos(fech){
+    const reg = (mesAtual.fluxos||[]);
+    const MOT = {caixa:'necessidade de caixa', estrategico:'estratégico', transferencia:'transferência entre ativos'};
+    let t = `\n## 2. Aportes e resgates\n`;
+    if(reg.length){
+      t += `Já registrado em ${nomeMes(mesAberto)}${fech?' — confirme':''}:\n` + reg.map(f=>
+        `- ${f.tipo==='aporte'?'Aporte':'Resgate'} ${NOME[f.ativo]||f.ativo}: ${brl(f.valor)}${f.tipo==='aporte' ? (f.origem ? ' ('+(f.origem==='caixa'?'veio do caixa':(MOT[f.origem]||f.origem))+')' : '') : (f.motivo ? ' ('+(MOT[f.motivo]||f.motivo)+')' : '')}`).join('\n') + '\n';
+      if(fech) t += `→ Está tudo certo? ☐ Sim ☐ Não, corrigir: ______\n`;
+    } else t += `Nada registrado ainda em ${nomeMes(mesAberto)}.\n`;
+    t += `\nNovos desde a última atualização (repita a linha se precisar; o MOTIVO do resgate é o único campo que eu não consigo adivinhar):\n`;
+    t += `- Tipo: ☐ aporte ☐ resgate | Ativo: ______ | Valor: R$ ______ | Motivo: ☐ necessidade de caixa ☐ estratégico ☐ transferência | Para onde foi: ______\n`;
+    t += `☐ Não houve nenhuma movimentação nova\n`;
+    return t;
+  }
+  function blocoDividendos(fech){
+    let t = `\n## 3. Dividendos\n`;
+    const det = mesAtual.dividendos_detalhe;
+    if(det){
+      t += `Já registrado em ${nomeMes(mesAberto)}: ${Object.entries(det).map(([k,v])=>`${NOME[k]} ${brl(v)}`).join(' · ')} — total ${brl(Object.values(det).reduce((s,v)=>s+v,0))}\n`;
+      if(fech) t += `→ Confirma? ☐ Sim ☐ Não, corrigir: ______\n`;
+    }
+    t += `- Caiu algum dividendo não listado acima? ☐ Não ☐ Sim: ativo ______ | valor R$ ______ | data ______\n`;
+    const pj = D.projecao_dividendos || {}, prox = Object.keys(pj).sort().find(k=>pj[k].status!=='pago');
+    if(prox){
+      t += `\nProjetado para ${nomeMes(prox)} (se você já viu o comunicado, anote — senão eu pesquiso):\n`;
+      t += Object.entries(pj[prox].ativos).map(([k,a])=>a.confirmado ? `- ${NOME[k]}: confirmado R$ ${a.valor_cota.toLocaleString('pt-BR',{minimumFractionDigits:2})}/cota (pagamento ${a.pagamento})` : `- ${NOME[k]}: estimado R$ ${a.valor_cota.toLocaleString('pt-BR',{minimumFractionDigits:2})}/cota → anunciado: R$ ______`).join('\n') + '\n';
+    }
+    return t;
+  }
+  function blocoFinal(fech){
+    let t = `\n## 4. Cenário que você viu (opcional)\nNotícia ou movimento que chamou atenção — eu confirmo e aprofundo com pesquisa.\n______\n`;
+    t += `\n## 5. Cashflow\nAs movimentações acima já estão no cashflow? ☐ Sim ☐ Ainda não ☐ Não se aplica\n`;
+    t += `\n---\n**${fech ? `Fechamento de ${nomeMes(mesAberto)}` : `Atualização parcial de ${hojeBR}`} — processar e rodar análise completa**\n`;
+    return t;
+  }
+  function gerar(fech){
+    const tit = fech ? `# Fechamento de ${nomeMes(mesAberto)} — Carteira` : `# Atualização parcial — Carteira (${hojeBR})`;
+    let t = `${tit}\nGerado pelo painel em ${hojeBR} · patrimônio registrado: ${brl(Lp)} (${dataBR(L.atualizado_em)})\n`;
+    if(fech) t += `\nFechamento: use os valores do último dia útil do mês. Eu calculo o resultado de mercado, fecho o mês no histórico, gravo o Score e abro o mês seguinte.\n`;
+    t += '\n' + blocoValores() + blocoMovimentos(fech) + blocoDividendos(fech) + blocoFinal(fech);
+    return {titulo: fech ? `Fechamento de ${nomeMes(mesAberto)}` : 'Atualização parcial', texto: t,
+            arquivo: fech ? `fechamento-${mesAberto}.md` : `atualizacao-parcial-${hoje.toISOString().slice(0,10)}.md`};
+  }
+  /* ---------- checagem dos valores digitados ----------
+     Compara cada valor com o último registrado. Para ativos com cotas, converte em preço por cota — é o que
+     denuncia linha trocada ou dígito a mais. Se inverter dois valores fora do normal deixa os dois dentro,
+     aponta a troca e oferece corrigir. Limites editáveis em D.limites_entrada. */
+  const LIM = Object.assign({renda_fixa_pct:5, cotas_pct:30, fundos_pct:20, cripto_usd_pct:50}, D.limites_entrada||{});
+  const RF_KEYS = grupos[0][1], ATIVOS_TPL = grupos.flatMap(g=>g[1]), MOEDAS = ['btc','bnb','eth','sol'];
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const limDe = k => RF_KEYS.includes(k) ? LIM.renda_fixa_pct : (QTD(k) ? LIM.cotas_pct : LIM.fundos_pct);
+  const reAtivo = k => new RegExp('^(\\s*-\\s*'+esc(NOME[k])+'\\s*:\\s*R\\$)([^(\\n]*)','im');
+  const reMoeda = m => new RegExp('^(\\s*-\\s*'+m+'\\s*:\\s*US\\$)([^(\\n]*)','im');
+  function lerNum(s){
+    const m = (s||'').replace(/_/g,' ').match(/\d[\d.,]*\d|\d/); if(!m) return null;
+    let t = m[0];
+    if(t.includes(',')) t = t.replace(/\./g,'').replace(',','.');
+    else if((t.match(/\./g)||[]).length>1 || /\.\d{3}$/.test(t)) t = t.replace(/\./g,'');
+    const v = parseFloat(t); return isFinite(v) && v>0 ? v : null;
+  }
+  function lerValores(txt){
+    const out = {};
+    ATIVOS_TPL.forEach(k=>{ const m = txt.match(reAtivo(k)); if(m && !/print/i.test(m[2])){ const v = lerNum(m[2]); if(v!=null) out[k]=v; } });
+    MOEDAS.forEach(c=>{ const m = txt.match(reMoeda(c)); if(m){ const v = lerNum(m[2]); if(v!=null) out['usd_'+c]=v; } });
+    return out;
+  }
+  function checar(txt){
+    const v = lerValores(txt), alertas = [], fora = [], trocas = [];
+    const cu = mesAtual.cripto_detalhe_usd || (HM[keys[keys.length-1]]||{}).cripto_detalhe_usd || {};
+    const dentro = (k,val) => Math.abs((val/fl[k]-1)*100) <= limDe(k);
+    ATIVOS_TPL.filter(k=>v[k]!=null && fl[k]).forEach(k=>{
+      const d = (v[k]/fl[k]-1)*100; if(Math.abs(d) <= limDe(k)) return;
+      const q = QTD(k); fora.push(k);
+      alertas.push(`<b>${NOME[k]}</b>: ${brl(v[k])} é ${spct(d)} contra o último (${brl(fl[k])})` +
+        (q ? ` — daria ${brl(v[k]/q)}/cota com ${q} cotas, contra ${brl(fl[k]/q)} antes` : '') + `. Limite: ±${limDe(k)}%.`);
+    });
+    for(let i=0;i<fora.length;i++) for(let j=i+1;j<fora.length;j++){
+      const a=fora[i], b=fora[j];
+      if(dentro(a,v[b]) && dentro(b,v[a])) trocas.push([a,b]);
+    }
+    MOEDAS.forEach(c=>{ const x=v['usd_'+c], a=cu[c]; if(x==null || !a) return; const d=(x/a-1)*100;
+      if(Math.abs(d) > LIM.cripto_usd_pct) alertas.push(`<b>${c.toUpperCase()}</b>: US$ ${num(x)} é ${spct(d)} contra o último (US$ ${num(a)}). Limite: ±${LIM.cripto_usd_pct}%.`); });
+    return {alertas, trocas, v, n:Object.keys(v).length};
+  }
+  const semHtml = s => s.replace(/<[^>]+>/g,'');
+  const chk = document.getElementById('tpl-check');
+  function renderCheck(){
+    const r = checar(ta.value);
+    if(!r.n){ chk.className='tpl-check'; chk.innerHTML=''; return r; }
+    if(!r.alertas.length){ chk.className='tpl-check on ok'; chk.textContent = `✓ ${r.n} valores conferidos contra o último registro — nada fora do esperado.`; return r; }
+    chk.className = 'tpl-check on warn';
+    chk.innerHTML = `<b>Confira antes de enviar</b> — ${r.alertas.length} valor${r.alertas.length>1?'es':''} fora do padrão. Se houve aporte/resgate nesse ativo, pode estar certo.` +
+      `<ul>${r.alertas.map(a=>`<li>${a}</li>`).join('')}</ul>` +
+      r.trocas.map(([a,b])=>`<div class="troca">Parece que <b>${NOME[a]}</b> e <b>${NOME[b]}</b> estão trocados: invertendo, os dois ficam dentro do normal ` +
+        `(${NOME[a]} ${spct((r.v[b]/fl[a]-1)*100)}, ${NOME[b]} ${spct((r.v[a]/fl[b]-1)*100)}).<br>` +
+        `<button class="tplbtn" type="button" data-troca="${a},${b}">Inverter ${NOME[a]} ↔ ${NOME[b]}</button></div>`).join('');
+    return r;
+  }
+  chk.addEventListener('click', e=>{
+    const bt = e.target.closest('[data-troca]'); if(!bt) return;
+    const [a,b] = bt.dataset.troca.split(','), ma = ta.value.match(reAtivo(a)), mb = ta.value.match(reAtivo(b));
+    if(!ma || !mb) return;
+    ta.value = ta.value.replace(reAtivo(a), '$1\u0000B\u0000').replace(reAtivo(b), '$1'+ma[2].replace(/\$/g,'$$$$'))
+                       .replace('\u0000B\u0000', mb[2]);
+    renderCheck(); st.textContent = `Invertido: ${NOME[a]} ↔ ${NOME[b]}.`;
+  });
+  /* o resultado da checagem vai junto no texto copiado/baixado, logo antes da linha-gatilho */
+  function textoFinal(){
+    const r = checar(ta.value); let t = ta.value;
+    if(!r.n) return t;
+    let bloco = r.alertas.length
+      ? `\n## ⚠ Checagem automática do painel\n` + r.alertas.map(a=>`- ${semHtml(a)}`).join('\n') + '\n' +
+        r.trocas.map(([a,b])=>`- Possível troca: ${NOME[a]} ↔ ${NOME[b]} (invertendo, os dois ficam dentro do normal)\n`).join('')
+      : `\n## ✓ Checagem automática do painel\n- ${r.n} valores conferidos contra o último registro, nada fora do esperado.\n`;
+    const i = t.lastIndexOf('\n---\n');
+    return i>=0 ? t.slice(0,i) + '\n' + bloco + t.slice(i) : t + '\n' + bloco;
+  }
+  const ov = document.getElementById('tpl-overlay'), ta = document.getElementById('tpl-texto'), st = document.getElementById('tpl-status');
+  let atual = null;
+  ta.addEventListener('input', renderCheck);
+  function abrir(fech){ atual = gerar(fech); document.getElementById('tpl-titulo').textContent = atual.titulo;
+    ta.value = atual.texto; st.textContent = ''; renderCheck(); ov.classList.add('on'); }
+  document.getElementById('btn-tpl-parcial').addEventListener('click', ()=>abrir(false));
+  document.getElementById('btn-tpl-fech').addEventListener('click', ()=>abrir(true));
+  document.getElementById('tpl-fechar').addEventListener('click', ()=>ov.classList.remove('on'));
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.classList.remove('on'); });
+  document.getElementById('tpl-copiar').addEventListener('click', async ()=>{
+    try { await navigator.clipboard.writeText(textoFinal()); st.textContent = 'Copiado — é só colar no chat.'; }
+    catch(e){ const orig = ta.value; ta.value = textoFinal(); ta.focus(); ta.select(); try { document.execCommand('copy'); ta.value = orig; st.textContent = 'Copiado — é só colar no chat.'; }
+              catch(e2){ st.textContent = 'Não consegui copiar automaticamente: o texto está selecionado, copie manualmente.'; } }
+  });
+  document.getElementById('tpl-baixar').addEventListener('click', ()=>{
+    try { const b = new Blob([textoFinal()], {type:'text/markdown;charset=utf-8'}), a = document.createElement('a');
+      a.href = URL.createObjectURL(b); a.download = atual.arquivo; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 2000); st.textContent = 'Arquivo gerado: ' + atual.arquivo; }
+    catch(e){ st.textContent = 'Download indisponível neste navegador — use Copiar.'; }
+  });
+})();
+
+/* ============ CÂMBIO NO ANO (Dolarização) ============ */
+(function(){
+  const ref = (D.cambio_referencia||{}).usd_brl_fim_ano_anterior; if(!ref) return;
+  const cu = [...keys].reverse().map(k=>HM[k].cripto_detalhe_usd).find(x=>x&&x.cotacao_usd_brl); if(!cu) return;
+  const v = (cu.cotacao_usd_brl/ref-1)*100;
+  const e = document.getElementById('usd-ytd'); if(e) e.textContent = `${spct(v)} no ano, R$ ${num(cu.cotacao_usd_brl)} em ${dataBR(L.atualizado_em).slice(0,5)}`;
+  document.querySelectorAll('.usd-ytd-abs').forEach(x=>x.textContent = pct(Math.abs(v)));
+})();
+
+/* ============ NAV ============ */
+const order = ['panel-plano','panel-visao','panel-evol','panel-aloc','panel-ativos','panel-mkt','panel-usd','panel-bench','panel-renda','panel-alertas'];
+const btns = [...document.querySelectorAll('.navbtn')];
+let current = 'panel-plano';
+function setAccent(btn){
+  const tc1 = getComputedStyle(btn).getPropertyValue('--tc1').trim() || btn.style.getPropertyValue('--tc1');
+  const tc2 = getComputedStyle(btn).getPropertyValue('--tc2').trim() || btn.style.getPropertyValue('--tc2');
+  document.documentElement.style.setProperty('--accent', tc1);
+  document.documentElement.style.setProperty('--accent-2', tc2);
+}
+function go(panelId, dirOverride){
+  if(panelId===current) return;
+  const fromIdx = order.indexOf(current), toIdx = order.indexOf(panelId);
+  const dir = dirOverride!==undefined ? dirOverride : (toIdx>fromIdx?1:-1);
+  btns.forEach(b=>b.setAttribute('aria-selected', b.dataset.panel===panelId?'true':'false'));
+  const fromEl = document.getElementById(current), toEl = document.getElementById(panelId);
+  fromEl.hidden = true; fromEl.classList.remove('on','slide-r','slide-l');
+  toEl.hidden = false;
+  void toEl.offsetWidth;
+  toEl.classList.add('on', dir>0?'slide-r':'slide-l');
+  setAccent(btns.find(b=>b.dataset.panel===panelId));
+  current = panelId;
+  window.scrollTo({top:0, behavior:'instant'});
+}
+btns.forEach(b=>b.addEventListener('click',()=>go(b.dataset.panel)));
+setAccent(btns[0]);
+
+let sx=0, lock=null;
+addEventListener('touchstart', e=>{ sx=e.touches[0].clientX; lock=null; }, {passive:true});
+addEventListener('touchmove', e=>{
+  if(lock!==null) return;
+  const dx=Math.abs(e.touches[0].clientX-sx);
+  if(dx>10) lock='x';
+}, {passive:true});
+addEventListener('touchend', e=>{
+  if(lock!=='x') return;
+  const dx=e.changedTouches[0].clientX-sx;
+  if(Math.abs(dx)<60) return;
+  const idx=order.indexOf(current);
+  const n = dx<0 ? idx+1 : idx-1;
+  if(n>=0 && n<order.length) go(order[n], dx<0?1:-1);
+}, {passive:true});
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
+</body>
+</html>

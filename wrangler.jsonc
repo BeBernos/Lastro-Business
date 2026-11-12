@@ -1,0 +1,23 @@
+// Configuração do Cloudflare (Worker "agente-financeiro").
+// - assets: a pasta app/ é servida como site estático (o app em si).
+// - main: worker/index.js atende /push/*, /cotacoes (preços para a estimativa da carteira) e o cron
+//   que avisa sobre painel novo.
+// - Durable Object "Avisos" guarda inscrições e chaves de push e o cache das cotações (SQLite, plano grátis).
+// - Segredos (painel do Cloudflare → Settings → Variables and Secrets, nunca neste arquivo):
+//   BRAPI_TOKEN (cotações da B3, chave gratuita da brapi.dev) e, opcional, COINGECKO_KEY.
+{
+  "name": "lastro-demo",
+  "main": "worker/index.js",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./app",
+    "binding": "ASSETS"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "AVISOS", "class_name": "Avisos" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Avisos"] }],
+  "triggers": {
+    "crons": ["* * * * *"]
+  }
+}
