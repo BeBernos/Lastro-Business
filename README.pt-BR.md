@@ -18,42 +18,59 @@ Ele foi feito para uma família de verdade e é usado todo dia desde outubro de 
 do cartão a partir do SMS do banco em dois toques, o resto da família acompanha tudo no próprio celular e, uma vez por
 mês, a IA fecha o mês, revisa o plano e escreve as análises.
 
+**Em números:** v9.12 (46 versões no histórico) · uso diário desde out/2026 · ~13 mil linhas, 0 dependências · AES-256-GCM de ponta a ponta · ≈260 checagens de regressão + 62 de ponta a ponta
+
 > A demonstração usa uma **família fictícia** (Marina, Rafael, Theo e a gata Mia), gerada na hora, com as datas sempre
 > andando junto com o calendário. Nada sai do seu navegador.
 
 ## O que ele faz
 
-| | | | |
-|:---:|:---:|:---:|:---:|
-| <img src="docs/img/dark-inicio.png" width="200"><br>**Quanto ainda dá para gastar?** | <img src="docs/img/dark-agenda.png" width="200"><br>**Linha do tempo do mês** | <img src="docs/img/dark-fatura.png" width="200"><br>**Cartão, item por item** | <img src="docs/img/dark-carteira.png" width="200"><br>**Investimentos e metas** |
-| <img src="docs/img/dark-mes-futuro.png" width="200"><br>**Qualquer mês: passado ou projetado** | <img src="docs/img/dark-gastos.png" width="200"><br>**Orçamento por categoria** | <img src="docs/img/dark-analises.png" width="200"><br>**Análises da IA e nota de saúde** | <img src="docs/img/dark-lancar.png" width="200"><br>**Lançar em dois toques (ou colar o SMS)** |
+<p align="center"><img src="docs/img/features-1-pt.png" alt="" width="100%"></p>
+<p align="center"><img src="docs/img/features-2-pt.png" alt="" width="100%"></p>
 
-<p align="center"><img src="docs/img/lancar.gif" width="300" alt="Lançando uma compra no cartão: o 'dá para gastar' cai na hora"><br>
-<i>A compra entra e o "dá para gastar" muda na hora — depois sincroniza, cifrado, com a família.</i></p>
+<p align="center"><img src="docs/img/lancar.gif" width="300" alt=""><br><i>Uma compra entra e o "ainda dá para gastar" atualiza na hora — depois sincroniza, criptografado, com a família.</i></p>
 
-- **Caixa do dia a dia** — quanto ainda cabe no mês, a agenda de contas, "paguei / recebi" com um toque e uma projeção de
-  12 meses que mostra antes quais meses vão apertar.
-- **Cartão de crédito** — cada compra, parcela e assinatura; orçamento por categoria com aviso em 80% e 100%; planilha da
-  fatura em Excel de verdade. As compras podem ser coladas direto do SMS do banco (várias de uma vez).
-- **Investimentos** — carteira por ativo e classe, "estimativa de hoje" pelas cotações públicas, dividendos, metas, plano
-  de alocação, escada de liquidez (quando cada parte do dinheiro fica disponível) e simulador de troca na renda fixa.
-- **Passado e futuro** — escolha qualquer mês: os fechados podem ser corrigidos, os que vêm recebem contas e entradas.
-- **Dois celulares, uma verdade só** — quem lança publica, o outro celular recebe a notificação ("3 lançamentos novos") e
-  decifra no próprio aparelho.
-- **IA onde ela traz julgamento** — fechamento do mês, revisão do plano e análises ficam com o Claude, que lê e grava os
-  dados direto por um **conector MCP** (sem baixar nem anexar arquivo).
+**Em detalhe**
+- **Caixa do dia a dia** — quanto ainda dá para gastar no mês, o calendário de contas, "pago / a receber" com um toque e uma
+  projeção de 12 meses que mostra os meses apertados antes de chegarem.
+- **Cartão de crédito** — cada compra, parcela e assinatura; orçamento por categoria com alertas em 80% e 100%; exportação real
+  da fatura em Excel; compras coladas direto do SMS do banco (várias de uma vez).
+- **Investimentos** — carteira por ativo e classe, estimativa de hoje com cotações públicas, dividendos, metas, plano de
+  alocação, escada de liquidez e simulador de troca na renda fixa.
+- **Dois celulares, uma verdade** — quem cuida publica, o celular da família recebe um push ("3 lançamentos novos") e decifra
+  localmente.
 
 ## Como funciona
 
-<p align="center"><img src="docs/img/arquitetura-pt.svg" alt="Diagrama da arquitetura" width="100%"></p>
+<p align="center"><img src="docs/img/architecture-pt.png" alt="" width="100%"></p>
 
-O pulo do gato: **o motor de cálculo é um painel HTML escrito pela IA.** Todo mês o Claude gera um painel autossuficiente
-(código + dados JSON). O Lastro o carrega num iframe escondido e chama as funções dele (`calc()`, `timeline()`,
-`projecao12()`…) — o app nunca refaz a conta: ele **traduz** o painel em telas de app e acrescenta o que o painel não faz:
-lançamentos, sincronização, criptografia, notificações, uso sem internet. Quando a IA cria um bloco novo no painel, ele
-aparece no app sozinho.
+O Lastro nasce de uma ideia incomum — **o painel mensal da IA é o motor de cálculo** — e de uma regra dura: **nenhum servidor
+pode ver dados financeiros**. Todo o resto decorre dessas duas.
 
-Mais em [docs/architecture.pt-BR.md](docs/architecture.pt-BR.md).
+**No aparelho** — Cerca de 13 mil linhas de JavaScript puro, sem framework. Cada ação financeira é uma função pura `JSON → JSON` (lançar compra, marcar pago, aportar, resgatar) que mantém os totais que o painel confere, deixa trilha de auditoria e guarda o estado anterior cifrado para desfazer exato.
+
+**O motor do painel** — Todo mês o Claude produz um painel HTML autossuficiente (código + dados JSON). O Lastro o carrega num iframe escondido e chama as funções dele (`calc()`, `timeline()`, `projecao12()`…); um tradutor transforma cada bloco em telas nativas, então um bloco que a IA inventar no mês seguinte aparece sem versão nova.
+
+**Criptografia** — Os dados são cifrados no celular com AES-256-GCM (chave do PBKDF2-SHA256, 600 mil rodadas); no celular de quem cuida, a chave é selada pela digital pela extensão PRF do WebAuthn. GitHub e Cloudflare só veem texto cifrado; as notificações vão vazias.
+
+**Armazenamento e borda** — Um repositório privado no GitHub é o banco: caixa e carteira são publicados juntos num commit pela Git Data API, juntados numa fila de 3 segundos. Um Worker do Cloudflare com Durable Object observa os arquivos publicados, dispara os pushes, guarda cotações públicas em cache e hospeda o servidor MCP.
+
+**O ciclo com a IA** — O fechamento do mês é um ritual guiado em três passos (carteira → caixa → plano). No dia a dia, o Claude lê um resumo ou campos inteiros e grava análises e planos pelo conector MCP — com simulação antes e o ok do usuário.
+
+### O fluxo
+
+<p align="center"><img src="docs/img/flow-pt.png" alt="" width="100%"></p>
+
+### Decisões de projeto
+
+| Decisão | Por quê |
+|---|---|
+| **O painel é o motor** | Uma fonte só para a matemática; o app nunca discorda da IA. |
+| **GitHub como banco cifrado** | Grátis, versionado e auditável; um commit por sincronização. |
+| **Chave selada pela digital (WebAuthn PRF)** | Nada legível nos servidores — nem no aparelho. |
+| **Notificações vazias** | O serviço de push nunca vê conteúdo; o celular decifra e escreve o texto. |
+
+Em profundidade: [docs/architecture.pt-BR.md](docs/architecture.pt-BR.md).
 
 ## Segurança
 
@@ -92,6 +109,15 @@ Claude · Playwright · Node.js
 - [Estudo de caso](docs/case-study.pt-BR.md) — o problema, as decisões e o que saiu delas.
 - [Arquitetura](docs/architecture.pt-BR.md) — fluxo dos dados, o painel como motor, sincronização e o conector MCP.
 - [Segurança](SECURITY.md) — modelo de ameaça e como cada camada funciona.
+
+## O conjunto
+
+| | |
+|---|---|
+| [**Lastro**](https://github.com/BeBernos/Lastro-Business) | Finanças da família — caixa, cartão e investimentos, com criptografia de ponta a ponta |
+| [**Mesa**](https://github.com/BeBernos/Mesa-Business) | Plano alimentar da família, montado por IA |
+| [**Pulse**](https://github.com/BeBernos/Pulse-Business) | Treino de força com programas montados por IA e animações 2D/3D dos exercícios |
+| [**Cesta**](https://github.com/BeBernos/Cesta-Business) | Pesquisa de preços de mercado, rota de compra e conferência da nota |
 
 ## Sobre
 

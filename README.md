@@ -17,42 +17,58 @@ It was built for a real family and has been used every day since October 2026: t
 SMS in two taps, the rest of the family follows everything on their own phones, and once a month the AI closes the books, rebalances
 the plan and writes the analyses.
 
+**At a glance:** v9.12 (46 releases in the changelog) · used daily since Oct 2026 · ~13k lines, 0 dependencies · AES-256-GCM end to end · ≈260 regression + 62 end-to-end checks
+
 > The live demo runs with a **fictitious family** (Marina, Rafael, Theo and Mia the cat) generated on the fly, with dates
 > that always move with today's calendar. Nothing leaves your browser.
 
 ## What it does
 
-| | | | |
-|:---:|:---:|:---:|:---:|
-| <img src="docs/img/dark-inicio.png" width="200"><br>**How much can I still spend?** | <img src="docs/img/dark-agenda.png" width="200"><br>**Month timeline** | <img src="docs/img/dark-fatura.png" width="200"><br>**Credit card, item by item** | <img src="docs/img/dark-carteira.png" width="200"><br>**Investments & goals** |
-| <img src="docs/img/dark-mes-futuro.png" width="200"><br>**Any month: past or projected** | <img src="docs/img/dark-gastos.png" width="200"><br>**Budgets by category** | <img src="docs/img/dark-analises.png" width="200"><br>**AI analyses & health score** | <img src="docs/img/dark-lancar.png" width="200"><br>**Two-tap entry (or paste the SMS)** |
+<p align="center"><img src="docs/img/features-1-en.png" alt="" width="100%"></p>
+<p align="center"><img src="docs/img/features-2-en.png" alt="" width="100%"></p>
 
-<p align="center"><img src="docs/img/lancar.gif" width="300" alt="Logging a card purchase: the 'can still spend' number drops instantly"><br>
-<i>A purchase goes in and the "can still spend" number updates immediately — then syncs, encrypted, to the family.</i></p>
+<p align="center"><img src="docs/img/lancar.gif" width="300" alt=""><br><i>A purchase goes in and the "can still spend" number updates immediately — then syncs, encrypted, to the family.</i></p>
 
-- **Daily cash flow** — what is left to spend this month, the bills calendar, "paid / to receive" with one tap, and a
-  12-month projection that shows which months will be tight before they arrive.
-- **Credit card** — every purchase, installment and subscription; budgets per category with alerts at 80% and 100%;
-  a real Excel export of the bill. Card purchases can be pasted straight from the bank's SMS (several at once).
-- **Investments** — portfolio by asset and class, "today's estimate" from live public quotes, dividends, goals, an
-  allocation plan, a liquidity ladder (when each part of the money becomes available) and a fixed-income switch simulator.
-- **Past and future** — pick any month: closed months can be corrected, future months can receive bills and income.
-- **Two phones, one truth** — the owner publishes, the family phone gets a push notification ("3 new entries") and
-  decrypts locally.
-- **AI where it adds judgment** — monthly closing, plan reviews and analyses are done by Claude, which reads and writes
-  the data directly through an **MCP connector** (no files to download or upload).
+**In detail**
+- **Daily cash flow** — what is left to spend this month, the bills calendar, "paid / to receive" with one tap, and a 12-month
+  projection that shows which months will be tight before they arrive.
+- **Credit card** — every purchase, installment and subscription; budgets per category with alerts at 80% and 100%; a real
+  Excel export of the bill; purchases pasted straight from the bank's SMS (several at once).
+- **Investments** — portfolio by asset and class, today's estimate from live public quotes, dividends, goals, an allocation
+  plan, a liquidity ladder and a fixed-income switch simulator.
+- **Two phones, one truth** — the owner publishes, the family phone gets a push ("3 new entries") and decrypts locally.
 
 ## How it works
 
-<p align="center"><img src="docs/img/arquitetura-en.svg" alt="Architecture diagram" width="100%"></p>
+<p align="center"><img src="docs/img/architecture-en.png" alt="" width="100%"></p>
 
-The unusual part: **the calculation engine is an HTML dashboard written by the AI.** Every month Claude produces a
-self-contained dashboard (code + JSON data). Lastro loads it in a hidden iframe and calls its functions
-(`calc()`, `timeline()`, `projecao12()`…) — the app never re-implements the math, it **translates** the dashboard into
-native mobile screens and adds what the dashboard can't do: data entry, sync, encryption, notifications, offline use.
-When the AI adds a new block to its dashboard, it shows up in the app on its own.
+Lastro is built around one unusual idea — **the AI's monthly dashboard is the calculation engine** — and one hard rule:
+**no server may see financial data**. Everything else follows from those two.
 
-More in [docs/architecture.md](docs/architecture.md).
+**On the device** — ~13,000 lines of plain JavaScript, no framework. Every financial action is a pure function `JSON → JSON` (log a purchase, mark paid, invest, redeem) that keeps the totals the dashboard checks, leaves an audit trail and stores the encrypted previous state for exact undo.
+
+**The dashboard engine** — Each month Claude produces a self-contained HTML dashboard (code + JSON data). Lastro loads it in a hidden iframe and calls its functions (`calc()`, `timeline()`, `projecao12()`…); a translator turns every block into native screens, so a block the AI invents next month appears without a release.
+
+**Encryption** — Data is encrypted on the phone with AES-256-GCM (key from PBKDF2-SHA256, 600k iterations); on the owner's phone the key is sealed by the fingerprint through the WebAuthn PRF extension. GitHub and Cloudflare only ever see ciphertext; push notifications are empty.
+
+**Storage & edge** — A private GitHub repository is the database: cash flow and portfolio are published together in one commit through the Git Data API, batched in a 3-second queue. A Cloudflare Worker with a Durable Object watches the published files, fans out push notifications, caches public market quotes and hosts the MCP server.
+
+**The AI loop** — Monthly closing is a guided three-step ritual (portfolio → cash flow → plan). Day to day, Claude reads a summary or whole fields and writes analyses and plans through the MCP connector — with a dry run first and the user's go-ahead.
+
+### The flow
+
+<p align="center"><img src="docs/img/flow-en.png" alt="" width="100%"></p>
+
+### Design decisions
+
+| Decision | Why |
+|---|---|
+| **The dashboard is the engine** | One source of truth for the math; the app never disagrees with the AI. |
+| **GitHub as an encrypted database** | Free, versioned and auditable; one commit per sync. |
+| **Fingerprint-sealed key (WebAuthn PRF)** | Nothing readable on servers — or on the device. |
+| **Empty push notifications** | The push service never sees content; the phone decrypts and writes the text. |
+
+Deep dive: [docs/architecture.md](docs/architecture.md).
 
 ## Security
 
@@ -89,6 +105,15 @@ Claude · Playwright · Node.js
 - [Case study](docs/case-study.md) — the problem, the decisions and what came out of them.
 - [Architecture](docs/architecture.md) — data flow, the dashboard-as-engine pattern, sync and the MCP connector.
 - [Security](SECURITY.md) — threat model and how each layer works.
+
+## The suite
+
+| | |
+|---|---|
+| [**Lastro**](https://github.com/BeBernos/Lastro-Business) | Family finance hub — cash flow, credit card and investments, encrypted end to end |
+| [**Mesa**](https://github.com/BeBernos/Mesa-Business) | Family nutrition plan, planned by AI |
+| [**Pulse**](https://github.com/BeBernos/Pulse-Business) | Strength training with AI-built programs and 2D/3D exercise animations |
+| [**Cesta**](https://github.com/BeBernos/Cesta-Business) | Grocery price research, shopping route and receipt audit |
 
 ## About
 
