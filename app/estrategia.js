@@ -28,6 +28,12 @@ export function alocacaoVsAlvo(cart) {
   const semReserva = a.alvos.some(x => x.classe === 'reserva') ? 0 : res?.atual || 0;
   if (semReserva) porClasse.renda_fixa = Math.max(0, (porClasse.renda_fixa || 0) - semReserva);
   if (a.alvos.some(x => x.classe === 'reserva')) porClasse.reserva = res?.atual || 0;
+  // v9.14: o alvo de dólar mede como a meta de dólar (meta_dolarizacao.conta_como_dolar): o IVVB11/VWRA11 é dólar, não
+  // "ações no Brasil" — antes "Dólar e exterior" só contava o fundo cambial (1,8% × alvo 17%, com o IVVB11 em ações BR)
+  const temDolar = a.fonte === 'estrategia' && a.alvos.some(x => x.classe === 'dolar');
+  const emDolar = temDolar ? ativos.filter(x => ['etfs', 'fiis'].includes(x.classe) && (cart.meta_dolarizacao?.conta_como_dolar || []).includes(x.chave)) : [];
+  for (const x of emDolar) porClasse[x.classe] -= x.valor || 0;
+  porClasse.dolar = (porClasse.dolar || 0) + emDolar.reduce((t, x) => t + (x.valor || 0), 0);
   const valorDe = classe => (classe === 'reserva' ? porClasse.reserva || 0 : (COMPOE[classe] || [classe]).reduce((t, k) => t + (porClasse[k] || 0), 0));
   const base = a.alvos.reduce((t, x) => t + valorDe(x.classe), 0) || 1;
   const linhas = a.alvos.map(x => {

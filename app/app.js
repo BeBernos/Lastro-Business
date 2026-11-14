@@ -28,16 +28,19 @@ import { NOME_CAMPO } from './parcial.js';
 import { alternarPausa, conselhoAtivo, derivarTarget, gatilhos, mudancasEstrategia, ordemAportes, textoItem } from './ficha.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao, vibrar } from './v8.js';
 
-const VERSAO_APP = '9.13.0';
+const VERSAO_APP = '9.14.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 const REMOTO = 'data/painel.enc';
 // Novidades de cada versão: aparecem uma vez em cada celular quando a versão nova entra (mostrarNovidades) e ficam
 // em menu → Novidades desta versão. Escrever para o Bruno e o Rafael, em linguagem simples.
 const NOVIDADES = {
+  '9.14.0': [
+    ['"Hoje" no Início', 'O "Para olhar" virou "Hoje": o que pede ação vem primeiro e, quando dá para fazer na hora, a linha tem o botão ao lado — Investir (o aporte do mês, quando já cabe) e Feito (o passo do plano de ação com data nesta semana). Gatilhos da estratégia e a hora de rodar o Plano levam direto para o Claude.', 'nova'],
+  ],
   '9.13.0': [
     ['A estratégia manda no app', 'A estratégia que o Claude grava no Plano passa a ser a única fonte: a meta de alocação do painel sai dela sozinha (antes eram três cópias que se desencontravam). Quando ela mudar, o app avisa o que mudou (alvos, ordens, gatilhos), com Desfazer.', 'nova'],
     ['Pausar na ordem dos aportes', 'Carteira › Alocação → Estratégia: cada item da ordem do dinheiro novo tem Pausar/Retomar. O Investir já abre no primeiro item, avisa quando o ativo está fora da ordem ou pausado e, no Resgate, quando a estratégia pede para evitar aquele ativo.', 'nova'],
-    ['Gatilhos vigiados', 'Os gatilhos da estratégia com número (dólar, CDI, salário) são conferidos pelo app; quando um dispara, aparece no Para olhar com "Levar para o Claude".', 'nova'],
+    ['Gatilhos vigiados', 'Os gatilhos da estratégia com número (dólar, CDI, salário) são conferidos pelo app; quando um dispara, aparece no Hoje com "Levar para o Claude".', 'nova'],
   ],
   '9.12.4': [
     ['Instruções do Projeto que se atualizam sozinhas', 'Com o Claude direto ligado: menu → Instruções do Projeto → "Copiar o texto curto" e cole uma vez no Projeto. O Claude passa a ler as instruções completas pelo conector, e quando elas mudarem não precisa recolar nada.', 'nova'],
