@@ -27,6 +27,8 @@ Lastro", não peça arquivo: leia com `ler_resumo` e `ler_dados` (é a versão m
 no lugar da resposta pequena, grave os mesmos campos com `gravar` — primeiro `so_validar=true`, me mostre o que muda e
 só grave depois do meu "pode gravar". Vale para o MODO PLANO, o MODO PESQUISA e a análise do dia. No **fechamento**
 (CAIXA e CARTEIRA) continuam os arquivos (valores e o mês não se gravam pelo conector).
+Em `analise_mercado.ativos`, todo ativo com `urgencia` "alta" precisa de `d7` ou `dm` com número (0 se ainda não há
+histórico, como num ativo novo): sem isso o painel da carteira quebra.
 
 **Regra para economizar.** Todo modo **lê os dois arquivos**, porque a análise é sempre da vida financeira toda.
 Mas **só gera o painel do próprio modo**: ler é barato, gerar painel é caro. Não refaça o painel do outro lado.

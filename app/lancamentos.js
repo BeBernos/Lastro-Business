@@ -485,7 +485,8 @@ function renomearUsos(d, de, para, lista, somar = false) {
       } else c.cat = para;
     }
   }
-  for (const a of it?.assinaturas || []) if (a.cat && casa(a.cat)) a.cat = para;
+  // v9.12.4: compras, parcelas e compras da fatura também (senão acertarCategorias recriava a categoria excluída)
+  for (const k of ['assinaturas', 'lancamentosApp', 'parcelamentos', 'compras']) for (const a of it?.[k] || []) if (a.cat && casa(a.cat)) a.cat = para;
   for (const c of d.faturaProximoCiclo?.comprasNovas || []) if (c.cat && casa(c.cat)) c.cat = para;
   // v9.9.4: no histórico também (o painel compara o mês anterior pelo nome exato); nome repetido no mês vira uma linha
   for (const h of d.historicoItau || []) {
