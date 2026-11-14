@@ -57,6 +57,20 @@ export class Avisos extends DurableObject {
     await this.ctx.storage.delete('conector');
   }
 
+  // v9.17: rascunho do fechamento (JSON cifrado com a chave da família), até o Bruno aplicar no app
+  async gravarRascunho(arquivo, r) {
+    await this.ctx.storage.put(`rascunho:${arquivo}`, r);
+  }
+
+  async lerRascunhos() {
+    const m = await this.ctx.storage.list({ prefix: 'rascunho:' });
+    return Object.fromEntries([...m].map(([k, v]) => [k.slice(9), v]));
+  }
+
+  async apagarRascunho(arquivo) {
+    await this.ctx.storage.delete(`rascunho:${arquivo}`);
+  }
+
   // Par de chaves VAPID, criado no primeiro uso e guardado aqui (nada para configurar à mão).
   async vapid() {
     let k = await this.ctx.storage.get('vapid');
@@ -230,7 +244,7 @@ export default {
       if (pathname.startsWith('/pluggy/')) return repassarPluggy(request, env);
       // v9.10: conector MCP do Claude (mcp.js). Ligar/ver/desligar vêm do app com o token do GitHub; o servidor MCP fica
       // em /mcp/<segredo>, o endereço que o Bruno cola em claude.ai → Conectores.
-      const conector = pathname.match(/^\/mcp\/(ligar|estado|desligar)$/);
+      const conector = pathname.match(/^\/mcp\/(ligar|estado|desligar|rascunho)$/);
       if (conector && request.method === 'POST') return await rotaConector(conector[1], request, env, caixa(env));
       const mcp = pathname.match(/^\/mcp\/([A-Za-z0-9_-]{20,})$/);
       if (mcp) return await servidorMcp(mcp[1], request, caixa(env));
