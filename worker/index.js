@@ -15,6 +15,8 @@ import { rotaConector, servidorMcp } from './mcp.js';
 // Contato exigido pelo Web Push (VAPID); uma URL é aceita no lugar de e-mail.
 const CONTATO = 'https://github.com/BeBernos/Lastro-Business';
 const MAX_INSCRICOES = 20;
+// v9.16: resumo da semana — domingo 19h em Brasília (22h UTC; o Brasil não tem mais horário de verão). Igual ao wrangler.jsonc.
+const CRON_SEMANA = '0 22 * * 0';
 // Só serviços de push conhecidos (evita usar o Worker para chamar URLs arbitrárias).
 const SERVICOS_PUSH = /^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9.-]+\.notify\.windows\.com|web\.push\.apple\.com)\//;
 
@@ -129,7 +131,18 @@ export class Avisos extends DurableObject {
     if (publicadoEm === ultimo) return { avisou: false };
     await this.ctx.storage.put(chave, publicadoEm);
     if (!ultimo) return { avisou: false, primeiraVez: true }; // não avisa o painel que já existia
+    await this.ctx.storage.put('motivo', { tipo: 'painel', em: Date.now() });
     return { avisou: true, resultados: await this.enviarParaTodos() };
+  }
+
+  // v9.16: domingo às 19h (cron CRON_SEMANA). O push continua vazio; o service worker pergunta o motivo em /push/motivo.
+  async avisarSemana() {
+    await this.ctx.storage.put('motivo', { tipo: 'semana', em: Date.now() });
+    return this.enviarParaTodos();
+  }
+
+  async motivo() {
+    return (await this.ctx.storage.get('motivo')) || null;
   }
 }
 
@@ -195,6 +208,10 @@ export default {
         await caixa(env).inscrever(await lerInscricao(request));
         return json({ ok: true });
       }
+      // v9.16: por que o último push saiu (painel novo × resumo da semana) — sem dado nenhum, só o tipo e a hora
+      if (pathname === '/push/motivo' && request.method === 'GET') {
+        return json((await caixa(env).motivo()) || { tipo: 'painel', em: 0 });
+      }
       if (pathname === '/push/cancelar' && request.method === 'POST') {
         await caixa(env).cancelar(await lerInscricao(request));
         return json({ ok: true });
@@ -227,7 +244,8 @@ export default {
     return env.ASSETS.fetch(request);
   },
 
-  async scheduled(_evento, env, ctx) {
+  async scheduled(evento, env, ctx) {
+    if (evento?.cron === CRON_SEMANA) return ctx.waitUntil(caixa(env).avisarSemana());
     ctx.waitUntil((async () => {
       for (const arquivo of ['painel', 'carteira']) {
         const r = await env.ASSETS.fetch(new Request(`https://app.local/data/${arquivo}.enc`));

@@ -10,7 +10,7 @@ import { posicao, proximoPasso, reserva } from './carteira.js';
 import { adivinharCategoria, categoriaDoItem, iconeCategoria, nomeCategoria } from './categorias.js';
 import { dolarizacao, listaAtivos, nomeAtivo, planoDoMes, resultadoDoMes } from './investimentos.js';
 import { CATEGORIAS_RECEITA, hojeBrasil, LISTAS_CAIXA, tickerDividendo } from './lancamentos.js';
-import { composicaoFatura, gastoDoDia } from './extrato.js';
+import { composicaoFatura, gastoDoDia, resumoSemana } from './extrato.js';
 import { alertasPlano, alocacaoVsAlvo, rendimentoRendaFixa } from './estrategia.js';
 import { gatilhos, INDICADORES, pausa, textoItem } from './ficha.js';
 import { prazoResgate } from './liquidez.js';
@@ -1766,6 +1766,43 @@ export function ordemInicio(salva) {
   return lista;
 }
 
+// v9.16: resumo da semana — cartão no topo do Início aos domingos; nos outros dias, menu ⋮ → Resumo da semana
+export const ehDomingo = iso => !!iso && new Date(`${iso}T12:00:00Z`).getUTCDay() === 0;
+export function resumoSemanaHtml(m, dados, cart, ctx, opcoes = {}) {
+  const hoje = opcoes.hoje || hojeBrasil();
+  const r = resumoSemana(dados, hoje, proximasContas(m, dados));
+  const dm = iso => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+  const dif = r.anterior ? r.total - r.anterior.total : null;
+  const comp = dif == null ? '' : Math.abs(dif) < 1 ? chip('bom', 'Igual à semana anterior')
+    : chip(dif < 0 ? 'bom' : 'atencao', `${brl0(Math.abs(dif))} ${dif < 0 ? 'a menos' : 'a mais'} que a semana anterior`);
+  const { c } = m;
+  const porDia = c.diasRest > 0 ? c.saldo / c.diasRest : c.saldo;
+  const ritmo = c.taxaAtualLivre || 0;
+  const mes = ctx.mesPassou ? '' : c.saldo <= 0 ? chip('ruim', 'O mês já passou do que dava para gastar')
+    : ritmo > porDia ? chip('atencao', `Ritmo acima do que cabe: ${brl0(ritmo)} por dia no cartão, cabem ${brl0(porDia)}`)
+      : chip('bom', `No ritmo: ainda dá para gastar ${brl0(c.saldo)} até o fim do mês (${brl0(porDia)} por dia)`);
+  let aporte = '';
+  try {
+    const a = cart && aportePlanejado(m, dados, cart, ctx);
+    if (a) aporte = linha(`Aporte do mês · ${a.dia ? (a.dia <= ctx.diaHoje ? 'já dá para fazer' : `a partir do dia ${a.dia}`) : a.cabe > 0 ? `cabem ${brl0(a.cabe)}` : 'não cabe neste mês'}`, brl0(a.valor));
+  } catch { /* sem plano */ }
+  const p = r.proximos;
+  return `<section class="cartao resumo-semana">
+    <div class="cartao-topo"><h2>Resumo da semana</h2><span class="meta">${dm(r.inicio)} a ${dm(r.fim)}</span></div>
+    <p class="rs-total"><b>${brl(r.total)}</b> ${r.n ? `no dia a dia: ${r.n} ${r.n === 1 ? 'gasto' : 'gastos'} no cartão e no Pix` : 'sem gastos do dia a dia lançados'}</p>
+    ${r.fixas.n ? `<ul class="linhas">${linha(`Contas fixas pagas <small class="suave">${r.fixas.n}</small>`, brl0(r.fixas.total))}</ul>` : ''}
+    ${r.parcial ? '<p class="nota">Desde o dia 1: o começo da semana ficou no mês passado.</p>' : ''}
+    <div class="chips">${comp}${mes}</div>
+    ${r.categorias.length ? `<p class="rotulo espaco">Para onde foi</p><ul class="linhas">${r.categorias.map(x => linha(esc(x.nome), brl0(x.total))).join('')}</ul>` : ''}
+    ${r.maiores.length ? `<p class="rotulo espaco">Maiores gastos</p><ul class="linhas">${r.maiores.map(x => linha(`${esc(nomeCurto(x.descricao))} <small class="suave">${dm(x.data)}</small>`, brl0(x.valor))).join('')}</ul>` : ''}
+    <p class="rotulo espaco">Próximos 7 dias${p.ateFimDoMes ? ' (até o fim do mês)' : ''}</p>
+    ${p.itens.length ? `<ul class="linhas">${p.itens.slice(0, 5).map(x => linha(`${esc(nomeCurto(x.desc))} <small class="suave">${dm(x.data)}</small>`, `${x.valor > 0 ? '+' : '−'}${brl0(Math.abs(x.valor))}`)).join('')}</ul>
+      <p class="meta">${p.saem ? `Saem ${brl0(p.saem)}` : ''}${p.saem && p.entram ? ' · ' : ''}${p.entram ? `entram ${brl0(p.entram)}` : ''}${p.itens.length > 5 ? ` · +${p.itens.length - 5} na agenda` : ''}</p>`
+      : '<p class="meta">Nenhuma conta a pagar ou salário a receber.</p>'}
+    ${aporte ? `<ul class="linhas">${aporte}</ul>` : ''}
+  </section>`;
+}
+
 // v9.1: um cartão só, uma linha por assunto; tocar leva à tela de cada um
 function destaquesInicio(m, dados, cart, ctx, opcoes) {
   const linhas = [];
@@ -1848,7 +1885,8 @@ function abaInicioHub(m, dados, ctx, opcoes) {
     aporte: () => (cart ? aporteCartao(m, dados, cart, ctx, opcoes) : ''),
     destaques: () => destaquesInicio(m, dados, cart, ctx, opcoes),
   };
-  return [fechar, ...ordemInicio(opcoes.ordemInicio).filter(c => c.on && cartoes[c.id]).map(c => secao(cartoes[c.id]))].join('');
+  const semana = ehDomingo(opcoes.hoje) && !ctx.mesPassou ? secao(() => resumoSemanaHtml(m, dados, cart, ctx, opcoes)) : '';
+  return [fechar, semana, ...ordemInicio(opcoes.ordemInicio).filter(c => c.on && cartoes[c.id]).map(c => secao(cartoes[c.id]))].join('');
 }
 
 // opcoes: { doc (painel do caixa), docCarteira, carteira (JSON), estimativa (cotacoes.js), sub, abertos (Set), github, agora }

@@ -5,7 +5,7 @@
 // (a versão nova do app passa a valer na próxima abertura).
 // data/ (painel publicado) nunca passa pelo cache — o app guarda a cópia dele cifrada.
 
-const CACHE = 'painel-app-v92';
+const CACHE = 'painel-app-v93';
 const ARQUIVOS = [
   './', 'app.js', 'banco.js', 'cofre.js', 'painel.js', 'resumo.js', 'telas.js', 'graficos.js', 'traduzir.js', 'carteira.js', 'cotacoes.js', 'trava.js', 'protecao.js', 'lancamentos.js', 'sms.js', 'categorias.js', 'investimentos.js', 'v8.js', 'v8.css', 'extrato.js', 'conciliar.js', 'binance.js', 'pluggy.js', 'xlsx.js', 'escolha.js', 'parcial.js', 'ficha.js', 'modo.js', 'estrategia.js', 'indicadores.js', 'liquidez.js', 'rendafixa.js', 'projeto.txt', 'fontes/bricolage.woff2', 'fontes/figtree.woff2', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/badge-96.png', 'icons/logo.svg',
@@ -171,8 +171,25 @@ function novidadesDoPainel(dados, visto) {
   return { novos, ultimo };
 }
 
+// v9.16: domingo às 19h o servidor manda o push do resumo da semana (também vazio). O motivo vem de /push/motivo;
+// a notificação não leva valores (no modo digital o service worker nem tem a chave) — o resumo abre no app.
+async function motivoDoPush() {
+  try {
+    const m = await (await fetch(`push/motivo?t=${Date.now()}`, { cache: 'no-store' })).json();
+    return m?.tipo === 'semana' && Date.now() - m.em < 3 * 3600e3 ? 'semana' : 'painel';
+  } catch {
+    return 'painel';
+  }
+}
+
 self.addEventListener('push', e => {
   e.waitUntil((async () => {
+    if ((await motivoDoPush()) === 'semana') {
+      return self.registration.showNotification('Resumo da semana', {
+        body: 'Quanto saiu nos últimos 7 dias, o ritmo do mês e o que vence na semana que vem. Toque para ver.',
+        icon: 'icons/icon-192.png', badge: 'icons/badge-96.png', tag: 'resumo-semana', data: { semana: true },
+      });
+    }
     const d = await descreverPainel();
     const novos = d?.novos || [];
     await self.registration.showNotification(novos.length === 1 ? `Bruno lançou: ${novos[0]}` : novos.length ? `Bruno lançou ${novos.length} coisas` : 'Lastro atualizado', {
@@ -188,8 +205,13 @@ self.addEventListener('push', e => {
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   const atualizar = !!e.notification.data?.atualizar;
+  const semana = !!e.notification.data?.semana;
   e.waitUntil((async () => {
     const janelas = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (semana) {
+      if (janelas.length) { janelas[0].postMessage('semana'); return janelas[0].focus(); }
+      return self.clients.openWindow('./?acao=semana');
+    }
     if (janelas.length) {
       if (atualizar) janelas[0].postMessage('atualizar'); // app aberto: aplica o painel novo na hora
       return janelas[0].focus();
