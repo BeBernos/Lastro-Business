@@ -542,3 +542,8 @@ html.demo body::before{content:"Demonstração · dados fictícios";position:fix
 [data-ui="v8"] .est-ordens li.pausado span{color:var(--muted)}
 [data-ui="v8"] .est-ordens li.pausado .t{text-decoration:line-through}
 [data-ui="v8"] .est-ordens .link{flex:none;width:auto;padding:4px 0;min-height:32px}
+
+/* v9.13: cartão "Hoje" — a linha leva para a tela do assunto; o botão ao lado faz a ação na hora */
+.hoje .destaques li{display:flex;align-items:center;gap:10px}
+.hoje .destaques li > button:first-child{flex:1;min-width:0}
+.hoje .destaques .btn.mini{flex:none;width:auto;margin:0;padding:7px 14px;min-height:36px;font-size:13.5px;border-radius:999px}

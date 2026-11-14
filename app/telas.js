@@ -1731,7 +1731,7 @@ function fecharMes(dados, ctx, cart) {
 const SECUNDARIOS = ['aporte', 'orcamento', 'metas', 'renda', 'atencao'];
 export const CARTOES_INICIO = [
   ['gastar', 'Dá para gastar'], ['proximas', 'Próximas contas'], ['acao', 'Próxima ação'],
-  ['contaCartao', 'Conta e cartão'], ['destaques', 'Para olhar (resumo de aporte, orçamento, renda, metas e atenção)'], ['patrimonio', 'Patrimônio líquido'],
+  ['contaCartao', 'Conta e cartão'], ['destaques', 'Hoje (o que fazer: aporte, passos do plano, gatilhos, orçamento e alertas)'], ['patrimonio', 'Patrimônio líquido'],
   ['aporte', 'Aporte do mês (cartão completo)'], ['orcamento', 'Orçamento (cartão completo)'],
   ['metas', 'Metas (cartão completo)'], ['renda', 'Renda passiva × custo de vida (cartão completo)'], ['atencao', 'Atenção (cartão completo)'],
 ];
@@ -1752,7 +1752,18 @@ export function ordemInicio(salva) {
 function destaquesInicio(m, dados, cart, ctx, opcoes) {
   const linhas = [];
   const tenta = fn => { try { const l = fn(); if (l) linhas.push(l); } catch { /* sem esse dado */ } };
-  tenta(() => { const a = aportePlanejado(m, dados, cart, ctx); return a && { tom: a.dia ? 'bom' : 'atencao', texto: `Aporte do mês ${brl0(a.valor)} · ${a.dia ? (a.dia <= ctx.diaHoje ? 'hoje já dá' : `a partir do dia ${a.dia}`) : a.cabe > 0 ? `cabem ${brl0(a.cabe)}` : 'não cabe neste mês'}`, ir: 'carteira/visao' }; });
+  tenta(() => { const a = aportePlanejado(m, dados, cart, ctx); return a && { tom: a.dia ? 'bom' : 'atencao', texto: `Aporte do mês ${brl0(a.valor)} · ${a.dia ? (a.dia <= ctx.diaHoje ? 'hoje já dá' : `a partir do dia ${a.dia}`) : a.cabe > 0 ? `cabem ${brl0(a.cabe)}` : 'não cabe neste mês'}`, ir: 'carteira/visao', ...(a.dia && a.dia <= ctx.diaHoje ? { acao: { rotulo: 'Investir', attr: 'data-aporte-plano' }, peso: 1 } : {}) }; });
+  // v9.13 (parte 2, o "Hoje"): passo do plano de ação com data até daqui a 7 dias (ou já passada) e ainda pendente
+  tenta(() => {
+    const hoje = opcoes.hoje;
+    const lim = hoje && new Date(Date.parse(`${hoje}T12:00:00Z`) + 7 * 864e5).toISOString().slice(0, 10);
+    const ps = (cart?.plano_acao?.passos || []).filter(x => !/conclu|decidid|cancel/i.test(x.status || '') && /^\d{4}-\d{2}-\d{2}/.test(x.quando || '') && x.quando.slice(0, 10) <= lim);
+    if (!ps.length) return null;
+    const p = ps.sort((x, y) => x.quando.localeCompare(y.quando))[0];
+    const q = p.quando.slice(0, 10), atrasado = q < hoje;
+    const dia = q === hoje ? 'hoje' : `${atrasado ? 'era ' : ''}${q.slice(8, 10)}/${q.slice(5, 7)}`;
+    return { tom: atrasado ? 'atencao' : 'info', texto: `Plano: ${p.titulo} · ${dia}${ps.length > 1 ? ` (+${ps.length - 1})` : ''}`, ir: 'carteira/visao', ...(opcoes.github ? { acao: { rotulo: 'Feito', attr: `data-passo="${esc(p.n)}"` } } : {}) };
+  });
   tenta(() => { const o = orcamentoDoMes(dados, ctx).filter(x => x.pct >= 0.8); if (!o.length) return null; const passou = o.filter(x => x.pct >= 1).length; return { tom: passou ? 'ruim' : 'atencao', texto: passou ? `Orçamento: ${passou} ${passou === 1 ? 'categoria passou' : 'categorias passaram'} do limite` : `Orçamento: ${o.length} perto do limite`, ir: 'cartao/gastos' }; });
   tenta(() => { const r = cart && rendaPassiva(dados, cart, (m.c?.fixas || 0) + (m.c?.variaveis || 0)); return r && { tom: 'info', texto: `Renda passiva paga ${pctBr(r.atual.pct)} das despesas`, ir: 'carteira/renda' }; });
   tenta(() => { const l = cart ? progressoMetas(cart, opcoes.hoje) : []; return l.length ? { tom: 'info', texto: `Metas: ${l.map(x => `${x.nome} ${Math.round(x.pct * 100)}%`).slice(0, 2).join(' · ')}`, ir: 'carteira/visao' } : null; });
@@ -1762,9 +1773,12 @@ function destaquesInicio(m, dados, cart, ctx, opcoes) {
   // v9.13: gatilho da estratégia que disparou (dólar, CDI, salário) → hora de rever com o Claude
   tenta(() => { const g = cart && gatilhos(cart.estrategia, opcoes.gatilhos || {}).find(x => x.disparou); return g ? { tom: 'atencao', texto: `Gatilho da estratégia: ${g.texto}`, ...(opcoes.github ? { attr: 'data-levar-claude' } : { ir: 'carteira/aloc' }) } : null; });
   if (!linhas.length) return '';
-  return `<section class="cartao">
-    <div class="cartao-topo"><h2>Para olhar</h2></div>
-    <ul class="destaques">${linhas.map(l => `<li><button type="button" ${l.attr || `data-ir-aba="${l.ir}"`}>${icTom(l.tom)}<span>${esc(l.texto)}</span>${svg('<path d="m9 6 6 6-6 6"/>', 'seta')}</button></li>`).join('')}</ul>
+  // o que pede ação primeiro: problema, atenção, o que dá para fazer agora (botão), o resto
+  const peso = l => (l.tom === 'ruim' ? 0 : l.tom === 'atencao' ? 1 : l.acao ? 2 : 3);
+  linhas.sort((a, b) => peso(a) - peso(b));
+  return `<section class="cartao hoje">
+    <div class="cartao-topo"><h2>Hoje</h2></div>
+    <ul class="destaques">${linhas.map(l => `<li><button type="button" ${l.attr || `data-ir-aba="${l.ir}"`}>${icTom(l.tom)}<span>${esc(l.texto)}</span>${l.acao && opcoes.github ? '' : svg('<path d="m9 6 6 6-6 6"/>', 'seta')}</button>${l.acao && opcoes.github ? `<button type="button" class="btn mini" ${l.acao.attr}>${esc(l.acao.rotulo)}</button>` : ''}</li>`).join('')}</ul>
   </section>`;
 }
 
