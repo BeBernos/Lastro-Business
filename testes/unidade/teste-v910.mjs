@@ -80,6 +80,12 @@ ok('repositório renomeado: continua ligado e guarda o nome novo', est.ligado &&
   const r = await rpc({ jsonrpc: '2.0', id: 77, method: 'tools/call', params: { name: 'gravar', arguments: { arquivo: 'carteira', so_validar: true, campos: { analise_mercado: { data_geral: '2026-11-13', ativos: [{ n: 'Tesouro X', urgencia: 'alta', d7: null, dm: null, acao: 'a' }] } } } } });
   ok('análise de mercado com ativo urgente sem variação é recusada', r.j.result.isError && /d7/.test(r.j.result.content[0].text), r.j.result.content[0].text);
 }
+{ // v9.15: trocar o endereço (link vazado)
+  const lig3 = await (await rotaConector('ligar', post('https://x/mcp/ligar', { ...base, token: TOKEN_BOM, chave: b64.de(bruta), novoLink: true }), {}, armazem)).json();
+  const seg3 = lig3.url.split('/').pop();
+  const lista3 = { jsonrpc: '2.0', id: 3, method: 'tools/list' };
+  ok('trocar o endereço: link novo funciona e o antigo para', lig3.url !== lig.url && (await rpc(lista3)).status === 404 && (await rpc(lista3, seg3)).status === 200);
+}
 erro = ''; try { await rotaConector('desligar', post('https://x/mcp/desligar', { repo: 'fam/lastro', token: TOKEN_LEITURA }), {}, armazem); } catch (e) { erro = e.message; }
 ok('desligar exige o token de quem publica', guardado && /não pode publicar/.test(erro));
 await rotaConector('desligar', post('https://x/mcp/desligar', { repo: 'fam/lastro', token: TOKEN_BOM }), {}, armazem);

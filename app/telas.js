@@ -217,9 +217,21 @@ function graficoCurva({ tl }, ctx) {
   return linhaSaldo(pontos, { hojeX: ctx.diaHoje, rotulosX: rotulos });
 }
 
+// v9.15: o mínimo que importa é o de hoje em diante (o de dias passados contradizia o "Saldo mínimo" do painel)
+function minimoDaqui(tl, ctx) {
+  const futuro = tl.porDia.filter(p => p.dia >= ctx.diaHoje);
+  return (futuro.length ? futuro : tl.porDia).reduce((a, b) => (b.saldo < a.saldo ? b : a));
+}
+
+// v9.15: o gráfico conta o previsto; o destaque, só o confirmado. O que ficou para trás sem confirmar explica a diferença.
+export function pendentesAteHoje(tl, diaHoje) {
+  return tl.porDia.filter(p => p.dia <= diaHoje)
+    .flatMap(p => p.eventos.filter(e => e.status !== 'confirmado' && Math.abs(e.valor) >= 0.5).map(e => ({ dia: p.dia, desc: e.desc, valor: e.valor })));
+}
+
 function curvaMes(m, ctx) {
   const { tl } = m;
-  const minimo = tl.porDia.reduce((a, b) => (b.saldo < a.saldo ? b : a));
+  const minimo = minimoDaqui(tl, ctx);
   const final = tl.porDia[tl.porDia.length - 1];
   return `<section class="cartao">
     <div class="cartao-topo"><h2>Saldo da conta, dia a dia</h2></div>
@@ -235,9 +247,14 @@ function curvaMes(m, ctx) {
 // Destaque de Mês › Visão geral: saldo de hoje + curva do mês
 function heroSaldo(m, ctx, opcoes = {}) {
   const { c, tl } = m;
-  const minimo = tl.porDia.reduce((a, b) => (b.saldo < a.saldo ? b : a));
+  const minimo = minimoDaqui(tl, ctx);
   const final = tl.porDia[tl.porDia.length - 1];
   const futuro = tl.porDia.filter(p => p.dia >= ctx.diaHoje);
+  const pend = pendentesAteHoje(tl, ctx.diaHoje);
+  const somaPend = pend.reduce((s, e) => s + e.valor, 0);
+  const aviso = Math.abs(somaPend) >= 1
+    ? `<p class="hero-sub hero-pendente">${icTom('atencao')}<span>O gráfico já conta <b>${somaPend > 0 ? '+' : ''}${brl(somaPend)}</b> que ainda não foi confirmado (${pend.slice(0, 2).map(e => `${esc(nomeCurto(e.desc))}, dia ${e.dia}`).join('; ')}${pend.length > 2 ? '…' : ''}). <button type="button" class="link" data-ir-aba="mes/agenda">Confirmar na agenda</button></span></p>`
+    : '';
   const negativos = futuro.filter(p => p.saldo < 0);
   let sub = 'A conta fica positiva até o fim do mês.';
   if (negativos.length) {
@@ -249,9 +266,10 @@ function heroSaldo(m, ctx, opcoes = {}) {
     <p class="rotulo">Saldo da conta hoje</p>
     <p class="hero-valor ${tomValor(c.caixa)}">${brl(c.caixa)}</p>
     <p class="hero-sub">${sub}</p>
+    ${aviso}
     <div class="hero-grafico">${graficoCurva(m, ctx)}</div>
     <div class="chips">
-      ${minimo.saldo < 0 ? chip('ruim', `Pior momento ${brl0(minimo.saldo)} · dia ${minimo.dia}`) : chip('bom', `Mínimo ${brl0(minimo.saldo)} · dia ${minimo.dia}`)}
+      ${minimo.saldo < 0 ? chip('ruim', `Pior momento ${brl0(minimo.saldo)} · dia ${minimo.dia}`) : chip('bom', `Mínimo daqui em diante ${brl0(minimo.saldo)} · dia ${minimo.dia}`)}
       ${chip(final.saldo < 0 ? 'ruim' : 'bom', `Fecha o mês com ${brl0(final.saldo)}`)}
     </div>
     ${opcoes.github ? '<button type="button" class="botao-sec hero-acao" data-conferir-banco>Conferir com o saldo do banco</button>' : ''}
@@ -1765,7 +1783,13 @@ function destaquesInicio(m, dados, cart, ctx, opcoes) {
     return { tom: atrasado ? 'atencao' : 'info', texto: `Plano: ${p.titulo} · ${dia}${ps.length > 1 ? ` (+${ps.length - 1})` : ''}`, ir: 'carteira/visao', ...(opcoes.github ? { acao: { rotulo: 'Feito', attr: `data-passo="${esc(p.n)}"` } } : {}) };
   });
   tenta(() => { const o = orcamentoDoMes(dados, ctx).filter(x => x.pct >= 0.8); if (!o.length) return null; const passou = o.filter(x => x.pct >= 1).length; return { tom: passou ? 'ruim' : 'atencao', texto: passou ? `Orçamento: ${passou} ${passou === 1 ? 'categoria passou' : 'categorias passaram'} do limite` : `Orçamento: ${o.length} perto do limite`, ir: 'cartao/gastos' }; });
-  tenta(() => { const r = cart && rendaPassiva(dados, cart, (m.c?.fixas || 0) + (m.c?.variaveis || 0)); return r && { tom: 'info', texto: `Renda passiva paga ${pctBr(r.atual.pct)} das despesas`, ir: 'carteira/renda' }; });
+  tenta(() => { const r = cart && rendaPassiva(dados, cart, (m.c?.fixas || 0) + (m.c?.variaveis || 0)); if (!r) return null;
+    // v9.15: no começo do mês os dividendos ainda não caíram ("paga 0%"): mostra a média de 3 meses; sem renda nenhuma, some
+    if (r.atual.pct >= 0.005) return { tom: 'info', texto: `Renda passiva paga ${pctBr(r.atual.pct)} das despesas`, ir: 'carteira/renda' };
+    const fechados = r.serie.slice(0, -1).slice(-3); // sem o mês aberto, que ainda está em 0
+    const custo = fechados.reduce((s, x) => s + x.custo, 0);
+    const media = custo ? fechados.reduce((s, x) => s + x.dividendos, 0) / custo : 0;
+    return media >= 0.005 ? { tom: 'info', texto: `Renda passiva paga ~${pctBr(media)} das despesas (média de 3 meses)`, ir: 'carteira/renda' } : null; });
   tenta(() => { const l = cart ? progressoMetas(cart, opcoes.hoje) : []; return l.length ? { tom: 'info', texto: `Metas: ${l.map(x => `${x.nome} ${Math.round(x.pct * 100)}%`).slice(0, 2).join(' · ')}`, ir: 'carteira/visao' } : null; });
   tenta(() => { const al = (m.alertas || []).filter(a => a.tom !== 'bom'); return al.length ? { tom: al.some(a => a.tom === 'ruim') ? 'ruim' : 'atencao', texto: al.length === 1 ? al[0].titulo : `${al.length} alertas: ${al[0].titulo}`, ir: 'analises/saude' } : null; });
   // v9.9.12: hora de rodar o Plano com o Claude antes do fechamento (o cenário mudou) — só no celular que publica
