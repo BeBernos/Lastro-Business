@@ -28,12 +28,15 @@ import { NOME_CAMPO } from './parcial.js';
 import { alternarPausa, conselhoAtivo, derivarTarget, gatilhos, mudancasEstrategia, ordemAportes, textoItem } from './ficha.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao, vibrar } from './v8.js';
 
-const VERSAO_APP = '9.16.1';
+const VERSAO_APP = '9.17.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 const REMOTO = 'data/painel.enc';
 // Novidades de cada versão: aparecem uma vez em cada celular quando a versão nova entra (mostrarNovidades) e ficam
 // em menu → Novidades desta versão. Escrever para o Bruno e o Rafael, em linguagem simples.
 const NOVIDADES = {
+  '9.17.0': [
+    ['Fechamento pelo Claude direto', 'Com o conector ligado, as etapas Carteira e Caixa do fechamento são só copiar o pedido: o Claude lê o Lastro, mostra o resumo e deixa o mês novo pronto. Nada vai para a família até você tocar em Aplicar no cartão "Fechamento pronto" do Início (com Descartar e, depois, Desfazer).', 'nova'],
+  ],
   '9.16.1': [ // a 9.16.0 não chegou a entrar no ar (montagem falhou: limite de crons)
     ['Resumo da semana', 'Todo domingo às 19h chega o aviso do resumo da semana: quanto saiu nos últimos 7 dias (e se foi mais ou menos que na semana anterior), para onde foi, os maiores gastos, se o mês está no ritmo e o que vence nos próximos 7 dias. Aos domingos ele também fica no topo do Início; nos outros dias, menu ⋮ → Resumo da semana.', 'nova'],
   ],
@@ -878,6 +881,7 @@ function montarResumo(frame) {
   aplicarVista(history.state?.vista || base());
   mostrarNovidades();
   if (estado.cart.dados) setTimeout(conciliarAgora, 1200); // v9.0
+  setTimeout(buscarRascunhos, 1500); // v9.17: fechamento que o Claude deixou pronto pelo conector
   if (estado.cart.dados) setTimeout(() => atualizarCriptoBinance().then(depoisDoAviso).then(() => atualizarItau()), 2500); // v9.3 / v9.9
   // v8.11: lançamento que ficou só neste celular (sem rede) volta para a fila ao abrir
   if (pendente() && !precisaDoBruno(estado.publicacao?.erro) && !envio.timer) agendarEnvio(null, 5000);
@@ -925,7 +929,7 @@ function renderizarApp(aba, { remendo = false } = {}) {
   const outroMes = comMes && estado.mesVer;
   const html = `<div class="app-conteudo">${htmlTopo(estado.aba, estado.dados, { lancar: estado.github })}${outroMes ? '' : htmlSubabas(estado.aba, sub)}${comMes ? seletorMes(estado.dados, estado.motor, outroMes) : ''}
     <main class="app-aba">${outroMes ? telaDoMes(estado.aba, outroMes, estado.motor, estado.dados, { github: estado.github, hoje: hojeBrasil() }) : htmlAba(estado.aba, estado.motor, estado.dados, {
-      github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, ordemInicio: lerOrdemInicio(), assinaturas: estado.assinaturas, hoje: hojeBrasil(),
+      github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, ordemInicio: lerOrdemInicio(), assinaturas: estado.assinaturas, hoje: hojeBrasil(), rascunhos: estado.rascunhos, fechamentoAplicado: estado.fechamentoAplicado,
       docCarteira: estado.cart.frame?.contentDocument, carteira: estado.cart.dados, estimativa: estimativaAtual(), cdiHist: estado.cdiHist?.cdi, gatilhos: valoresGatilhos(),
     })}</main></div>
     ${htmlNav(estado.aba, { lancar: !!estado.github })}`;
@@ -1092,6 +1096,8 @@ function ligarApp(r) {
     if (el.dataset.novaConta) return abrirNovaConta(el.dataset.novaConta, el.dataset.novaData ? { data: el.dataset.novaData } : {});
     if (el.dataset.investir) return el.dataset.investir === 'valores' ? abrirValores() : abrirInvestir(el.dataset.investir);
     if (el.hasAttribute('data-levar-claude')) return abrirLevarClaude();
+    if (el.hasAttribute('data-fech-pronto')) return abrirFechamentoPronto();
+    if (el.hasAttribute('data-fech-desfazer')) return desfazerFechamento();
     if (el.hasAttribute('data-planilha-fatura')) return exportarPlanilhaFatura();
     if (el.hasAttribute('data-passo')) return marcarPasso(el.dataset.passo, el.dataset.como);
     if (el.hasAttribute('data-igualar-patrimonio')) return igualarPatrimonio();
@@ -3497,6 +3503,97 @@ async function abrirLote(texto) {
 
 // ---------- v8.7: extrato do mês com busca ----------
 let filtroExtrato = { texto: '', tipo: 'tudo' };
+// ---------- v9.17: fechamento pelo conector ----------
+// O Claude grava o fechamento como rascunho (worker/mcp.js, ferramenta "fechamento"); aqui o Bruno vê e aplica. Aplicar =
+// o mesmo caminho da importação de arquivo (conferências, etapa feita, publicar). IDB antesDoFechamento guarda os
+// envelopes de antes para o Desfazer (2 dias no cartão do Início).
+async function buscarRascunhos({ forcar = false } = {}) {
+  if (DEMO || !estado.github || !conectorLigado()) return;
+  if (!forcar && Date.now() - (estado.rascunhosEm || 0) < 5 * 60e3) return;
+  estado.rascunhosEm = Date.now();
+  const marca = () => JSON.stringify([estado.rascunhos && Object.entries(estado.rascunhos).map(([k, x]) => k + x.em), estado.fechamentoAplicado?.em]);
+  const antes = marca();
+  try {
+    const j = await conectorPedido('rascunho', { acao: 'ler' });
+    estado.rascunhos = j.rascunhos && Object.keys(j.rascunhos).length ? j.rascunhos : null;
+  } catch { return; } // sem rede: fica o que já tinha
+  const a = await banco.ler('antesDoFechamento').catch(() => null);
+  estado.fechamentoAplicado = a ? { em: a.em } : null;
+  if (marca() !== antes && estado.resumoOk && estado.aba === 'inicio') renderizarApp(estado.aba, { remendo: true });
+}
+
+async function abrirFechamentoPronto() {
+  await buscarRascunhos({ forcar: true });
+  const r = estado.rascunhos || {};
+  const partes = ['carteira', 'caixa'].filter(k => r[k]);
+  if (!partes.length) return aviso('Não há fechamento esperando: o Claude ainda não gravou, ou já foi aplicado.');
+  const env = { caixa: await banco.ler('envelope').catch(() => null), carteira: estado.cart.envelope };
+  const nome = k => (k === 'caixa' ? 'Caixa' : 'Carteira');
+  const bloco = k => {
+    const x = r[k], c = x.conferencia || {};
+    const det = k === 'caixa'
+      ? [['Mês', `${mesCurto(c.periodo?.[0])} → ${mesCurto(c.periodo?.[1])}`], ['Meses fechados', (c.mesesFechados || []).join(' → ')], ...(c.caixaInicial != null ? [['Caixa inicial', brlTexto(c.caixaInicial)]] : [])]
+      : [['Mês', mesCurto(c.mes?.[1])], ['Patrimônio', `${brlTexto(c.patrimonio?.[0] || 0)} → ${brlTexto(c.patrimonio?.[1] || 0)}`]];
+    const depois = x.base && env[k]?.publicadoEm && env[k].publicadoEm !== x.base;
+    const quando = new Date(x.em);
+    return `<p class="grupo">${nome(k)}</p>
+      <ul class="linhas">${det.map(([a, b]) => `<li><span>${a}</span><b>${esc(String(b))}</b></li>`).join('')}</ul>
+      ${x.resumo ? `<p class="meta">${esc(x.resumo)}</p>` : ''}
+      <p class="nota">Gravado pelo Claude em ${esc(dataCurta(x.em.slice(0, 10)))} às ${quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.</p>
+      ${depois ? `<p class="erro">${icTom('atencao')} Você lançou ou mudou algo depois que o Claude leu: aplicar perde isso. Peça para ele gravar de novo, ou aplique mesmo assim.</p>` : ''}`;
+  };
+  const folha = abrirFolha(`<h2 id="folhaTitulo">Fechamento pronto</h2>
+    <p class="meta">O Claude deixou ${partes.length === 2 ? 'a carteira e o caixa' : partes[0] === 'caixa' ? 'o caixa' : 'a carteira'} prontos. Nada foi para a família ainda: ao aplicar, o app confere como numa importação e envia${partes.length === 2 ? ' (primeiro a carteira, depois o caixa)' : ''}.</p>
+    ${partes.map(bloco).join('')}
+    <button type="button" class="btn prim" id="fpAplicar">Aplicar</button>
+    <button type="button" class="btn perigo" id="fpDescartar">Descartar</button>`);
+  folha.querySelector('#fpDescartar').onclick = async () => {
+    if (!(await confirmar({ titulo: 'Descartar o fechamento?', texto: 'O que o Claude gravou é apagado e nada muda no app. Para fechar o mês, peça a ele de novo.', sim: 'Descartar', perigo: true, manter: true }))) return abrirFechamentoPronto();
+    for (const k of partes) await conectorPedido('rascunho', { acao: 'apagar', arquivo: k }).catch(() => {});
+    fecharFolha();
+    await buscarRascunhos({ forcar: true });
+    aviso('Fechamento descartado.', { tom: 'ok' });
+  };
+  folha.querySelector('#fpAplicar').onclick = async e => {
+    const b = e.currentTarget;
+    b.disabled = true; b.textContent = 'Aplicando…';
+    await banco.gravar('antesDoFechamento', { em: new Date().toISOString(), envelope: env.caixa, carteiraEnvelope: env.carteira }).catch(() => {});
+    fecharFolha();
+    const feitos = [];
+    for (const k of partes) {
+      try {
+        const { dados } = await decifrar(r[k].envelope, estado.cofre.chave);
+        const arq = `fechamento-${k}-${Date.now()}.json`, texto = JSON.stringify(dados);
+        if (k === 'carteira') await importarCarteira(texto, arq);
+        else await importar(new File([texto], arq, { type: 'application/json' }));
+        // desistiu numa confirmação da importação (ex.: "carteira mais antiga"): para aqui, o rascunho fica
+        if ((k === 'carteira' ? estado.cart.conteudo : estado.conteudo)?.arquivo !== arq) break;
+        await conectorPedido('rascunho', { acao: 'apagar', arquivo: k }).catch(() => {});
+        feitos.push(k);
+      } catch (err) {
+        aviso(`Não deu para aplicar ${k === 'caixa' ? 'o caixa' : 'a carteira'}: ${err.message}`, { erro: true, fixo: true });
+        break;
+      }
+    }
+    if (!feitos.length) await banco.apagar('antesDoFechamento').catch(() => {});
+    await buscarRascunhos({ forcar: true });
+    if (feitos.length) aviso({ titulo: 'Fechamento aplicado', detalhe: `${feitos.map(k => (k === 'caixa' ? 'Caixa' : 'Carteira')).join(' e ')} — enviado para a família.` }, { tom: 'ok', acao: { rotulo: 'Desfazer', fn: desfazerFechamento }, duracao: 12000 });
+  };
+}
+
+async function desfazerFechamento() {
+  const a = await banco.ler('antesDoFechamento').catch(() => null);
+  if (!a) return aviso('Não há fechamento para desfazer.');
+  if (!(await confirmar({ titulo: 'Desfazer o fechamento?', texto: 'O caixa e a carteira voltam a como estavam antes de aplicar, e isso vai para a família. O que foi lançado depois de aplicar também volta. Para fechar de novo, peça ao Claude.', sim: 'Desfazer', perigo: true }))) return;
+  try {
+    if (a.carteiraEnvelope) await guardarCarteira(await decifrar(a.carteiraEnvelope, estado.cofre.chave));
+    if (a.envelope) await guardarLocal(await decifrar(a.envelope, estado.cofre.chave));
+    await banco.apagar('antesDoFechamento');
+    estado.fechamentoAplicado = null;
+    await publicar({ mensagem: 'Lastro: fechamento desfeito' });
+  } catch (err) { aviso(`Não deu para desfazer: ${err.message}`, { erro: true, fixo: true }); }
+}
+
 // v9.16: resumo da semana fora do domingo (menu) e pelo aviso de domingo às 19h (?acao=semana)
 function abrirResumoSemana() {
   if (!estado.motor || !estado.dados) return aviso('O painel ainda está carregando. Tente de novo em instantes.');
@@ -4975,7 +5072,7 @@ function abrirSimuladorTroca(r0 = {}) {
 
 // v9.7: as instruções do Projeto "Vida financeira" moram no app (projeto.txt, fonte única). Mudou o texto → subir
 // VERSAO_PROJETO; o menu avisa até o Bruno copiar de novo (localStorage 'lastro-projeto' = versão copiada).
-const VERSAO_PROJETO = '9.13.0';
+const VERSAO_PROJETO = '9.17.0';
 // v9.12.4: com o conector, o Projeto guarda só este texto curto e lê as instruções completas pela ferramenta
 // "instrucoes" (worker/mcp.js) — mudar as instruções não exige mais recolar ('lastro-projeto' = 'auto').
 const PROJETO_CURTO = 'Sou o Bruno. Neste Projeto, antes de responder qualquer mensagem, chame a ferramenta "instrucoes" do conector Lastro e siga o texto que ela devolver: são as instruções completas e sempre atualizadas (modos CAIXA, CARTEIRA, PLANO e PESQUISA). Se o conector Lastro não estiver entre as ferramentas, não continue: me peça para ligá-lo (no app: menu → Claude direto; na conversa: ligue o conector Lastro).';
@@ -5570,6 +5667,7 @@ const HTML_FORA_DO_MES = base => `Desta vez devolva o painel HTML completo (pain
 // O fechamento CAIXA/CARTEIRA continua com arquivo (gera o painel inteiro).
 const conectorLigado = () => { try { return localStorage.getItem('lastro-conector') === '1'; } catch { return false; } };
 const CONECTOR_LER = 'Não anexei arquivo: use o conector Lastro (ler_resumo para o quadro geral, ler_dados para os campos inteiros) — é a versão mais nova, com tudo o que lancei no app.';
+const CONECTOR_FECHAR = arq => `Não gere arquivo: grave o mês novo de "${arq}" pelo conector Lastro com a ferramenta fechamento (mudancas e acrescentar; o JSON do caixa é grande, mande só o que muda, em partes se precisar). Primeiro com so_validar=true, me mostre o resumo e só grave depois do meu "pode gravar" — fica como rascunho até eu tocar em Aplicar no app. As análises vão no campo "analises".`;
 const CONECTOR_GRAVAR = arq => `Não gere painel nem arquivo: grave pelo conector Lastro (gravar, arquivo "${arq}"; formato_escrita diz os campos). Primeiro com so_validar=true, me mostre o que vai mudar e só grave depois do meu "pode gravar". As análises vão no campo "analises".`;
 function pedidoPeloConector(texto, arq) {
   return texto
@@ -5577,7 +5675,8 @@ function pedidoPeloConector(texto, arq) {
     .replace(/Parta do \S+ que anexei/, 'Parta da carteira que o conector traz')
     .replace(RESPOSTA_PLANO, CONECTOR_GRAVAR(arq))
     .replace(SO_PARCIAL(arq, arq === 'caixa' ? 'cashflow_dados' : 'carteira_dados'), CONECTOR_GRAVAR(arq))
-    .replace(/^Devolva só um JSON PEQUENO: \{"lastro_parcial".*$/m, CONECTOR_GRAVAR(arq));
+    .replace(/^Devolva só um JSON PEQUENO: \{"lastro_parcial".*$/m, CONECTOR_GRAVAR(arq))
+    .replace(SO_JSON(arq === 'caixa' ? 'cashflow_dados' : 'carteira_dados'), CONECTOR_FECHAR(arq)); // v9.17: fechamento pelo conector
 }
 function textoCaixa(d, nome, hoje, fecharModo) {
   const fechar = fecharModo ?? (hoje.slice(0, 7) > d.periodo || hoje === ultimoDiaDe(d.periodo));
@@ -5734,7 +5833,9 @@ async function abrirLevarClaude(qual, opcoes = {}) {
   const nomes = [`cashflow_dados_${hoje}.json`, `carteira_dados_${hoje}.json`];
   const nome = qual === 'carteira' ? nomes[1] : qual === 'plano' ? `${nomes[0]} e ${nomes[1]}` : nomes[0];
   const dados = qual === 'carteira' ? cart : estado.dados;
-  const conector = conectorLigado() && (!fechar || qual === 'plano') && !opcoes.arquivo;
+  // v9.17: o fechamento também (vira rascunho; o Bruno aplica no Início), menos o caixa que ainda precisa do HTML corrigido
+  const conector = conectorLigado() && !opcoes.arquivo && !(fechar && qual === 'caixa' && painelSemForaDoMes(estado.conteudo?.html));
+  if (conector && fechar) buscarRascunhos({ forcar: true });
   const texto0 = qual === 'caixa' ? textoCaixa(dados, nome, hoje, fechar) : qual === 'carteira' ? textoCarteira(dados, nome, hoje, fechar) : textoPlano(estado.dados, cart, nomes, hoje);
   const texto = conector ? pedidoPeloConector(texto0, qual === 'caixa' ? 'caixa' : 'carteira') : texto0;
   const enviar = baixar => (qual !== 'plano' ? enviarArquivo(nome, dados, baixar) : enviarArquivos([[nomes[0], estado.dados], [nomes[1], cart]], baixar));
@@ -5768,7 +5869,7 @@ async function abrirLevarClaude(qual, opcoes = {}) {
     ${!fechar && !mesF && estado.fechamento?.mes && ETAPAS.every(e => estado.fechamento.feito?.[e]) && mesSeguinte(estado.fechamento.mes) === estado.dados.periodo ? `<p class="nota">${icTom('bom')} Fechamento de ${esc(MESES_LONGOS[Number(estado.fechamento.mes.slice(5)) - 1])} concluído.</p>` : ''}
     ${fechar ? `<p class="etapa-agora">Etapa ${nEtapa} de 3 · <b>${esc(titulo(qual))}</b><small>${esc(ORDEM_FECH[nEtapa - 1][2])}</small></p>` : ''}
     ${conector ? `<div class="passo-corpo">
-      <p class="passo-txt">O conector Claude direto está ligado: <b>nada de arquivo</b>. Copie o pedido, cole numa conversa nova do Projeto "Vida financeira" e envie. O Claude lê o Lastro, mostra o que vai mudar e só grava depois do seu "pode gravar" — o app recebe sozinho.</p>
+      <p class="passo-txt">O conector Claude direto está ligado: <b>nada de arquivo</b>. Copie o pedido, cole numa conversa nova do Projeto "Vida financeira" e envie. ${fechar && qual !== 'plano' ? 'O Claude lê o Lastro, mostra o resumo e deixa o mês novo pronto como rascunho: ele aparece no Início em <b>Fechamento pronto</b> e só vai para a família quando você tocar em Aplicar.' : 'O Claude lê o Lastro, mostra o que vai mudar e só grava depois do seu "pode gravar" — o app recebe sozinho.'}</p>
       <details class="ver-texto"><summary>Ver o pedido</summary><textarea class="pn-exp modelo" id="lvTexto" spellcheck="false">${esc(texto)}</textarea></details>
       <label for="lvExtra">Quer acrescentar algo? <span class="opcional">(opcional)</span></label>
       <textarea class="campo" id="lvExtra" rows="2" placeholder="Ex.: quero entender por que o mercado subiu tanto este mês"></textarea>
@@ -5808,7 +5909,8 @@ async function abrirLevarClaude(qual, opcoes = {}) {
     try {
       await navigator.clipboard.writeText(tudo);
       aviso({ titulo: 'Pedido copiado', detalhe: conector ? 'Cole numa conversa nova do Projeto e envie.' : 'Volte para a conversa no Claude, cole e envie.' }, { tom: 'ok' });
-      if (conector) { if (fechar) marcarEtapa(qual); return; }
+      // no fechamento pelo conector, carteira e caixa ficam feitos ao aplicar o rascunho (importação); o plano, ao copiar
+      if (conector) { if (fechar) marcarEtapa(qual, qual === 'plano' ? 'feito' : 'iniciado'); return; }
       avancar(2);
     } catch {
       folha.querySelector('.ver-texto').open = true;

@@ -25,8 +25,13 @@ de um dia comum em que nenhum número mudou. No **fechamento** (CAIXA e CARTEIRA
 **Conector Lastro (desde a v9.10; regra da v9.12.3).** Se a mensagem disser "Não anexei arquivo: use o conector
 Lastro", não peça arquivo: leia com `ler_resumo` e `ler_dados` (é a versão mais nova, com tudo o que lancei no app) e,
 no lugar da resposta pequena, grave os mesmos campos com `gravar` — primeiro `so_validar=true`, me mostre o que muda e
-só grave depois do meu "pode gravar". Vale para o MODO PLANO, o MODO PESQUISA e a análise do dia. No **fechamento**
-(CAIXA e CARTEIRA) continuam os arquivos (valores e o mês não se gravam pelo conector).
+só grave depois do meu "pode gravar". Vale para o MODO PLANO, o MODO PESQUISA e a análise do dia.
+**Fechamento pelo conector (v9.17).** No fechamento (CAIXA e CARTEIRA) com o conector, leia tudo com `ler_dados` e grave
+o mês novo com a ferramenta `fechamento` — vira um **rascunho** e só vai para a família quando eu tocar em Aplicar no app.
+O JSON do caixa é grande: mande só o que muda (`mudancas` com caminhos "a/b/c" e `acrescentar` para somar o mês fechado
+em `mesesFechados`), em quantas chamadas precisar; cada uma soma ao rascunho. Primeiro `so_validar=true`, me mostre o
+resumo e grave depois do meu "pode gravar". Na etapa CAIXA, a carteira que `ler_dados` traz já é a do rascunho do
+fechamento (avisado em `rascunho_do_fechamento`). Mudança no desenho do painel (HTML) continua com arquivo.
 Em `analise_mercado.ativos`, todo ativo com `urgencia` "alta" precisa de `d7` ou `dm` com número (0 se ainda não há
 histórico, como num ativo novo): sem isso o painel da carteira quebra.
 

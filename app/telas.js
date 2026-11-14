@@ -1766,6 +1766,29 @@ export function ordemInicio(salva) {
   return lista;
 }
 
+// v9.17: o Claude deixou o fechamento pronto pelo conector (rascunho); nada foi para a família até o Bruno aplicar.
+// Depois de aplicar, o mesmo lugar mostra "Fechamento aplicado · Desfazer" por 2 dias (`aplicado` = IDB antesDoFechamento).
+export function fechamentoPronto(rascunhos, aplicado = null) {
+  const r = rascunhos || {};
+  const partes = [['carteira', 'Carteira'], ['caixa', 'Caixa']].filter(([k]) => r[k]);
+  if (!partes.length) {
+    if (!aplicado?.em || Date.now() - Date.parse(aplicado.em) > 2 * 864e5) return '';
+    return `<section class="cartao fech-pronto"><div class="cartao-topo"><h2>Fechamento aplicado</h2>
+      <button type="button" class="link" data-fech-desfazer>Desfazer</button></div>
+      <p class="cartao-sub">Já foi para a família. Desfazer volta o caixa e a carteira a como estavam antes.</p></section>`;
+  }
+  const det = (k, c = {}) => (k === 'caixa'
+    ? `${c.periodo?.[0] ? mesCurto(c.periodo[0]) : '?'} → ${c.periodo?.[1] ? mesCurto(c.periodo[1]) : '?'} · meses fechados ${(c.mesesFechados || []).join(' → ')}`
+    : `${c.mes?.[1] ? mesCurto(c.mes[1]) : ''} · patrimônio ${brl0(c.patrimonio?.[0] || 0)} → ${brl0(c.patrimonio?.[1] || 0)}`);
+  return `<section class="cartao fech-pronto">
+    <div class="cartao-topo"><h2>Fechamento pronto</h2></div>
+    <p class="cartao-sub">O Claude deixou ${partes.length === 2 ? 'a carteira e o caixa' : partes[0][0] === 'caixa' ? 'o caixa' : 'a carteira'} prontos. Nada foi para a família ainda.</p>
+    <ul class="linhas">${partes.map(([k, nome]) => linha(`${nome} <small class="suave">${esc(det(k, r[k].conferencia))}</small>`, '')).join('')}</ul>
+    ${!r.caixa ? '<p class="nota">Falta o caixa: quando o Claude gravar, ele aparece aqui também.</p>' : ''}
+    <button type="button" class="btn prim" data-fech-pronto>Ver e aplicar</button>
+  </section>`;
+}
+
 // v9.16: resumo da semana — cartão no topo do Início aos domingos; nos outros dias, menu ⋮ → Resumo da semana
 export const ehDomingo = iso => !!iso && new Date(`${iso}T12:00:00Z`).getUTCDay() === 0;
 export function resumoSemanaHtml(m, dados, cart, ctx, opcoes = {}) {
@@ -1886,7 +1909,8 @@ function abaInicioHub(m, dados, ctx, opcoes) {
     destaques: () => destaquesInicio(m, dados, cart, ctx, opcoes),
   };
   const semana = ehDomingo(opcoes.hoje) && !ctx.mesPassou ? secao(() => resumoSemanaHtml(m, dados, cart, ctx, opcoes)) : '';
-  return [fechar, semana, ...ordemInicio(opcoes.ordemInicio).filter(c => c.on && cartoes[c.id]).map(c => secao(cartoes[c.id]))].join('');
+  const pronto = opcoes.github ? secao(() => fechamentoPronto(opcoes.rascunhos, opcoes.fechamentoAplicado)) : '';
+  return [pronto, fechar, semana, ...ordemInicio(opcoes.ordemInicio).filter(c => c.on && cartoes[c.id]).map(c => secao(cartoes[c.id]))].join('');
 }
 
 // opcoes: { doc (painel do caixa), docCarteira, carteira (JSON), estimativa (cotacoes.js), sub, abertos (Set), github, agora }

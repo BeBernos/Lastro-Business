@@ -34,7 +34,9 @@ globalThis.fetch = async (url, op = {}) => {
   return resp({}, 404);
 };
 let guardado = null;
-const armazem = { lerConector: async () => guardado, gravarConector: async c => { guardado = c; }, apagarConector: async () => { guardado = null; } };
+let rascunhos = {};
+const armazem = { lerConector: async () => guardado, gravarConector: async c => { guardado = c; }, apagarConector: async () => { guardado = null; },
+  gravarRascunho: async (a, x) => { rascunhos[a] = x; }, lerRascunhos: async () => ({ ...rascunhos }), apagarRascunho: async a => { delete rascunhos[a]; } };
 const post = (url, corpo) => new Request(url, { method: 'POST', body: JSON.stringify(corpo), headers: { 'Content-Type': 'application/json' } });
 const base = { repo: 'fam/lastro', branch: 'main', caminho: 'app/data/painel.enc' };
 
@@ -54,7 +56,7 @@ const ini = await rpc({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { p
 ok('initialize com instruções', ini.j.result.serverInfo.name === 'lastro' && ini.j.result.protocolVersion === '2025-03-26' && /so_validar/.test(ini.j.result.instructions));
 ok('notificação = 202', (await rpc({ jsonrpc: '2.0', method: 'notifications/initialized' })).status === 202);
 const lista = await rpc({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
-ok('5 ferramentas', lista.j.result.tools.map(t => t.name).join() === 'instrucoes,ler_resumo,ler_dados,formato_escrita,gravar');
+ok('6 ferramentas', lista.j.result.tools.map(t => t.name).join() === 'instrucoes,ler_resumo,ler_dados,formato_escrita,gravar,fechamento');
 const ins = (await rpc({ jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name: 'instrucoes', arguments: {} } })).j.result.content[0].text;
 ok('instrucoes junta a parte do caixa (só entre ▼ e ▲) e a do Lastro', ins === 'PARTE DO CAIXA\n\n---\n\nPARTE DO LASTRO', JSON.stringify(ins));
 const texto = r => JSON.parse(r.j.result.content[0].text);
@@ -73,6 +75,33 @@ const cfNovo = JSON.parse((await decifrar(JSON.parse(arquivos['app/data/painel.e
 ok('análise no caixa entra com o rastro "[app] Do Claude"', ga.gravado && cfNovo.analises.length === 1 && /\[app\] Do Claude: análises no caixa/.test(cfNovo.atualizacoes.at(-1).acao));
 const proibido = await rpc({ jsonrpc: '2.0', id: 8, method: 'tools/call', params: { name: 'gravar', arguments: { arquivo: 'caixa', campos: { receitas: [] }, so_validar: true } } });
 ok('campo proibido é recusado', proibido.j.result.isError && /nada que o Lastro saiba juntar/.test(proibido.j.result.content[0].text));
+{ // v9.17: fechamento pelo conector vira rascunho; nada é publicado até o Bruno aplicar no app
+  const antes = commits;
+  const fech = args => rpc({ jsonrpc: '2.0', id: 40, method: 'tools/call', params: { name: 'fechamento', arguments: args } });
+  const cxNovo = { ...cfNovo, periodo: '2026-12', mesesFechados: [{ periodo: '2026-11' }], caixaInicial: 900 };
+  const v = texto(await fech({ arquivo: 'caixa', dados: cxNovo, so_validar: true }));
+  ok('fechamento so_validar: válido, resumo e nada guardado', v.valido && v.vai_mudar.periodo.join() === '2026-11,2026-12' && !rascunhos.caixa, JSON.stringify(v));
+  const gv = texto(await fech({ arquivo: 'caixa', dados: cxNovo, resumo: 'novembro fechado', so_validar: false }));
+  const pub = JSON.parse(arquivos['app/data/painel.enc']).publicadoEm;
+  const abre = rascunhos.caixa && await decifrar(rascunhos.caixa.envelope, chave);
+  ok('fechamento grava o rascunho cifrado com a base publicada', gv.guardado && rascunhos.caixa.base === pub && abre.dados.periodo === '2026-12' && rascunhos.caixa.resumo === 'novembro fechado');
+  const voltou = texto(await fech({ arquivo: 'caixa', dados: { ...cxNovo, periodo: '2026-10' }, so_validar: true }));
+  ok('fechamento que volta o período é recusado', voltou.valido === false && voltou.erros.some(e => /voltou/.test(e)), JSON.stringify(voltou));
+  const parte = texto(await fech({ arquivo: 'caixa', mudancas: { caixaInicial: 950 }, so_validar: false }));
+  const abre2 = await decifrar(rascunhos.caixa.envelope, chave);
+  ok('nova parte soma ao rascunho (substitui o guardado)', parte.guardado && abre2.dados.caixaInicial === 950 && abre2.dados.periodo === '2026-12' && rascunhos.caixa.base === pub);
+  const ctNovo = { ...cart, historico_mensal: { ...cart.historico_mensal, '2026-11': { status: 'fechado', patrimonio_total: 520 } } };
+  texto(await fech({ arquivo: 'carteira', dados: ctNovo, so_validar: false }));
+  const ldr = texto(await rpc({ jsonrpc: '2.0', id: 41, method: 'tools/call', params: { name: 'ler_dados', arguments: { arquivo: 'carteira', campos: ['historico_mensal'] } } }));
+  ok('ler_dados da carteira usa o rascunho e avisa', ldr.historico_mensal['2026-11'].status === 'fechado' && /ainda não aplicado/.test(ldr.rascunho_do_fechamento || ''), JSON.stringify(ldr).slice(0, 200));
+  ok('nenhum commit enquanto é rascunho', commits === antes);
+  let e2 = ''; try { await rotaConector('rascunho', post('https://x/mcp/rascunho', { repo: 'fam/lastro', token: TOKEN_LEITURA, acao: 'ler' }), {}, armazem); } catch (e) { e2 = e.message; }
+  ok('rascunho: token sem escrita não lê', /não pode publicar/.test(e2), e2);
+  const lr = await (await rotaConector('rascunho', post('https://x/mcp/rascunho', { repo: 'fam/lastro', token: TOKEN_BOM, acao: 'ler' }), {}, armazem)).json();
+  ok('rascunho: o app lê os dois', lr.rascunhos.caixa && lr.rascunhos.carteira && lr.rascunhos.caixa.envelope);
+  await rotaConector('rascunho', post('https://x/mcp/rascunho', { repo: 'fam/lastro', token: TOKEN_BOM, acao: 'apagar', arquivo: 'carteira' }), {}, armazem);
+  ok('rascunho: apagar tira só um', rascunhos.caixa && !rascunhos.carteira);
+}
 guardado.repo = 'fam/antigo'; // o repositório foi renomeado depois de ligar
 const est = await (await rotaConector('estado', post('https://x/mcp/estado', { repo: 'fam/lastro', token: TOKEN_BOM }), {}, armazem)).json();
 ok('repositório renomeado: continua ligado e guarda o nome novo', est.ligado && est.url === lig.url && guardado.repo === 'fam/lastro');
@@ -89,5 +118,6 @@ ok('repositório renomeado: continua ligado e guarda o nome novo', est.ligado &&
 erro = ''; try { await rotaConector('desligar', post('https://x/mcp/desligar', { repo: 'fam/lastro', token: TOKEN_LEITURA }), {}, armazem); } catch (e) { erro = e.message; }
 ok('desligar exige o token de quem publica', guardado && /não pode publicar/.test(erro));
 await rotaConector('desligar', post('https://x/mcp/desligar', { repo: 'fam/lastro', token: TOKEN_BOM }), {}, armazem);
+ok('desligar apaga os rascunhos', !Object.keys(rascunhos).length);
 ok('desligado: o endereço antigo para de responder', !guardado && (await rpc({ jsonrpc: '2.0', id: 9, method: 'tools/list' })).status === 404);
 console.log(`${n - f}/${n}`); process.exit(f ? 1 : 0);

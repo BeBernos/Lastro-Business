@@ -60,3 +60,66 @@ export function juntarParcial(base, parcial) {
   const estrategia = mudou.includes('estrategia') ? mudancasEstrategia(base.estrategia, dados.estrategia, dados.meta_dolarizacao) : [];
   return { dados, mudou, ignorados, estrategia };
 }
+
+// ---------- v9.17: fechamento pelo conector ----------
+// O Claude grava o fechamento como rascunho (worker/mcp.js) e o Bruno aplica no app. Antes de guardar, o conector confere
+// que o JSON novo não perde nada do publicado: meses fechados, histórico da carteira, aportes ligados ao caixa e os campos
+// do Lastro que atravessam os meses (a lista "não podem sumir" do projeto.txt; os de cada mês, como lancamentosApp, podem
+// recomeçar ao abrir o mês novo).
+export const CAMPOS_PROTEGIDOS = {
+  caixa: ['categoriasApp', 'orcamentos', 'capacidadeAporte', 'valoresConhecidos'],
+  carteira: ['meta_dolarizacao', 'plano_aportes', 'metas', 'fichas_ativos', 'estrategia'],
+};
+
+export function conferirFechamento(atual, novo, arquivo) {
+  const erros = [];
+  let dados = novo;
+  if (typeof novo === 'string') {
+    try { dados = JSON.parse(novo); } catch { return { erros: ['o JSON veio cortado ou inválido'], resumo: null, dados: null }; }
+  }
+  if (!dados || typeof dados !== 'object' || Array.isArray(dados)) return { erros: ['os dados têm de ser um objeto JSON'], resumo: null, dados: null };
+  for (const k of CAMPOS_PROTEGIDOS[arquivo] || []) if (k in atual && !(k in dados)) erros.push(`sumiu o campo ${k}`);
+  let resumo;
+  if (arquivo === 'caixa') {
+    if (!/^\d{4}-\d{2}$/.test(dados.periodo || '')) erros.push('periodo tem de ser AAAA-MM');
+    else if (dados.periodo < atual.periodo) erros.push(`o período voltou de ${atual.periodo} para ${dados.periodo}`);
+    const tem = new Set((dados.mesesFechados || []).map(m => m?.periodo));
+    for (const m of atual.mesesFechados || []) if (!tem.has(m.periodo)) erros.push(`sumiu o mês fechado ${m.periodo}`);
+    resumo = { periodo: [atual.periodo, dados.periodo], mesesFechados: [(atual.mesesFechados || []).length, (dados.mesesFechados || []).length], caixaInicial: dados.caixaInicial };
+  } else {
+    const ha = atual.historico_mensal || {}, hn = dados.historico_mensal || {};
+    const comCaixa = h => (h?.fluxos || []).filter(f => f?.idCaixa).length;
+    for (const mes of Object.keys(ha)) {
+      if (!(mes in hn)) erros.push(`sumiu o mês ${mes} do histórico`);
+      else if (comCaixa(hn[mes]) < comCaixa(ha[mes])) erros.push(`sumiram aportes/resgates do caixa em ${mes}`);
+    }
+    const ultimo = h => { const k = Object.keys(h).sort().at(-1); return [k, k ? h[k].patrimonio_total ?? h[k].patrimonio_parcial : null]; };
+    const [ma, pa] = ultimo(ha), [mn, pn] = ultimo(hn);
+    resumo = { mes: [ma, mn], patrimonio: [pa, pn] };
+  }
+  return { erros, resumo, dados };
+}
+
+// Mudanças por partes: o caixa real tem ~200 KB, grande demais para uma chamada só. {dados} troca tudo; {mudancas} troca o
+// valor em cada caminho ("receitas/0/valor", "historico_mensal/2026-12"); {acrescentar} soma itens no fim de uma lista.
+export function aplicarMudancas(base, { dados, mudancas, acrescentar } = {}) {
+  const r = JSON.parse(JSON.stringify(dados ?? base));
+  const ir = (caminho, criar) => {
+    const partes = String(caminho).split('/').filter(Boolean);
+    if (!partes.length) throw new Error('caminho vazio');
+    let o = r;
+    for (const p of partes.slice(0, -1)) {
+      if (o[p] == null && criar) o[p] = {};
+      o = o[p];
+      if (o == null || typeof o !== 'object') throw new Error(`o caminho ${caminho} não existe`);
+    }
+    return [o, partes.at(-1)];
+  };
+  for (const [c, v] of Object.entries(mudancas || {})) { const [o, k] = ir(c, true); o[k] = v; }
+  for (const [c, itens] of Object.entries(acrescentar || {})) {
+    const [o, k] = ir(c, false);
+    if (!Array.isArray(o[k])) throw new Error(`${c} não é uma lista`);
+    o[k].push(...(Array.isArray(itens) ? itens : [itens]));
+  }
+  return r;
+}
