@@ -2,6 +2,9 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '9.17.2': [
+    ['Arrumação por dentro', 'O código do app foi dividido em partes menores (avisos e folhas, Binance, Itaú e conciliação, cada um no seu arquivo). Nada muda no uso: é para as próximas melhorias saírem mais rápido e com menos risco.', 'melhoria'],
+  ],
   '9.17.0': [
     ['Fechamento pelo Claude direto', 'Com o conector ligado, as etapas Carteira e Caixa do fechamento são só copiar o pedido: o Claude lê o Lastro, mostra o resumo e deixa o mês novo pronto. Nada vai para a família até você tocar em Aplicar no cartão "Fechamento pronto" do Início (com Descartar e, depois, Desfazer).', 'nova'],
   ],
