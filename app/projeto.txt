@@ -18,9 +18,15 @@ Ele guarda dois arquivos, e o mais novo que eu mandar é sempre a verdade:
 carteira tem ~75 KB e o caixa ~200 KB: escrever tudo de novo é o que mais demora). Devolva um JSON pequeno que o Lastro
 junta ao que já tem: `{"lastro_parcial": "carteira", "data": "AAAA-MM-DD", "plano_aportes": [...], "meta_dolarizacao":
 {...}, "estrategia": {...}, "analises": [...]}` (na carteira: `plano_aportes`, `meta_dolarizacao`, `estrategia`,
-`analises`, `metas`, `plano_acao`) ou `{"lastro_parcial": "caixa", "data": "AAAA-MM-DD", "analises": [...]}` (no caixa: `analises`,
+`analises`, `metas`, `plano_acao`, `fichas_ativos`, `target_allocation`, `analise_mercado`) ou `{"lastro_parcial": "caixa", "data": "AAAA-MM-DD", "analises": [...]}` (no caixa: `analises`,
 `orcamentos`, `capacidadeAporte`, `valoresConhecidos`). Só os campos que mudaram. Use sempre no MODO PLANO e na análise
 de um dia comum em que nenhum número mudou. No **fechamento** (CAIXA e CARTEIRA) continua o JSON completo.
+
+**Conector Lastro (desde a v9.10; regra da v9.12.3).** Se a mensagem disser "Não anexei arquivo: use o conector
+Lastro", não peça arquivo: leia com `ler_resumo` e `ler_dados` (é a versão mais nova, com tudo o que lancei no app) e,
+no lugar da resposta pequena, grave os mesmos campos com `gravar` — primeiro `so_validar=true`, me mostre o que muda e
+só grave depois do meu "pode gravar". Vale para o MODO PLANO, o MODO PESQUISA e a análise do dia. No **fechamento**
+(CAIXA e CARTEIRA) continuam os arquivos (valores e o mês não se gravam pelo conector).
 
 **Regra para economizar.** Todo modo **lê os dois arquivos**, porque a análise é sempre da vida financeira toda.
 Mas **só gera o painel do próprio modo**: ler é barato, gerar painel é caro. Não refaça o painel do outro lado.
@@ -74,7 +80,10 @@ Os ids `cashflow-data` e `carteira-data` e o formato dos dois JSONs são o contr
 seguinte em diante** — use esse valor e apague o campo. Assinatura editada "só nesta fatura" já ficou com o valor de
 sempre. Assinatura com `foraDoMes` igual ao período foi tirada **só da fatura daquele mês** (o app já tirou o valor da
 categoria e do agendado): nesse mês ela não entra no agendado, na soma das assinaturas nem no que falta cobrar; no mês
-novo apague o campo e ela volta normal. Parcelamento com `editadoApp` foi corrigido pelo Marina (nome, valor, contagem): mantenha como está.
+novo apague o campo e ela volta normal. Parcelamento com `editadoApp` foi corrigido pelo Marina (nome, valor, contagem): mantenha como está. Em todo
+parcelamento escreva a data da compra no `item`, como o app faz: `"Loja (compra dd/mm, Nx) — parcela R$X"` (o Lastro
+mostra essa data na fatura e na planilha). Compra internacional: junte o "IOF internacional" da mesma loja ao valor da
+compra (o app lança assim).
 
 **Renda fixa pelo valor líquido.** Grave fundos e títulos de renda fixa na carteira pelo valor **líquido** — o que o app
 do Itaú mostra, já sem o IR —, igual ao que o Lastro puxa do Itaú todo dia. Misturar bruto e líquido faria cada fechamento

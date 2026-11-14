@@ -1,4 +1,5 @@
 import { efeitos } from './investimentos.js';
+import { somarDiasUteis } from './liquidez.js';
 
 // v9.4 / v9.9 — Itaú pelo Open Finance (Pluggy). O celular guarda o CLIENT_ID/SECRET cifrados; o Worker só repassa
 // (/pluggy/…) para api.pluggy.ai, sem guardar nada (mesma decisão da Binance). Cada investimento da Pluggy é ligado a
@@ -90,18 +91,35 @@ export function dataDoSaldo(investimentos, ligacoes = {}, dataConexao = null) {
 }
 // Automático × manual (vale para o Itaú e a Binance): o banco só sobrescreve um ativo se o saldo dele for mais novo que
 // o que você fez à mão. Devolve { chave: 'aporte'|'resgate'|'manual' } dos ativos a pular por ora:
-// - aporte/resgate lançado no app num dia que o saldo ainda não cobre (o banco mostraria o valor de antes e o app leria
-//   uma queda ou alta que não existe);
+// - aporte/resgate lançado no app que o saldo ainda pode não mostrar: o Itaú leva até `dias` dias úteis para refletir
+//   (v9.12.3: aporte de 09/11 ainda fora do saldo de 12/11); a Binance passa dias = 0 (só o próprio dia);
 // - valor digitado em Atualizar valores depois da data do saldo (`atualizadoEm` = ativos_atualizado_em da carteira; a
 //   atualização automática grava ali a data do saldo, não a de hoje, para não se bloquear sozinha).
-// Mais um dia e o banco já mostra: a atualização volta sozinha.
-export function esperandoBanco(cf, investimentos, ligacoes = {}, dataConexao = null, atualizadoEm = {}) {
+// Passado o prazo, a atualização volta sozinha.
+export const DIAS_BANCO = 3;
+export function esperandoBanco(cf, investimentos, ligacoes = {}, dataConexao = null, atualizadoEm = {}, { dias = DIAS_BANCO, feriados = {} } = {}) {
   const dataDe = dataDoSaldo(investimentos, ligacoes, dataConexao);
   const fora = {};
   for (const [chave, d] of Object.entries(dataDe)) if (atualizadoEm?.[chave] > d) fora[chave] = 'manual';
   for (const e of efeitos(cf || {}).values()) {
     if (e.tipo === 'dividendo' || !(e.ativo in dataDe) || !cf.periodo) continue;
-    if (`${cf.periodo}-${String(e.dia).padStart(2, '0')}` >= dataDe[e.ativo]) fora[e.ativo] = e.tipo;
+    const dia = `${cf.periodo}-${String(e.dia).padStart(2, '0')}`;
+    if ((dias ? somarDiasUteis(dia, dias, feriados) : dia) >= dataDe[e.ativo]) fora[e.ativo] = e.tipo;
   }
   return fora;
+}
+
+// v9.12.3 — FIIs, ETFs e GLDI11 não vêm do Itaú: o Itaú mostra o preço com 2–3 pregões de atraso e demora dias a mostrar
+// as cotas compradas. Valor = cotas da carteira (custo_medio, que o app ajusta a cada aporte/resgate) × preço da B3
+// (rota /cotacoes). b3: { TICKER: {agora, hora} } → { valores: {chave: R$}, datas: {chave: data do preço} }
+export function valoresB3(cart, b3 = {}, hoje = '') {
+  const valores = {}, datas = {};
+  for (const [k, c] of Object.entries(cart?.custo_medio?.ativos || {})) {
+    const q = b3?.[k.toUpperCase()];
+    if (!(c?.qtd > 0) || !(q?.agora > 0)) continue;
+    valores[k] = Math.round(c.qtd * q.agora * 100) / 100;
+    const h = String(q.hora || '');
+    datas[k] = /^\d{4}-\d{2}-\d{2}/.test(h) ? h.slice(0, 10) : hoje;
+  }
+  return { valores, datas };
 }

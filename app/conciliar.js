@@ -6,7 +6,8 @@
 // - Patrimônio por classe: a CARTEIRA manda (`copiarPatrimonio`, desde a v8.6).
 // Função pura: devolve { cf, mudancas }; sem nada a fazer devolve o mesmo cf (mesma referência).
 import { tickerDividendo } from './lancamentos.js';
-import { acharCategoria, adivinharCategoria } from './categorias.js';
+import { acharCategoria, adivinharCategoria, mesmaCategoria } from './categorias.js';
+import { extratoDoMes } from './extrato.js';
 
 const MES3 = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const centavos = v => Math.round(v * 100) / 100;
@@ -115,6 +116,39 @@ export function unificarCategorias(cf) {
   (novo.orcamentos || []).forEach(renomear);
   for (const [de, para] of trocadas) mudancas.push({ tipo: 'categoria', ativo: de, valor: para, texto: `${de} → ${para}` });
   return { cf: mudancas.length ? novo : cf, mudancas };
+}
+
+// v9.12.3 — o total por categoria da fatura segue as compras. Trocar a categoria de uma parcela ou recorrente no app
+// (ex.: a parcela da Amazon, que o Claude tinha posto em Others, foi para Electronics) não movia o valor, e a planilha
+// mostrava "com detalhe" maior que "na fatura" numa categoria e "só o total" sobrando na outra. Aqui: categoria com
+// mais compras detalhadas do que valor recebe a diferença das que têm valor sem detalhe.
+// O total da fatura não muda.
+export function acertarCategorias(cf) {
+  const it = (cf.despesasVariaveis || []).find(x => x.id === 'var-itau');
+  if (!Array.isArray(it?.categorias) || !it.categorias.length) return { cf, mudancas: [] };
+  const det = extratoDoMes(cf).filter(i => i.tipo === 'cartao' && i.categoria && !/^semdetalhe\|/.test(i.chave) && !/próxima fatura/.test(i.detalhe));
+  const nomes = [...new Set(det.map(i => acharCategoria(i.categoria)?.nome || i.categoria))];
+  const novo = structuredClone(cf);
+  const cats = novo.despesasVariaveis.find(x => x.id === 'var-itau').categorias;
+  for (const n of nomes) if (!cats.some(c => mesmaCategoria(c.cat, n))) cats.push({ cat: n, valor: 0 });
+  const detalhe = c => det.filter(i => mesmaCategoria(i.categoria, c.cat)).reduce((s, i) => s - i.valor, 0);
+  const saldo = cats.map(c => ({ c, sobra: centavos(c.valor - detalhe(c)) }));
+  const mudancas = [];
+  for (const falta of saldo.filter(x => x.sobra < -0.004)) {
+    // primeiro a sobra que cobre a falta com o valor mais parecido (Services −35,79 ↔ Streaming +36,00), depois a maior
+    const cobre = x => x.sobra >= -falta.sobra - 0.004;
+    for (const de of saldo.filter(x => x.sobra > 0.004).sort((a, b) => (cobre(b) - cobre(a)) || (cobre(a) ? a.sobra - b.sobra : b.sobra - a.sobra))) {
+      const v = centavos(Math.min(-falta.sobra, de.sobra));
+      if (v < 0.01) break;
+      de.c.valor = centavos(de.c.valor - v); de.sobra = centavos(de.sobra - v);
+      falta.c.valor = centavos(falta.c.valor + v); falta.sobra = centavos(falta.sobra + v);
+      mudancas.push({ tipo: 'categoria', ativo: falta.c.cat, valor: v, texto: `${brl(v)} de ${de.c.cat} para ${falta.c.cat} na fatura` });
+      if (falta.sobra > -0.005) break;
+    }
+  }
+  const lista = novo.despesasVariaveis.find(x => x.id === 'var-itau');
+  lista.categorias = cats.filter(c => c.valor > 0.004);
+  return mudancas.length ? { cf: novo, mudancas } : { cf, mudancas };
 }
 
 // v9.6: resposta parcial do Claude — em app/parcial.js (o servidor do conector MCP usa a mesma regra)

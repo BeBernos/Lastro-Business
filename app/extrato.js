@@ -10,7 +10,16 @@ const TIPO_LISTA = { receitas: 'entrada', resgates: 'investimento', ajustesCaixa
 export const TIPOS = [['tudo', 'Tudo'], ['entrada', 'Entradas'], ['conta', 'Contas'], ['cartao', 'Cartão'], ['investimento', 'Investimentos']];
 
 const dataDoDia = (periodo, dia) => (dia ? `${periodo}-${String(dia).padStart(2, '0')}` : '');
-const valorParcela = p => (Number.isFinite(p.valor) ? p.valor : Number(String(p.item || '').match(/parcela\s*R\$\s*([\d.]+,\d{2})/i)?.[1].replace(/\./g, '').replace(',', '.')) || 0);
+// v9.12.3: data da compra de um parcelamento pelo texto "Loja (compra 06/10, 5x)" (mês depois do período = ano anterior)
+export function dataDaCompra(item, periodo) {
+  const m = String(item || '').match(/compra\s+(\d{1,2})\/(\d{1,2})/i);
+  if (!m || !periodo) return '';
+  const [a, mp] = periodo.split('-').map(Number);
+  const mes = Number(m[2]);
+  return `${mes > mp ? a - 1 : a}-${String(mes).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+}
+// "Loja — parcela R$X" ou, sem a palavra parcela, o último valor do texto ("Leiturinha — Theo — R$42,19")
+const valorParcela = p => (Number.isFinite(p.valor) ? p.valor : Number((String(p.item || '').match(/parcela\s*R\$\s*([\d.]+,\d{2})/i) || String(p.item || '').match(/R\$\s*([\d.]+,\d{2})(?!.*R\$)/))?.[1].replace(/\./g, '').replace(',', '.')) || 0);
 
 // Cada item: { chave, tipo, data, descricao, detalhe, categoria, valor (entrada +, saída −), abrir }
 // abrir: { conta: 'lista|id' } | { compra: indice } | { aba: 'cartao/fatura' } — o que tocar no item abre
@@ -45,7 +54,7 @@ export function extratoDoMes(dados) {
       const loja = String(p.item || '').replace(/\s*—\s*parcela.*$/i, '');
       // v9.6: categoria gravada ou, sem ela, o palpite pelo nome da loja (o Bruno pode trocar no editor)
       const cat = p.cat || adivinharCategoria(loja.replace(/\s*\(compra.*$/, ''));
-      itens.push({ chave: `parcela|${p.item}`, tipo: 'cartao', data: '', descricao: loja, detalhe: `parcela ${p.atual || ''}`.trim(), categoria: cat ? nomeCategoria(cat) : '', valor: -v, abrir: { parcelamento: ip } });
+      itens.push({ chave: `parcela|${p.item}`, tipo: 'cartao', data: dataDaCompra(p.item, dados.periodo), descricao: loja, detalhe: `parcela ${p.atual || ''}`.trim(), categoria: cat ? nomeCategoria(cat) : '', valor: -v, abrir: { parcelamento: ip } });
     }
     for (const [ia, s] of (cartao.assinaturas || []).entries()) {
       if (app.some(r => r.recorrente && r.descricao === s.nome) || s.foraDoMes === dados.periodo) continue; // fora só deste mês: não está nesta fatura
@@ -55,13 +64,19 @@ export function extratoDoMes(dados) {
     const lidas = (cartao.compras || []).map((c, indice) => ({ ...c, indice })).filter(c => Number.isFinite(c.valor) && c.valor);
     lidas.forEach((c, i) => itens.push({ chave: `fatura|${i}`, tipo: 'cartao', data: c.data || '', descricao: c.loja || c.descricao || 'Compra', detalhe: 'fatura do Itaú', categoria: c.cat ? nomeCategoria(c.cat) : '', valor: -c.valor, abrir: { compraFatura: c.indice } }));
     // o resto da fatura, que o agente registrou só como total por categoria (parcelas e recorrentes já estão acima)
-    const detalhadoPorCat = cat => app.filter(r => !r.proximaFatura && mesmaCategoria(r.cat, cat)).reduce((s, r) => s + r.valor, 0)
-      + lidas.filter(c => mesmaCategoria(c.cat, cat)).reduce((s, c) => s + c.valor, 0);
-    const jaListado = itens.filter(i => /^(parcela|assinatura)\|/.test(i.chave)).reduce((s, i) => s - i.valor, 0);
-    let semCat = jaListado; // parcelas e recorrentes sem categoria saem do total "sem detalhe" da maior categoria
+    // v9.12.3: parcelas e recorrentes descontam da própria categoria; só as sem categoria (ou a sobra de uma categoria
+    // com mais detalhe do que valor) saem do "sem detalhe" da maior — assim o total continua batendo com a fatura
     const cats = [...(cartao.categorias || [])].sort((a, b) => b.valor - a.valor);
-    for (const c of cats) {
-      let resto = c.valor - detalhadoPorCat(c.cat);
+    const listados = itens.filter(i => /^(parcela|assinatura)\|/.test(i.chave));
+    const daCat = (i, cat) => i.categoria && mesmaCategoria(i.categoria, cat);
+    const detalhadoPorCat = cat => app.filter(r => !r.proximaFatura && mesmaCategoria(r.cat, cat)).reduce((s, r) => s + r.valor, 0)
+      + lidas.filter(c => mesmaCategoria(c.cat, cat)).reduce((s, c) => s + c.valor, 0)
+      + listados.filter(i => daCat(i, cat)).reduce((s, i) => s - i.valor, 0);
+    const restos = cats.map(c => ({ c, resto: c.valor - detalhadoPorCat(c.cat) }));
+    let semCat = listados.filter(i => !cats.some(c => daCat(i, c.cat))).reduce((s, i) => s - i.valor, 0)
+      + restos.filter(r => r.resto < 0).reduce((s, r) => s - r.resto, 0);
+    for (const { c, resto: r0 } of restos) {
+      let resto = r0;
       const tira = Math.min(semCat, Math.max(0, resto));
       resto -= tira;
       semCat -= tira;

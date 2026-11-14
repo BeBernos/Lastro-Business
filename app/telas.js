@@ -9,7 +9,7 @@ import { mesBonito } from './painel.js';
 import { posicao, proximoPasso, reserva } from './carteira.js';
 import { adivinharCategoria, categoriaDoItem, iconeCategoria, nomeCategoria } from './categorias.js';
 import { dolarizacao, listaAtivos, nomeAtivo, planoDoMes, resultadoDoMes } from './investimentos.js';
-import { CATEGORIAS_RECEITA, LISTAS_CAIXA, tickerDividendo } from './lancamentos.js';
+import { CATEGORIAS_RECEITA, hojeBrasil, LISTAS_CAIXA, tickerDividendo } from './lancamentos.js';
 import { composicaoFatura, gastoDoDia } from './extrato.js';
 import { alertasPlano, alocacaoVsAlvo, rendimentoRendaFixa } from './estrategia.js';
 import { prazoResgate } from './liquidez.js';
@@ -1324,7 +1324,7 @@ function blocoEstimativa(est, opcoes, cart) {
   const base = cart ? baseMesAnterior(cart) : null;
   const noMes = base?.noMes(est.total);
   const v = noMes ? noMes.valor : est.variacao;
-  const desde = noMes ? `no mês · desde o fechamento de ${mesCurto(base.mes)}` : `desde ${ddmm(est.ref)}`;
+  const desde = noMes ? `no mês · pela estimativa de agora` : `desde ${ddmm(est.ref)}`;
   const varItem = i => (base ? base.var(i.chave, i.hoje) : i.variacao);
   const chave = 'estimativa';
   const parcial = est.cobertura < 0.995 ? ` ${Math.round(est.cobertura * 100)}% da carteira tem cotação; o resto fica no valor oficial.` : '';
@@ -1346,11 +1346,16 @@ function heroCarteira(cart, opcoes) {
   const r = reserva(cart);
   const [, mm, dd] = String(p.data).split('-');
   const div = p.h.dividendos;
+  // v9.12.3: o resultado do mês da posição gravada (o mesmo "Result. mercado" do painel); a estimativa de agora só
+  // aparece num dia depois da posição — no mesmo dia eram dois números quase iguais e confusos (−715,65 × −722)
+  const base = baseMesAnterior(cart);
+  const noMes = base?.noMes(p.total);
   return `<section class="cartao hero">
     <p class="rotulo">Patrimônio investido</p>
     <p class="hero-valor">${brl(p.total)}</p>
     <p class="hero-sub">Posição de ${dd}/${mm}, ${p.h.atualizacoesApp?.at(-1)?.data === p.data ? 'atualizada no app' : 'registrada pelo gestor de carteira'}</p>
-    ${blocoEstimativa(opcoes.estimativa, opcoes, cart)}
+    ${noMes ? `<p class="est-var ${noMes.valor < 0 ? 'ruim' : 'bom'}">${noMes.valor < 0 ? '−' : '+'}${brl(Math.abs(noMes.valor))} (${pctSinal(noMes.valor / noMes.base)}) no mês · desde o fechamento de ${mesCurto(base.mes)}</p>` : ''}
+    ${String(p.data).slice(0, 10) < hojeBrasil() ? blocoEstimativa(opcoes.estimativa, opcoes, cart) : ''}
     <div class="chips">
       ${r ? (r.atual >= r.alvo ? chip('bom', `Reserva de emergência completa · ${brl0(r.atual)}`) : chip('atencao', `Reserva ${brl0(r.atual)} de ${brl0(r.alvo)}`)) : ''}
       ${typeof div === 'number' && div > 0 ? chip('info', `Dividendos no mês · ${brl0(div)}`) : ''}

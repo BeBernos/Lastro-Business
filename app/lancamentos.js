@@ -15,6 +15,12 @@ import { acharCategoria, categoriaDeConta, categoriasAtivas, GRUPOS, ICONES, lis
 export const LISTAS_PAGAVEIS = ['receitas', 'despesasFixas', 'despesasVariaveis', 'obrigacoesCaixa'];
 
 const centavos = v => Math.round(v * 100) / 100;
+// v9.12.3: parcelado no cartão como o Itaú faz — as parcelas truncam os centavos e a 1ª leva a sobra
+// (R$ 264,90 em 4x = 66,24 + 3 × 66,22). → { parcela (2ª em diante), primeira }
+export function parcelasItau(valor, n) {
+  const parcela = Math.floor((valor / n) * 100 + 1e-6) / 100;
+  return { parcela, primeira: centavos(valor - parcela * (n - 1)) };
+}
 const brl = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(/\s/g, ' ');
 const ddmm = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -130,7 +136,7 @@ export function lancarCartao(dados, { valor, descricao, cat, data, pontual = fal
   if (recorrente && (n > 1 || estorno)) throw new Error('Cobrança recorrente é sempre à vista.');
   const desc = String(descricao || '').trim() || nome;
   const obs = String(nota || '').trim();
-  const parcela = centavos(valor / n);
+  const { parcela, primeira } = parcelasItau(valor, n);
   const it = cartaoDo(d);
   const fonte = origem === 'sms' ? ' (SMS)' : '';
   const comNota = t => (obs ? `${t} Obs.: ${obs}` : t);
@@ -153,7 +159,7 @@ export function lancarCartao(dados, { valor, descricao, cat, data, pontual = fal
       d.faturaProximoCiclo.comprasNovas ||= [];
       d.faturaProximoCiclo.comprasNovas.push({ data, descricao: desc, valor: estorno ? -valor : valor, cat: nome, origem, ...(obs ? { nota: obs } : {}) });
     }
-    (it.lancamentosApp ||= []).push({ data, descricao: desc, valor: estorno ? -valor : parcela, cat: nome, origem, proximaFatura: ciclo, ...(n > 1 ? { parcelas: `1/${n} de ${brl(valor)}` } : {}), ...(obs ? { nota: obs } : {}) });
+    (it.lancamentosApp ||= []).push({ data, descricao: desc, valor: estorno ? -valor : primeira, cat: nome, origem, proximaFatura: ciclo, ...(n > 1 ? { parcelas: `1/${n} de ${brl(valor)}` } : {}), ...(obs ? { nota: obs } : {}) });
     const [a, m] = ciclo.split('-').map(Number);
     return registrar(d, hoje, comNota(`Cartão${fonte} → fatura de ${MESES[m - 1]}/${a} (depois do fechamento): ${desc} ${estorno ? `−${brl(valor)}` : n > 1 ? `${n}x de ${brl(parcela)}` : brl(valor)} em ${nome}, ${ddmm(data)}.`));
   }
@@ -163,8 +169,8 @@ export function lancarCartao(dados, { valor, descricao, cat, data, pontual = fal
     if (!igual) throw new Error('Escolha a categoria da compra original (o estorno sai dela).');
     if (igual.valor - valor < -0.004) throw new Error(`O estorno é maior que o total de ${igual.cat} nesta fatura (${brl(igual.valor)}) — escolha a categoria da compra original.`);
     igual.valor = centavos(igual.valor - valor);
-  } else if (igual) igual.valor = centavos(igual.valor + parcela);
-  else it.categorias.push({ cat: nome, valor: parcela });
+  } else if (igual) igual.valor = centavos(igual.valor + primeira);
+  else it.categorias.push({ cat: nome, valor: primeira });
   it.valor = centavos(it.categorias.reduce((s, c) => s + c.valor, 0));
   // dia 1 para compra fora do mês do painel (fim do mês passado, já neste ciclo), como o agente faz
   const dia = data.slice(0, 7) === d.periodo ? diaDe(data) : 1;
@@ -176,7 +182,7 @@ export function lancarCartao(dados, { valor, descricao, cat, data, pontual = fal
   comp.gastoLivre = centavos(it.valor - (comp.parcelas || 0) - agendado);
   it.atualizadoDia = Math.max(it.atualizadoDia || 0, diaDe(hoje));
   const categoria = igual ? igual.cat : nome;
-  const registro = { data, descricao: desc, valor: estorno ? -valor : parcela, cat: categoria, origem };
+  const registro = { data, descricao: desc, valor: estorno ? -valor : primeira, cat: categoria, origem };
   if (n > 1) registro.parcelas = `1/${n} de ${brl(valor)}`;
   if (recorrente) registro.recorrente = true;
   if (obs) registro.nota = obs;
@@ -190,7 +196,7 @@ export function lancarCartao(dados, { valor, descricao, cat, data, pontual = fal
       cat: categoria,
     });
   }
-  if (pontual && !estorno && !recorrente) (it.pontuaisGrandes ||= []).push({ descricao: n > 1 ? `${desc} ${n}x — 1ª parcela (total ${brl(valor)})` : desc, valor: parcela, dia, nota: obs || 'Compra pontual lançada pelo app.' });
+  if (pontual && !estorno && !recorrente) (it.pontuaisGrandes ||= []).push({ descricao: n > 1 ? `${desc} ${n}x — 1ª parcela (total ${brl(valor)})` : desc, valor: primeira, dia, nota: obs || 'Compra pontual lançada pelo app.' });
   const texto = estorno
     ? `Estorno no cartão${fonte}: ${desc} −${brl(valor)} em ${categoria}, ${ddmm(data)}.`
     : `Cartão${fonte}: ${desc} ${n > 1 ? `${n}x de ${brl(parcela)} (total ${brl(valor)})` : brl(valor)} em ${categoria}${recorrente ? ' (recorrente, todo mês)' : pontual ? ' (pontual)' : ''}, ${ddmm(data)}.`;
@@ -214,8 +220,8 @@ export function pareceLancado(d, { valor, data, parcelas = 1, estorno = false })
   const it = cartaoDo(d);
   if (!it) return null;
   const n = Math.max(1, parcelas);
-  const parcela = centavos(valor / n);
-  const alvo = estorno ? -valor : parcela;
+  const { parcela, primeira } = parcelasItau(valor, n);
+  const alvo = estorno ? -valor : primeira;
   const app = (it.lancamentosApp || []).find(l => l.data === data && Math.abs(l.valor - alvo) < 0.005);
   if (app) return `${app.descricao}, ${ddmm(app.data)}`;
   const prox = (d.faturaProximoCiclo?.comprasNovas || []).find(l => l.data === data && Math.abs(l.valor - alvo) < 0.005);
