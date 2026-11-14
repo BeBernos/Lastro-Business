@@ -108,9 +108,45 @@ export function filtrarExtrato(itens, { texto = '', tipo = 'tudo' } = {}) {
 }
 
 // v8.11: quanto foi gasto num dia (cartão e contas pagas com data daquele dia; recorrentes, parcelas e previstos ficam de fora)
+const ehGasto = i => i.valor < 0 && (i.tipo === 'conta' || (i.tipo === 'cartao' && 'compra' in i.abrir)) && i.detalhe !== 'previsto';
 export function gastoDoDia(dados, dia) {
-  const itens = extratoDoMes(dados).filter(i => i.data === dia && i.valor < 0 && (i.tipo === 'conta' || (i.tipo === 'cartao' && 'compra' in i.abrir)) && i.detalhe !== 'previsto');
+  const itens = extratoDoMes(dados).filter(i => i.data === dia && ehGasto(i));
   return { total: Math.round(itens.reduce((s, i) => s - i.valor, 0) * 100) / 100, n: itens.length };
+}
+
+// v9.16: resumo da semana (domingo) — os 7 dias até `hoje`, com a mesma regra do "gasto de hoje"; a semana anterior só
+// quando cabe inteira no mês do painel (dos meses fechados só existem os totais). `proximas` = proximasContas (resumo.js).
+const somarDias = (iso, n) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+export function resumoSemana(dados, hoje, proximas = []) {
+  const inicioMes = `${dados.periodo}-01`;
+  // contas fixas (aluguel, plano, condomínio) ficam numa linha à parte: dominariam o total e a comparação entre semanas
+  const fixa = i => /^(despesasFixas|obrigacoesCaixa)\|/.test(i.abrir?.conta || '');
+  const todos = extratoDoMes(dados).filter(ehGasto);
+  const gastos = todos.filter(i => !fixa(i));
+  const entre = (a, b) => gastos.filter(i => i.data >= a && i.data <= b);
+  const total = l => Math.round(l.reduce((s, i) => s - i.valor, 0) * 100) / 100;
+  const inicio = somarDias(hoje, -6) < inicioMes ? inicioMes : somarDias(hoje, -6);
+  const semana = entre(inicio, hoje);
+  const antIni = somarDias(hoje, -13);
+  const anterior = antIni >= inicioMes ? entre(antIni, somarDias(hoje, -7)) : null;
+  const porCat = {};
+  for (const i of semana) { const c = i.categoria || 'Sem categoria'; porCat[c] = (porCat[c] || 0) - i.valor; }
+  const categorias = Object.entries(porCat).map(([nome, v]) => ({ nome, total: Math.round(v * 100) / 100 })).sort((a, b) => b.total - a.total);
+  const fimProx = somarDias(hoje, 7);
+  const prox = proximas.filter(p => p.data > hoje && p.data <= fimProx);
+  return {
+    inicio, fim: hoje, parcial: inicio !== somarDias(hoje, -6),
+    total: total(semana), n: semana.length,
+    fixas: (l => ({ total: total(l), n: l.length }))(todos.filter(i => fixa(i) && i.data >= inicio && i.data <= hoje)),
+    anterior: anterior && { total: total(anterior), n: anterior.length },
+    categorias: categorias.slice(0, 3),
+    maiores: [...semana].sort((a, b) => a.valor - b.valor).slice(0, 3).map(i => ({ data: i.data, descricao: i.descricao, valor: -i.valor })),
+    proximos: {
+      itens: prox, ateFimDoMes: fimProx.slice(0, 7) !== dados.periodo,
+      saem: Math.round(prox.filter(p => p.valor < 0).reduce((s, p) => s - p.valor, 0) * 100) / 100,
+      entram: Math.round(prox.filter(p => p.valor > 0).reduce((s, p) => s + p.valor, 0) * 100) / 100,
+    },
+  };
 }
 
 // v8.12: o que compõe a fatura do mês, em grupos (compras, parcelas, recorrentes, só o total) — a soma bate com a fatura

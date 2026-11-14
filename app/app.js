@@ -3,7 +3,7 @@ import { banco } from './banco.js';
 import { aplicarDados, extrairDados, lerArquivo, mesBonito, resumo } from './painel.js';
 import { aplicarCarteira, ehCarteira, ehDadosCarteira, extrairCarteira, lerArquivoCarteira, posicao, resumoCarteira } from './carteira.js';
 import { contexto, lerMotor, proximasContas } from './resumo.js';
-import { ABAS, CARTOES_INICIO, htmlAba, htmlNav, htmlSubabas, htmlTopo, mesesDoSeletor, ordemInicio, seletorMes, SUBABAS, subPadrao, telaDoMes, variacaoAtivos } from './telas.js';
+import { ABAS, CARTOES_INICIO, htmlAba, htmlNav, htmlSubabas, htmlTopo, mesesDoSeletor, ordemInicio, resumoSemanaHtml, seletorMes, SUBABAS, subPadrao, telaDoMes, variacaoAtivos } from './telas.js';
 import { extratoDoMes, filtrarExtrato, planilhaFatura, TIPOS } from './extrato.js';
 import { gerarXlsx, TIPO_XLSX } from './xlsx.js';
 import { agendaClaude, aportePlanejado, definirOrcamentos, excluirMeta, pacoteIR, registrarAssinaturas, revisarAssinaturas, salvarMeta, sugestaoOrcamento } from './indicadores.js';
@@ -28,12 +28,15 @@ import { NOME_CAMPO } from './parcial.js';
 import { alternarPausa, conselhoAtivo, derivarTarget, gatilhos, mudancasEstrategia, ordemAportes, textoItem } from './ficha.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao, vibrar } from './v8.js';
 
-const VERSAO_APP = '9.15.0';
+const VERSAO_APP = '9.16.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 const REMOTO = 'data/painel.enc';
 // Novidades de cada versão: aparecem uma vez em cada celular quando a versão nova entra (mostrarNovidades) e ficam
 // em menu → Novidades desta versão. Escrever para o Bruno e o Rafael, em linguagem simples.
 const NOVIDADES = {
+  '9.16.0': [
+    ['Resumo da semana', 'Todo domingo às 19h chega o aviso do resumo da semana: quanto saiu nos últimos 7 dias (e se foi mais ou menos que na semana anterior), para onde foi, os maiores gastos, se o mês está no ritmo e o que vence nos próximos 7 dias. Aos domingos ele também fica no topo do Início; nos outros dias, menu ⋮ → Resumo da semana.', 'nova'],
+  ],
   '9.15.0': [
     ['Caixa sem números brigando', 'Quando o gráfico do saldo já conta algo que ainda não foi confirmado (ex.: um salário que caiu ontem e ninguém marcou), o destaque avisa quanto é e leva à agenda para confirmar. O "Mínimo" agora é de hoje em diante, igual ao do painel.', 'correcao'],
     ['Prints nas ideias', 'Menu ⋮ → Ideias e feedback: dá para anexar até 3 prints junto da ideia.', 'nova'],
@@ -1897,6 +1900,7 @@ function menuHtml() {
     ${estado.resumoOk && estado.vista === 'painel' ? itemMenu('resumo', 'resumo', 'Voltar ao app', 'Início, caixa, cartão, carteira e análises') : ''}
     ${d ? `<p class="grupo">Do dia a dia</p>
     ${itemMenu('extrato', 'lupa', 'Extrato do mês', 'Busca em tudo: contas, cartão e investimentos')}
+    ${itemMenu('semana', 'resumo', 'Resumo da semana', 'Quanto saiu nos últimos 7 dias e o que vem aí (aparece sozinho aos domingos)')}
     ${gh ? itemMenu('orcamento', 'lista', 'Orçamento por categoria', 'Limite por mês; o app avisa em 80% e quando passar') : ''}
     ${gh && estado.cart.dados ? itemMenu('metas', 'ordem', 'Metas', 'Reserva, viagem, apê: quanto e até quando') : ''}
     ${estado.cart.dados ? itemMenu('ir', 'documento', 'Imposto de Renda', 'Dividendos, aportes, resgates e posição do ano') : ''}
@@ -1956,6 +1960,7 @@ function ligarMenu(folha) {
     painel: () => irPara('painel'),
     feedback: () => abrirFeedback(),
     extrato: () => abrirExtrato(),
+    semana: () => abrirResumoSemana(),
     ir: () => abrirPacoteIR(),
     organizar: () => abrirOrganizarInicio(),
     tour: () => abrirTour(),
@@ -3492,6 +3497,12 @@ async function abrirLote(texto) {
 
 // ---------- v8.7: extrato do mês com busca ----------
 let filtroExtrato = { texto: '', tipo: 'tudo' };
+// v9.16: resumo da semana fora do domingo (menu) e pelo aviso de domingo às 19h (?acao=semana)
+function abrirResumoSemana() {
+  if (!estado.motor || !estado.dados) return aviso('O painel ainda está carregando. Tente de novo em instantes.');
+  abrirFolha(`<div class="alca"></div>${resumoSemanaHtml(estado.motor, estado.dados, estado.cart.dados, contexto(estado.dados), { hoje: hojeBrasil() })}`);
+}
+
 function abrirExtrato(inicial = {}) {
   if (!estado.dados) return;
   filtroExtrato = { ...filtroExtrato, ...inicial };
@@ -5858,6 +5869,7 @@ function prepararAmbiente() {
   });
   // tocou na notificação "Painel atualizado" com o app aberto
   navigator.serviceWorker?.addEventListener('message', e => {
+    if (e.data === 'semana' && estado.conteudo && !estado.travado) abrirResumoSemana(); // v9.16: aviso de domingo com o app aberto
     if (e.data === 'atualizar' && estado.conteudo) {
       buscarAtualizacao();
       buscarCarteira({ silencioso: false });
@@ -5983,6 +5995,7 @@ async function iniciarDemo() {
 
 async function abrirAtalho(atalho) {
   await esperarPainel();
+  if (atalho === 'semana') return abrirResumoSemana(); // vale também para o Rafael
   if (!estado.github) return aviso('Os atalhos de lançar só funcionam no celular de quem publica.');
   if (atalho === 'lancar') return abrirLancar();
   if (atalho === 'sms') return colarSms();
