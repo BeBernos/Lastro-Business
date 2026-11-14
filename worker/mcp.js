@@ -13,7 +13,7 @@
 import { b64, cifrar, decifrar, importarChave, salDo } from '../app/cofre.js';
 import { CAMPOS_PARCIAIS, NOME_CAMPO, juntarParcial } from '../app/parcial.js';
 
-const VERSAO = '9.10.0';
+const VERSAO = '9.12.4';
 const ARQ = { caixa: { re: /(<script[^>]*id=["']cashflow-data["'][^>]*>)([\s\S]*?)(<\/script>)/i }, carteira: { re: /(<script[^>]*id=["']carteira-data["'][^>]*>)([\s\S]*?)(<\/script>)/i } };
 const json = (dados, status = 200) => new Response(JSON.stringify(dados), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 const hojeBR = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
@@ -116,6 +116,7 @@ export async function rotaConector(acao, request, env, armazem) {
 
 // ---------- o servidor MCP (Streamable HTTP, sem sessão; respostas em JSON) ----------
 const INSTRUCOES = `Este conector é o Lastro, o app de finanças da família do Bruno (caixa do mês no Itaú + carteira de investimentos).
+No começo de toda conversa do Projeto "Vida financeira", chame instrucoes e siga o texto que ela devolve (é a versão mais nova das instruções).
 Use-o no lugar dos arquivos anexados: nos modos PLANO, PESQUISA e na análise do dia, leia por aqui e grave por aqui.
 1. ler_resumo dá o mês, as contas, a fatura, o patrimônio e o plano; ler_dados traz campos inteiros (caixa ou carteira).
 2. formato_escrita diz o que dá para gravar e como.
@@ -124,6 +125,11 @@ O fechamento do mês (modos CAIXA e CARTEIRA, que geram o painel inteiro) contin
 Valores, posições e o mês nunca são gravados por aqui: são do app e do fechamento.`;
 
 const FERRAMENTAS = [
+  {
+    name: 'instrucoes',
+    description: 'As instruções completas e atualizadas do Projeto "Vida financeira" (modos CAIXA, CARTEIRA, PLANO e PESQUISA). Chame no começo de toda conversa do Projeto e siga o texto.',
+    inputSchema: { type: 'object', properties: {} },
+  },
   {
     name: 'ler_resumo',
     description: 'Resumo do Lastro de hoje: mês do caixa, entradas, contas, fatura do cartão por categoria, patrimônio por ativo, plano de ação, plano de aportes, pendências e a lista dos campos que ler_dados traz inteiros.',
@@ -190,7 +196,7 @@ const REGRAS = {
   plano_aportes: 'Lista [{mes:"AAAA-MM", ativo, valor, motivo}]. Troca a lista inteira.',
   fichas_ativos: 'Objeto ativo → ficha. Só troca a ficha dos ativos enviados.',
   target_allocation: 'Objeto classe → % (o painel da carteira compara a alocação com isto). Deve bater com estrategia.alvos.',
-  analise_mercado: 'Objeto inteiro (como no painel), com data_geral do dia.',
+  analise_mercado: 'Objeto inteiro (como no painel), com data_geral do dia. Em ativos, cada um com urgencia "alta" precisa de d7 ou dm com número (0 se ainda não há histórico) — sem isso o painel da carteira quebra.',
 };
 
 function formatoEscrita() {
@@ -220,7 +226,19 @@ async function gravar(cfg, { arquivo, campos, resumo, so_validar }) {
   return { gravado: true, mudou, ignorados, commit: sha, aviso: 'Chega no app em 1 a 5 minutos (o site é remontado a cada envio).' };
 }
 
+// v9.12.4: as instruções do Projeto vêm do repositório (a mesma fonte do menu → Instruções do Projeto do app): parte do
+// caixa (docs/AGENTE-FINANCEIRO.md, entre ▼ e ▲) + parte do Lastro (app/projeto.txt). O Projeto guarda só um texto curto
+// que manda chamar esta ferramenta — mudar as instruções não exige mais recolar nada.
+async function instrucoes(cfg) {
+  const ler = c => gh(cfg)(`/contents/${c}?ref=${encodeURIComponent(cfg.branch)}`, { raw: true });
+  const [md, lastro] = await Promise.all([ler('docs/AGENTE-FINANCEIRO.md').catch(() => ''), ler('app/projeto.txt')]);
+  const ini = md.indexOf('▼ (copie daqui)'), fim = md.indexOf('▲ (até aqui)');
+  const caixa = ini < 0 ? '' : md.slice(md.indexOf('\n', ini) + 1, fim < 0 ? undefined : fim).trim();
+  return [caixa, lastro.trim()].filter(Boolean).join('\n\n---\n\n');
+}
+
 async function chamar(cfg, nome, args = {}) {
+  if (nome === 'instrucoes') return instrucoes(cfg);
   if (nome === 'ler_resumo') {
     const [cx, ct] = await Promise.all([abrir(cfg, 'caixa'), abrir(cfg, 'carteira').catch(() => null)]);
     return { hoje: hojeBR(), caixa: resumoCaixa(cx.dados), carteira: ct ? resumoCarteira(ct.dados) : null, campos_do_caixa: Object.keys(cx.dados), campos_da_carteira: ct ? Object.keys(ct.dados) : [] };
@@ -247,7 +265,7 @@ async function responder(cfg, msg) {
   if (method === 'tools/call') {
     try {
       const r = await chamar(cfg, params?.name, params?.arguments);
-      return ok({ content: [{ type: 'text', text: JSON.stringify(r, null, 1) }] });
+      return ok({ content: [{ type: 'text', text: typeof r === 'string' ? r : JSON.stringify(r, null, 1) }] });
     } catch (e) {
       if (e.codigo) return { jsonrpc: '2.0', id, error: { code: e.codigo, message: e.message } };
       return ok({ content: [{ type: 'text', text: `Não deu: ${e.message}` }], isError: true });

@@ -28,6 +28,12 @@ export function juntarParcial(base, parcial) {
     const v = parcial[k];
     const certo = tipo === 'lista' ? Array.isArray(v) : v && typeof v === 'object' && !Array.isArray(v);
     if (!certo) throw new Error(`O campo "${k}" veio num formato errado — peça ao Claude para corrigir.`);
+    // v9.12.4: o painel da carteira quebra (Visão pela metade) com ativo urgente sem variação nenhuma — o PLANO de 13/11
+    // gravou os Tesouros novos assim. Recusa com o motivo, para o Claude corrigir.
+    if (k === 'analise_mercado') {
+      const sem = (v.ativos || []).filter(a => a?.urgencia === 'alta' && a.d7 == null && a.dm == null).map(a => a.n);
+      if (sem.length) throw new Error(`Na análise de mercado, ativo com urgência "alta" precisa de "d7" ou "dm" com número (use 0 se ainda não há histórico): ${sem.join(', ')}.`);
+    }
     if (k === 'fichas_ativos') dados.fichas_ativos = { ...(base.fichas_ativos || {}), ...v }; // ficha nova troca só a daquele ativo
     else if (k === 'analises') {
       const titulos = new Set(v.map(a => a?.titulo));

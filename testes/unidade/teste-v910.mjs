@@ -13,6 +13,8 @@ const html = (id, d) => `<html><script type="application/json" id="${id}">${JSON
 const arquivos = {
   'app/data/painel.enc': JSON.stringify(await cifrar({ html: html('cashflow-data', cf) }, chave, sal, 1000)),
   'app/data/carteira.enc': JSON.stringify(await cifrar({ html: html('carteira-data', cart) }, chave, sal, 1000)),
+  'docs/AGENTE-FINANCEIRO.md': 'nota interna\n▼ (copie daqui)\nPARTE DO CAIXA\n▲ (até aqui)\nfim',
+  'app/projeto.txt': 'PARTE DO LASTRO\n',
 };
 const TOKEN_BOM = 'tok-bom', TOKEN_LEITURA = 'tok-leitura';
 let commits = 0;
@@ -52,7 +54,9 @@ const ini = await rpc({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { p
 ok('initialize com instruções', ini.j.result.serverInfo.name === 'lastro' && ini.j.result.protocolVersion === '2025-03-26' && /so_validar/.test(ini.j.result.instructions));
 ok('notificação = 202', (await rpc({ jsonrpc: '2.0', method: 'notifications/initialized' })).status === 202);
 const lista = await rpc({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
-ok('4 ferramentas', lista.j.result.tools.map(t => t.name).join() === 'ler_resumo,ler_dados,formato_escrita,gravar');
+ok('5 ferramentas', lista.j.result.tools.map(t => t.name).join() === 'instrucoes,ler_resumo,ler_dados,formato_escrita,gravar');
+const ins = (await rpc({ jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name: 'instrucoes', arguments: {} } })).j.result.content[0].text;
+ok('instrucoes junta a parte do caixa (só entre ▼ e ▲) e a do Lastro', ins === 'PARTE DO CAIXA\n\n---\n\nPARTE DO LASTRO', JSON.stringify(ins));
 const texto = r => JSON.parse(r.j.result.content[0].text);
 const res = texto(await rpc({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'ler_resumo', arguments: {} } }));
 ok('ler_resumo traz caixa e carteira', res.caixa.periodo === '2026-11' && res.caixa.receitas[0].valor === 1000 && res.carteira.patrimonio === 500);
@@ -72,6 +76,10 @@ ok('campo proibido é recusado', proibido.j.result.isError && /nada que o Lastro
 guardado.repo = 'fam/antigo'; // o repositório foi renomeado depois de ligar
 const est = await (await rotaConector('estado', post('https://x/mcp/estado', { repo: 'fam/lastro', token: TOKEN_BOM }), {}, armazem)).json();
 ok('repositório renomeado: continua ligado e guarda o nome novo', est.ligado && est.url === lig.url && guardado.repo === 'fam/lastro');
+{
+  const r = await rpc({ jsonrpc: '2.0', id: 77, method: 'tools/call', params: { name: 'gravar', arguments: { arquivo: 'carteira', so_validar: true, campos: { analise_mercado: { data_geral: '2026-11-13', ativos: [{ n: 'Tesouro X', urgencia: 'alta', d7: null, dm: null, acao: 'a' }] } } } } });
+  ok('análise de mercado com ativo urgente sem variação é recusada', r.j.result.isError && /d7/.test(r.j.result.content[0].text), r.j.result.content[0].text);
+}
 erro = ''; try { await rotaConector('desligar', post('https://x/mcp/desligar', { repo: 'fam/lastro', token: TOKEN_LEITURA }), {}, armazem); } catch (e) { erro = e.message; }
 ok('desligar exige o token de quem publica', guardado && /não pode publicar/.test(erro));
 await rotaConector('desligar', post('https://x/mcp/desligar', { repo: 'fam/lastro', token: TOKEN_BOM }), {}, armazem);

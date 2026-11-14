@@ -27,12 +27,16 @@ import { DEMO } from './modo.js';
 import { NOME_CAMPO } from './parcial.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao, vibrar } from './v8.js';
 
-const VERSAO_APP = '9.12.3';
+const VERSAO_APP = '9.12.4';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 const REMOTO = 'data/painel.enc';
 // Novidades de cada versão: aparecem uma vez em cada celular quando a versão nova entra (mostrarNovidades) e ficam
 // em menu → Novidades desta versão. Escrever para o Bruno e o Rafael, em linguagem simples.
 const NOVIDADES = {
+  '9.12.4': [
+    ['Instruções do Projeto que se atualizam sozinhas', 'Com o Claude direto ligado: menu → Instruções do Projeto → "Copiar o texto curto" e cole uma vez no Projeto. O Claude passa a ler as instruções completas pelo conector, e quando elas mudarem não precisa recolar nada.', 'nova'],
+    ['Painéis para testes baixam direto', 'Configurações → Baixar os painéis para testes: os dois vão para a pasta Downloads, sem passar pelo Compartilhar (que continua no aviso, se preferir).', 'melhoria'],
+  ],
   '9.12.3': [
     ['FIIs, ETFs e GLDI11 pelo preço da B3', 'Na atualização automática, cada um vale as suas cotas × o preço da B3 de agora (o Itaú mostrava o preço com 2 a 3 pregões de atraso e demorava a mostrar as cotas compradas — foi o que tirou as 20 cotas de GLDI11). Os fundos continuam vindo do Itaú.', 'correcao'],
     ['Aporte e resgate esperam o banco', 'Depois de um aporte ou resgate num fundo, o Itaú leva alguns dias para mostrar. O app espera até 3 dias úteis antes de usar o saldo do banco, para não desfazer o que você lançou.', 'correcao'],
@@ -1912,7 +1916,7 @@ async function configHtml() {
     ${DEMO ? '' : estado.github ? `<p class="grupo">Publicação</p>${itemMenu('github', 'github', 'Token do GitHub', token)}` : `<p class="grupo">Publicação</p>${itemMenu('github', 'github', 'Configurar publicação', 'Só no celular de quem lança (token do GitHub)')}`}
     <p class="grupo">Suporte</p>
     ${itemMenu('diagnostico', 'lupa', 'Diagnóstico', estado.diagnostico ? 'Houve um problema ao desenhar o painel' : 'Versão, publicação e erros — mande quando algo não funcionar')}
-    ${estado.conteudo ? itemMenu('paineisTeste', 'enviar', 'Mandar os painéis para testes', 'Os dois painéis para o Claude Code testar com os seus dados') : ''}
+    ${estado.conteudo ? itemMenu('paineisTeste', 'enviar', 'Baixar os painéis para testes', 'Os dois painéis vão para Downloads, para o Claude Code testar') : ''}
     ${estado.resumoOk && estado.vista === 'resumo' ? itemMenu('painel', 'resumo', 'Ver o arquivo do agente', 'O painel como o agente gerou — só para conferência') : ''}
     <div class="zona-perigo"><p class="grupo">Zona de perigo</p>
     ${DEMO ? itemMenu('recomecar', 'atualizar', 'Recomeçar a demonstração', 'Volta tudo ao começo, com os dados de hoje') : itemMenu('sair', 'sair', 'Apagar dados deste aparelho', 'Pede a senha da família de novo', 'perigo')}</div>
@@ -4903,8 +4907,11 @@ function abrirSimuladorTroca(r0 = {}) {
 
 // v9.7: as instruções do Projeto "Vida financeira" moram no app (projeto.txt, fonte única). Mudou o texto → subir
 // VERSAO_PROJETO; o menu avisa até o Bruno copiar de novo (localStorage 'lastro-projeto' = versão copiada).
-const VERSAO_PROJETO = '9.12.3';
-const projetoDesatualizado = () => { try { return localStorage.getItem('lastro-projeto') !== VERSAO_PROJETO; } catch { return false; } };
+const VERSAO_PROJETO = '9.12.4';
+// v9.12.4: com o conector, o Projeto guarda só este texto curto e lê as instruções completas pela ferramenta
+// "instrucoes" (worker/mcp.js) — mudar as instruções não exige mais recolar ('lastro-projeto' = 'auto').
+const PROJETO_CURTO = 'Sou o Bruno. Neste Projeto, antes de responder qualquer mensagem, chame a ferramenta "instrucoes" do conector Lastro e siga o texto que ela devolver: são as instruções completas e sempre atualizadas (modos CAIXA, CARTEIRA, PLANO e PESQUISA). Se o conector Lastro não estiver entre as ferramentas, não continue: me peça para ligá-lo (no app: menu → Claude direto; na conversa: ligue o conector Lastro).';
+const projetoDesatualizado = () => { try { const v = localStorage.getItem('lastro-projeto'); return v === 'auto' ? !conectorLigado() : v !== VERSAO_PROJETO; } catch { return false; } };
 // v9.9.6: o texto inteiro do Projeto = parte do caixa (docs/AGENTE-FINANCEIRO.md, no repositório privado — lida com o
 // token do GitHub, nunca vai para o site) + parte do Lastro (projeto.txt). Sem acesso ao repositório, só a do Lastro.
 async function parteCaixaDoProjeto() {
@@ -4924,11 +4931,24 @@ async function abrirInstrucoesProjeto() {
   if (!lastro) return aviso('Não deu para abrir as instruções agora.', { erro: true });
   const caixa = await parteCaixaDoProjeto();
   const texto = caixa ? `${caixa}\n\n---\n\n${lastro.trim()}\n` : lastro;
+  const auto = conectorLigado();
+  let modo = ''; try { modo = localStorage.getItem('lastro-projeto') || ''; } catch { /* sem armazenamento */ }
   const folha = abrirFolha(`
     <h2>Instruções do Projeto</h2>
-    <p class="meta">${projetoDesatualizado() ? `<b>Mudaram na v${VERSAO_PROJETO}.</b> ` : ''}No claude.ai: Projeto "Vida financeira" → Instruções do projeto. ${caixa ? 'Apague <b>todo</b> o texto que está lá e cole este no lugar: ele já junta as duas partes (o caixa e o Lastro).' : 'Sem acesso ao repositório agora: este é só o bloco do Lastro — apague o bloco antigo do Lastro e cole este no lugar, depois das instruções do caixa.'}</p>
-    <button type="button" class="btn prim" id="pjCopiar">Copiar as instruções</button>
+    ${auto ? `<p class="meta">${modo === 'auto' ? `${icTom('bom')} <b>Automáticas.</b> O Projeto já lê as instruções pelo conector: nada para recolar quando elas mudarem.` : '<b>Jeito novo (recomendado):</b> cole uma vez só este texto curto. Ele manda o Claude ler as instruções completas pelo conector Lastro — quando elas mudarem, nada para recolar.'}</p>
+    <p class="meta">No claude.ai: Projeto "Vida financeira" → Instruções do projeto → apague <b>todo</b> o texto e cole.</p>
+    <button type="button" class="btn${modo === 'auto' ? '' : ' prim'}" id="pjCurto">Copiar o texto curto</button>
+    <details class="dobra"><summary><span>Sem o conector: o texto inteiro</span></summary>` : ''}
+    <p class="meta">${!auto && modo === 'auto' ? '<b>O conector está desligado:</b> o texto curto que está no Projeto não funciona sem ele. Ligue de novo (menu → Claude direto) ou cole o texto inteiro. ' : ''}${projetoDesatualizado() && modo !== 'auto' ? `<b>Mudaram na v${VERSAO_PROJETO}.</b> ` : ''}No claude.ai: Projeto "Vida financeira" → Instruções do projeto. ${caixa ? 'Apague <b>todo</b> o texto que está lá e cole este no lugar: ele já junta as duas partes (o caixa e o Lastro).' : 'Sem acesso ao repositório agora: este é só o bloco do Lastro — apague o bloco antigo do Lastro e cole este no lugar, depois das instruções do caixa.'}</p>
+    <button type="button" class="btn${auto ? '' : ' prim'}" id="pjCopiar">Copiar as instruções</button>${auto ? '</details>' : ''}
     <details class="dobra"><summary><span>Ver o texto</span></summary><pre class="diag">${esc(texto)}</pre></details>`);
+  folha.querySelector('#pjCurto')?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(PROJETO_CURTO);
+      try { localStorage.setItem('lastro-projeto', 'auto'); } catch { /* sem armazenamento */ }
+      aviso({ titulo: 'Texto curto copiado', detalhe: 'Apague tudo nas instruções do Projeto e cole. Daqui em diante elas se atualizam sozinhas.' }, { tom: 'ok', duracao: 8000 });
+    } catch { aviso('Não deu para copiar.', { erro: true }); }
+  });
   folha.querySelector('#pjCopiar').onclick = async () => {
     try {
       await navigator.clipboard.writeText(texto);
@@ -5001,20 +5021,24 @@ async function abrirConector() {
 }
 
 // v9.7: os dois painéis (HTML do agente, com os dados) para o Claude Code rodar a bateria de testes do app
+// v9.12.4: baixa direto (Bruno, 14/11: no celular só compartilhava e não dava para guardar o arquivo). Os dois vão
+// para a pasta Downloads; Compartilhar fica no aviso, como alternativa.
 async function mandarPaineis() {
   const hoje = hojeBrasil();
   const arquivos = [new File([estado.conteudo.html], `painel_cashflow_${hoje}.html`, { type: 'text/html' })];
   if (estado.cart.conteudo?.html) arquivos.push(new File([estado.cart.conteudo.html], `painel_carteira_${hoje}.html`, { type: 'text/html' }));
-  if (navigator.canShare?.({ files: arquivos })) {
-    try { await navigator.share({ files: arquivos, title: 'Painéis do Lastro para testes' }); return; } catch (e) { if (e.name === 'AbortError') return; }
-  }
-  for (const f of arquivos) {
+  for (const [i, f] of arquivos.entries()) {
+    if (i) await new Promise(r => setTimeout(r, 700)); // dois downloads colados o Chrome às vezes junta num só
     const a = document.createElement('a');
     a.href = URL.createObjectURL(f);
     a.download = f.name;
+    document.body.append(a);
     a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
   }
+  const compartilhar = navigator.canShare?.({ files: arquivos }) ? { rotulo: 'Compartilhar', fn: () => navigator.share({ files: arquivos, title: 'Painéis do Lastro para testes' }).catch(() => {}) } : undefined;
+  aviso({ titulo: `${arquivos.length === 2 ? 'Os dois painéis foram baixados' : 'Painel baixado'}`, detalhe: 'Estão na pasta Downloads. Anexe na conversa do Claude Code. (Se o celular perguntar, permita vários downloads.)' }, { tom: 'ok', duracao: 9000, acao: compartilhar });
 }
 
 // v9.7: quando o dinheiro de um resgate pedido agora cai na conta, e a ficha do ativo (pesquisada pelo Claude)
