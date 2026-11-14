@@ -18,6 +18,6 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Avisos"] }],
   "triggers": {
-    "crons": ["* * * * *", "0 22 * * 0"]
+    "crons": ["* * * * *"]
   }
 }
