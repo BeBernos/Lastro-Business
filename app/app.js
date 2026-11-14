@@ -8,15 +8,15 @@ import { extratoDoMes, filtrarExtrato, planilhaFatura, TIPOS } from './extrato.j
 import { gerarXlsx, TIPO_XLSX } from './xlsx.js';
 import { agendaClaude, aportePlanejado, definirOrcamentos, excluirMeta, pacoteIR, registrarAssinaturas, revisarAssinaturas, salvarMeta, sugestaoOrcamento } from './indicadores.js';
 import { icTom, ligarDicas } from './graficos.js';
-import { assinatura, categorizar, conciliar, juntarParcial, lerParcial, unificarCategorias } from './conciliar.js';
+import { acertarCategorias, assinatura, categorizar, conciliar, juntarParcial, lerParcial, unificarCategorias } from './conciliar.js';
 import { lerSaldoBinance } from './binance.js';
 import { alertasPlano, REGRAS_ESTRATEGIA, RESPOSTA_PLANO, rendimentoRendaFixa, textoAlertas, textoEstrategia, textoPesquisa, textoRendaFixaReal } from './estrategia.js';
 import { creditoResgate, linhasFicha, prazoResgate, textoFichas } from './liquidez.js';
 import { cdiAnualDe, simularTroca } from './rendafixa.js';
-import { dataDoSaldo, esperandoBanco, lerItau, sugerirLigacao, valoresDoItau } from './pluggy.js';
+import { dataDoSaldo, esperandoBanco, lerItau, sugerirLigacao, valoresB3, valoresDoItau } from './pluggy.js';
 import { traduzirFragmento } from './traduzir.js';
 import { estimar, pedidoCotacoes, urlCotacoes } from './cotacoes.js';
-import { editarMesFechado, excluirEntradaFutura, excluirExterno, acertarComBanco, acharItem, alternarPago, caixaHoje, CATEGORIAS_RECEITA, comprasApp, excluirCompra, categoriasCartao, categoriasConta, editarAssinatura, editarCompraFatura, editarItem, editarParcelamento, excluirCompraFatura, excluirParcelamento, excluirCategoria, excluirItem, hojeBrasil, historicoApp, lancarCartao, LISTAS_CAIXA, LISTAS_CONHECIDAS, valorConhecido, lancarPix, lerValor, marcarPago, novoAporte, novoDividendo, novoItem, novoResgate, pareceLancado, registrar, removerAssinatura, salvarCategoria, sinalDe, tickerDividendo, validar } from './lancamentos.js';
+import { editarMesFechado, excluirEntradaFutura, excluirExterno, acertarComBanco, acharItem, alternarPago, caixaHoje, CATEGORIAS_RECEITA, comprasApp, excluirCompra, categoriasCartao, categoriasConta, editarAssinatura, editarCompraFatura, editarItem, editarParcelamento, excluirCompraFatura, excluirParcelamento, excluirCategoria, excluirItem, hojeBrasil, historicoApp, lancarCartao, LISTAS_CAIXA, LISTAS_CONHECIDAS, valorConhecido, lancarPix, lerValor, marcarPago, novoAporte, parcelasItau, novoDividendo, novoItem, novoResgate, pareceLancado, registrar, removerAssinatura, salvarCategoria, sinalDe, tickerDividendo, validar } from './lancamentos.js';
 import { atualizarValores, copiarPatrimonio, cotasDe, dolarizacao, listaAtivos, mesAberto, nomeAtivo, planoDoMes, sincronizar } from './investimentos.js';
 import { chaveLoja, lerSms, marcaSms, separarSms } from './sms.js';
 import { acharCategoria, adivinharCategoria, categoriaDoItem, categoriasAtivas, CORES, definirCategorias, GRUPOS, ICONES as ICONES_CAT, iconeCategoria, iconeDe, listaDoPainel, nomeCategoria, norm } from './categorias.js';
@@ -27,12 +27,22 @@ import { DEMO } from './modo.js';
 import { NOME_CAMPO } from './parcial.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao, vibrar } from './v8.js';
 
-const VERSAO_APP = '9.12.1';
+const VERSAO_APP = '9.12.3';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 const REMOTO = 'data/painel.enc';
 // Novidades de cada versão: aparecem uma vez em cada celular quando a versão nova entra (mostrarNovidades) e ficam
 // em menu → Novidades desta versão. Escrever para o Bruno e o Rafael, em linguagem simples.
 const NOVIDADES = {
+  '9.12.3': [
+    ['FIIs, ETFs e GLDI11 pelo preço da B3', 'Na atualização automática, cada um vale as suas cotas × o preço da B3 de agora (o Itaú mostrava o preço com 2 a 3 pregões de atraso e demorava a mostrar as cotas compradas — foi o que tirou as 20 cotas de GLDI11). Os fundos continuam vindo do Itaú.', 'correcao'],
+    ['Aporte e resgate esperam o banco', 'Depois de um aporte ou resgate num fundo, o Itaú leva alguns dias para mostrar. O app espera até 3 dias úteis antes de usar o saldo do banco, para não desfazer o que você lançou.', 'correcao'],
+    ['Fatura igual à do Itaú', 'Compra parcelada: a 1ª parcela leva os centavos que sobram, como o Itaú faz (66,24 + 3 × 66,22). Trocar a categoria de uma parcela ou recorrente agora move o valor junto, e as parcelas mostram a data da compra.', 'correcao'],
+    ['Um resultado do mês só', 'Carteira › Visão mostra o resultado do mês da posição gravada (o mesmo do painel). A estimativa de agora só aparece num dia depois da posição.', 'melhoria'],
+    ['Claude direto sem arquivo', 'Com o conector ligado, Plano, Pesquisa e Análise do dia viram um passo só: copiar o pedido e colar no Claude. Ele lê e grava sozinho (o fechamento continua com arquivo). Recole as instruções do Projeto (menu → Instruções do Projeto).', 'melhoria'],
+  ],
+  '9.12.2': [
+    ['Bastidores', 'Preparação da versão de demonstração (portfólio público, com uma família fictícia). Nada muda no seu uso.', 'melhoria'],
+  ],
   '9.12.1': [
     ['Repositório com nome novo', 'O repositório do Lastro passou a se chamar Lastro-Personal. O app se ajustou sozinho: nada para configurar.', 'melhoria'],
   ],
@@ -2539,7 +2549,7 @@ async function executarLancamento(alterar, rotulo) {
 // se o Bruno desfizer, o app não insiste. Vira um lançamento comum (um envio, com Desfazer).
 async function conciliarAgora() {
   if (!estado.github || !estado.dados || !estado.cart.dados || estado.conciliando) return;
-  const tudo = (cf, cart) => { const a = conciliar(cf, cart), b = categorizar(a.cf), u = unificarCategorias(b.cf); return { cf: u.cf, mudancas: [...a.mudancas, ...b.mudancas, ...u.mudancas] }; };
+  const tudo = (cf, cart) => { const a = conciliar(cf, cart), b = categorizar(a.cf), u = unificarCategorias(b.cf), k = acertarCategorias(u.cf); return { cf: k.cf, mudancas: [...a.mudancas, ...b.mudancas, ...u.mudancas, ...k.mudancas] }; };
   const { mudancas } = tudo(estado.dados, estado.cart.dados);
   if (!mudancas.length) return;
   const ass = assinatura(estado.dados.periodo, mudancas);
@@ -2621,7 +2631,7 @@ async function atualizarCriptoBinance({ forcar = false } = {}) {
     const v = await saldoBinance();
     await banco.gravar('binanceEm', hoje);
     // aporte/resgate em cripto lançado hoje: o depósito pode ainda não ter caído na Binance → espera amanhã (o botão força)
-    const espera = forcar ? {} : esperandoBanco(estado.dados, [{ id: 'b', data: hoje }], { b: 'cripto' }, null, salvosAMao());
+    const espera = forcar ? {} : esperandoBanco(estado.dados, [{ id: 'b', data: hoje }], { b: 'cripto' }, null, salvosAMao(), { dias: 0 });
     if (espera.cripto) return false;
     const previa = atualizarValores(estado.cart.dados, { valores: { cripto: v.brl } }, hoje); // só para o texto do aviso
     await aplicarLancamento((cf, cart) => {
@@ -2756,9 +2766,16 @@ async function atualizarItau({ forcar = false, r = null } = {}) {
     const ativos = new Set(listaAtivos(estado.cart.dados).map(a => a.chave));
     // automático × manual: ativo com aporte/resgate ou valor digitado mais novo que o saldo do banco espera o próximo dia
     const conexaoEm = r.conexoes?.[0]?.atualizadoEm;
-    const espera = esperandoBanco(estado.dados, r.investimentos, cred.ligacoes, conexaoEm, salvosAMao());
-    const datas = dataDoSaldo(r.investimentos, cred.ligacoes, conexaoEm);
-    const valores = Object.fromEntries(Object.entries(valoresDoItau(r.investimentos, cred.ligacoes)).filter(([k]) => ativos.has(k) && !(k in espera)));
+    const espera = esperandoBanco(estado.dados, r.investimentos, cred.ligacoes, conexaoEm, salvosAMao(), { feriados: estado.dados?.feriados?.datas || {} });
+    // v9.12.3: B3 (FIIs, ETFs, GLDI11) = cotas × preço da B3; do Itaú, só o que não é da B3 (fundos, renda fixa)
+    await atualizarCotacoes();
+    const cot = estado.cot?.url === urlCotacoes(pedidoCotacoes(estado.cart.dados)) ? estado.cot.dados : null;
+    const b3 = valoresB3(estado.cart.dados, cot?.b3, hoje);
+    const daB3 = new Set(Object.keys(estado.cart.dados.custo_medio?.ativos || {}));
+    for (const k of daB3) delete espera[k];
+    const datas = { ...dataDoSaldo(r.investimentos, cred.ligacoes, conexaoEm), ...b3.datas };
+    const valores = Object.fromEntries(Object.entries({ ...valoresDoItau(r.investimentos, cred.ligacoes), ...b3.valores })
+      .filter(([k]) => ativos.has(k) && !(k in espera) && (!daB3.has(k) || k in b3.valores)));
     await banco.gravar('pluggyEm', hoje);
     const nota = Object.keys(espera).length ? ` · fica para depois: ${Object.entries(espera).map(([k, t]) => `${nomeAtivo(k)} (${MOTIVO_ESPERA[t]})`).join(', ')}` : '';
     if (!Object.keys(valores).length) {
@@ -3104,7 +3121,7 @@ function abrirLancar(tipo = 'cartao', preenchido = {}) {
       const nota = $f('#lParcNota');
       nota.hidden = !(n > 1 && v > 0);
       if (!nota.hidden) nota.textContent = tipo === 'cartao'
-        ? `Entra ${brlTexto(Math.round((v / n) * 100) / 100)} ${prox ? `na fatura de ${proxNome}` : 'nesta fatura'}; as outras ${n - 1} parcelas vão para as próximas.`
+        ? `Entra ${brlTexto(parcelasItau(v, n).primeira)} ${prox ? `na fatura de ${proxNome}` : 'nesta fatura'}; as outras ${n - 1} parcelas (${brlTexto(parcelasItau(v, n).parcela)}) vão para as próximas.`
         : `A 1ª parcela (${brlTexto(Math.round((v / n) * 100) / 100)}) sai ${quandoSai(dataEl.value)}; as outras ${n - 1} no mesmo dia dos meses seguintes.`;
     }
     if (recBox) {
@@ -4886,7 +4903,7 @@ function abrirSimuladorTroca(r0 = {}) {
 
 // v9.7: as instruções do Projeto "Vida financeira" moram no app (projeto.txt, fonte única). Mudou o texto → subir
 // VERSAO_PROJETO; o menu avisa até o Bruno copiar de novo (localStorage 'lastro-projeto' = versão copiada).
-const VERSAO_PROJETO = '9.9.12';
+const VERSAO_PROJETO = '9.12.3';
 const projetoDesatualizado = () => { try { return localStorage.getItem('lastro-projeto') !== VERSAO_PROJETO; } catch { return false; } };
 // v9.9.6: o texto inteiro do Projeto = parte do caixa (docs/AGENTE-FINANCEIRO.md, no repositório privado — lida com o
 // token do GitHub, nunca vai para o site) + parte do Lastro (projeto.txt). Sem acesso ao repositório, só a do Lastro.
@@ -5036,7 +5053,13 @@ function abrirPesquisa(ativo, { estrategia = false, fichas = false, passo = 0, n
   if (fichas) estrategia = false;
   const semNome = estrategia || fichas;
   const titulo = estrategia ? 'Revisar a estratégia' : fichas ? 'Fichas dos seus ativos' : 'Pesquisar um ativo';
-  const folha = abrirFolha(`
+  const conector = conectorLigado() && passo !== -1;
+  const folha = abrirFolha(conector ? `
+    <h2>${titulo}</h2>
+    <p class="meta">O conector Claude direto está ligado: nada de arquivo. Copie o pedido e cole numa conversa nova do Projeto "Vida financeira"${estrategia ? ', com a pesquisa na internet ligada' : ''}. ${semNome ? 'O Claude mostra o que vai mudar e só grava depois do seu "pode gravar".' : 'Uma conversa por ativo.'}</p>
+    ${semNome ? '' : `<label for="pqNome">Ativo ou tema</label><input class="campo" id="pqNome" autocomplete="off" value="${esc(nome)}" placeholder="Ex.: VWRA, Tesouro IPCA+ 2029, HGLG11" required>`}
+    <button type="button" class="btn prim" id="pqCopiar">Copiar o pedido</button>
+    <button type="button" class="link" id="pqArquivo">Prefiro mandar o arquivo</button>` : `
     <h2>${titulo}</h2>
     <p class="meta">${estrategia ? 'Numa conversa nova do Projeto "Vida financeira", com a pesquisa na internet ligada. O Claude grava a estratégia nova na carteira; você importa de volta.' : fichas ? 'O Claude pesquisa, com fonte e data, o prazo de resgate, as taxas, o imposto e o risco de cada investimento. O app usa a ficha para dizer quando cada resgate cai na conta.' : 'Uma conversa nova do Projeto por ativo (não enche o contexto). O Claude devolve uma análise a fundo, com fonte e data de cada número.'}</p>
     ${semNome ? '' : `<label for="pqNome">Ativo ou tema</label><input class="campo" id="pqNome" autocomplete="off" value="${esc(nome)}" placeholder="Ex.: VWRA, Tesouro IPCA+ 2029, HGLG11" required>`}
@@ -5048,17 +5071,21 @@ function abrirPesquisa(ativo, { estrategia = false, fichas = false, passo = 0, n
     </ol>
     ${semNome ? '<p class="nota">Quando o Claude devolver o arquivo (pequeno), importe pelo menu → Importar.</p>' : ''}`);
   const ler = () => (semNome ? '' : folha.querySelector('#pqNome').value.trim());
-  folha.querySelector('#pqEnviar').onclick = async () => {
+  folha.querySelector('#pqArquivo')?.addEventListener('click', () => abrirPesquisa(ativo, { estrategia, fichas, passo: -1, nome: ler() }));
+  if (folha.querySelector('#pqEnviar')) folha.querySelector('#pqEnviar').onclick = async () => {
     if (!semNome && !ler()) return folha.querySelector('#pqNome').focus();
     const foi = estrategia ? await enviarArquivos([[arqs[0], cart], [arqs[1], estado.dados]]) : await enviarArquivo(arqs[0], cart);
     if (foi) abrirPesquisa(ativo, { estrategia, fichas, passo: Math.max(passo, 1), nome: ler() });
   };
   folha.querySelector('#pqCopiar')?.addEventListener('click', async () => {
-    const texto = estrategia ? textoEstrategia(cart, arqs, estado.cdiHist?.cdi, alertasDoPlano())
+    if (!semNome && !ler()) return folha.querySelector('#pqNome').focus();
+    const t0 = estrategia ? textoEstrategia(cart, arqs, estado.cdiHist?.cdi, alertasDoPlano())
       : fichas ? textoFichas(listaAtivos(cart).filter(a => a.valor > 0), arqs[0]) : textoPesquisa(cart, ler() || ativo, arqs[0]);
+    const texto = conector ? pedidoPeloConector(t0, 'carteira') : t0;
     try {
       await navigator.clipboard.writeText(texto);
-      aviso({ titulo: 'Pedido copiado', detalhe: 'Volte para a conversa no Claude, cole e envie.' }, { tom: 'ok' });
+      aviso({ titulo: 'Pedido copiado', detalhe: conector ? 'Cole numa conversa nova do Projeto e envie.' : 'Volte para a conversa no Claude, cole e envie.' }, { tom: 'ok' });
+      if (conector) return fecharFolha();
       abrirPesquisa(ativo, { estrategia, fichas, passo: 2, nome: ler() });
     } catch { aviso('Não deu para copiar.', { erro: true }); }
   });
@@ -5389,6 +5416,19 @@ const SO_PARCIAL = (qual, base) => `Se você NÃO mudou nenhum número, devolva 
 // Enquanto o código do painel (fora o JSON) não citar foraDoMes, o fechamento pede ao Claude o HTML corrigido, uma vez só.
 const painelSemForaDoMes = html => !/foraDoMes/.test(String(html || '').replace(/<script[^>]*id=["']cashflow-data["'][^>]*>[\s\S]*?<\/script>/i, ''));
 const HTML_FORA_DO_MES = base => `Desta vez devolva o painel HTML completo (painel_cashflow_AAAA-MM-DD.html, com o JSON atualizado dentro), partindo do último painel e sem renomear funções nem ids, com uma correção: assinatura com "foraDoMes" igual ao período NÃO é cobrada na fatura daquele mês — fica fora da soma das assinaturas, do agendado (composicao e a conferência em faturaCartao), de assinaturasCartao e do que falta cobrar no mês; nos meses seguintes conta normalmente. Hoje o painel soma e acusa divergência na fatura. Ponha as análises no campo "analises" do JSON. Nos próximos fechamentos volte a mandar só o ${base}_AAAA-MM-DD.json.`;
+// v9.12.3: com o conector ligado (v9.10), Plano, Pesquisa e Análise do dia vão sem arquivo: o Claude lê e grava sozinho.
+// O fechamento CAIXA/CARTEIRA continua com arquivo (gera o painel inteiro).
+const conectorLigado = () => { try { return localStorage.getItem('lastro-conector') === '1'; } catch { return false; } };
+const CONECTOR_LER = 'Não anexei arquivo: use o conector Lastro (ler_resumo para o quadro geral, ler_dados para os campos inteiros) — é a versão mais nova, com tudo o que lancei no app.';
+const CONECTOR_GRAVAR = arq => `Não gere painel nem arquivo: grave pelo conector Lastro (gravar, arquivo "${arq}"; formato_escrita diz os campos). Primeiro com so_validar=true, me mostre o que vai mudar e só grave depois do meu "pode gravar". As análises vão no campo "analises".`;
+function pedidoPeloConector(texto, arq) {
+  return texto
+    .replace(/^(Anexei|Arquivo anexado|Arquivos anexados).*$/m, CONECTOR_LER)
+    .replace(/Parta do \S+ que anexei/, 'Parta da carteira que o conector traz')
+    .replace(RESPOSTA_PLANO, CONECTOR_GRAVAR(arq))
+    .replace(SO_PARCIAL(arq, arq === 'caixa' ? 'cashflow_dados' : 'carteira_dados'), CONECTOR_GRAVAR(arq))
+    .replace(/^Devolva só um JSON PEQUENO: \{"lastro_parcial".*$/m, CONECTOR_GRAVAR(arq));
+}
 function textoCaixa(d, nome, hoje, fecharModo) {
   const fechar = fecharModo ?? (hoje.slice(0, 7) > d.periodo || hoje === ultimoDiaDe(d.periodo));
   const mes = d.periodoLabel || rotuloMesLongo(d.periodo);
@@ -5544,7 +5584,9 @@ async function abrirLevarClaude(qual, opcoes = {}) {
   const nomes = [`cashflow_dados_${hoje}.json`, `carteira_dados_${hoje}.json`];
   const nome = qual === 'carteira' ? nomes[1] : qual === 'plano' ? `${nomes[0]} e ${nomes[1]}` : nomes[0];
   const dados = qual === 'carteira' ? cart : estado.dados;
-  const texto = qual === 'caixa' ? textoCaixa(dados, nome, hoje, fechar) : qual === 'carteira' ? textoCarteira(dados, nome, hoje, fechar) : textoPlano(estado.dados, cart, nomes, hoje);
+  const conector = conectorLigado() && (!fechar || qual === 'plano') && !opcoes.arquivo;
+  const texto0 = qual === 'caixa' ? textoCaixa(dados, nome, hoje, fechar) : qual === 'carteira' ? textoCarteira(dados, nome, hoje, fechar) : textoPlano(estado.dados, cart, nomes, hoje);
+  const texto = conector ? pedidoPeloConector(texto0, qual === 'caixa' ? 'caixa' : 'carteira') : texto0;
   const enviar = baixar => (qual !== 'plano' ? enviarArquivo(nome, dados, baixar) : enviarArquivos([[nomes[0], estado.dados], [nomes[1], cart]], baixar));
   const mesNome = mesF ? MESES_LONGOS[Number(mesF.slice(5)) - 1] : '';
   const titulo = e => ORDEM_FECH.find(([k]) => k === e)[1];
@@ -5575,7 +5617,14 @@ async function abrirLevarClaude(qual, opcoes = {}) {
     ${concluido ? `<p class="nota">${icTom('bom')} Fechamento de ${esc(mesNome)} concluído. Se quiser refazer uma etapa, toque nela.</p>` : ''}
     ${!fechar && !mesF && estado.fechamento?.mes && ETAPAS.every(e => estado.fechamento.feito?.[e]) && mesSeguinte(estado.fechamento.mes) === estado.dados.periodo ? `<p class="nota">${icTom('bom')} Fechamento de ${esc(MESES_LONGOS[Number(estado.fechamento.mes.slice(5)) - 1])} concluído.</p>` : ''}
     ${fechar ? `<p class="etapa-agora">Etapa ${nEtapa} de 3 · <b>${esc(titulo(qual))}</b><small>${esc(ORDEM_FECH[nEtapa - 1][2])}</small></p>` : ''}
-    <ol class="passos-lv">
+    ${conector ? `<div class="passo-corpo">
+      <p class="passo-txt">O conector Claude direto está ligado: <b>nada de arquivo</b>. Copie o pedido, cole numa conversa nova do Projeto "Vida financeira" e envie. O Claude lê o Lastro, mostra o que vai mudar e só grava depois do seu "pode gravar" — o app recebe sozinho.</p>
+      <details class="ver-texto"><summary>Ver o pedido</summary><textarea class="pn-exp modelo" id="lvTexto" spellcheck="false">${esc(texto)}</textarea></details>
+      <label for="lvExtra">Quer acrescentar algo? <span class="opcional">(opcional)</span></label>
+      <textarea class="campo" id="lvExtra" rows="2" placeholder="Ex.: quero entender por que o mercado subiu tanto este mês"></textarea>
+      <button type="button" class="btn prim" id="lvCopiar">Copiar o pedido</button>
+      <button type="button" class="link" id="lvArquivo">Prefiro mandar o arquivo</button>
+    </div>` : `<ol class="passos-lv">
       ${p(1, `Mande ${qual === 'plano' ? 'os dois arquivos' : 'o arquivo'} para o Claude`, `<p class="passo-txt">Toque em Compartilhar e escolha o app do Claude: ele abre uma conversa nova com ${qual === 'plano' ? 'os arquivos' : 'o arquivo'} anexado${qual === 'plano' ? 's' : ''}. <small>${esc(nome)}</small></p>
         <button type="button" class="btn${passo === 0 ? ' prim' : ''}" id="lvEnviar">Compartilhar com o Claude</button>
         <button type="button" class="link" id="lvBaixar">Baixar em vez de compartilhar</button>`)}
@@ -5586,7 +5635,7 @@ async function abrirLevarClaude(qual, opcoes = {}) {
         <p class="passo-txt"><small>Depois de copiar, volte para a conversa no Claude, cole e envie.</small></p>`)}
       ${p(3, 'Traga a resposta de volta', `<p class="passo-txt">Quando o Claude terminar, baixe o que ele devolver: ${esc(qual === 'caixa' && fechar && painelSemForaDoMes(estado.conteudo?.html) ? 'desta vez, o painel do caixa (painel_cashflow_….html) — vem com o painel corrigido e os dados do mês novo. Até importar, o app só deixa lançar compras no cartão.' : DE_VOLTA[qual])}</p>
         <button type="button" class="btn${passo === 2 ? ' prim' : ''}" id="lvImportar">Importar o arquivo do Claude</button>`)}
-    </ol>
+    </ol>`}
     ${fechar && !feita ? '<button type="button" class="link" id="lvFeita">Já fiz esta etapa de outro jeito</button>' : ''}`);
   folha.querySelectorAll('[data-levar]').forEach(b => { b.onclick = () => b.dataset.levar !== qual && abrirLevarClaude(b.dataset.levar, { modo }); });
   folha.querySelectorAll('[data-lv-modo]').forEach(b => { b.onclick = () => b.dataset.lvModo !== modo && abrirLevarClaude(undefined, { modo: b.dataset.lvModo }); });
@@ -5594,6 +5643,7 @@ async function abrirLevarClaude(qual, opcoes = {}) {
   ligar('#lvEnviar', async () => { if (await enviar(false)) avancar(1); });
   ligar('#lvBaixar', async () => { if (await enviar(true)) avancar(1); });
   ligar('#lvImportar', () => escolherArquivo());
+  ligar('#lvArquivo', () => abrirLevarClaude(qual, { modo, arquivo: true }));
   // dois toques: o primeiro explica, o segundo pula (folha de confirmação fecharia esta)
   ligar('#lvFeita', e => {
     const b = e.currentTarget;
@@ -5607,7 +5657,8 @@ async function abrirLevarClaude(qual, opcoes = {}) {
     const tudo = extra ? `${area.value}\n\nAlém disso: ${extra}` : area.value;
     try {
       await navigator.clipboard.writeText(tudo);
-      aviso({ titulo: 'Pedido copiado', detalhe: 'Volte para a conversa no Claude, cole e envie.' }, { tom: 'ok' });
+      aviso({ titulo: 'Pedido copiado', detalhe: conector ? 'Cole numa conversa nova do Projeto e envie.' : 'Volte para a conversa no Claude, cole e envie.' }, { tom: 'ok' });
+      if (conector) { if (fechar) marcarEtapa(qual); return; }
       avancar(2);
     } catch {
       folha.querySelector('.ver-texto').open = true;
