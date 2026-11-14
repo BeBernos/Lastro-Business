@@ -8,6 +8,7 @@ export const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;',
 
 // ---------- formatação ----------
 export const dataCurta = iso => (iso ? iso.slice(0, 10).split('-').reverse().slice(0, 2).join('/') : '?');
+export const brlTexto = v => (Number.isFinite(v) ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(/\s/g, ' ') : '?');
 export const dataHora = iso => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às');
 
 export const ICONES = {
