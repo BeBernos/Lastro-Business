@@ -15,8 +15,9 @@ import { rotaConector, servidorMcp } from './mcp.js';
 // Contato exigido pelo Web Push (VAPID); uma URL é aceita no lugar de e-mail.
 const CONTATO = 'https://github.com/BeBernos/Lastro-Business';
 const MAX_INSCRICOES = 20;
-// v9.16: resumo da semana — domingo 19h em Brasília (22h UTC; o Brasil não tem mais horário de verão). Igual ao wrangler.jsonc.
-const CRON_SEMANA = '0 22 * * 0';
+// v9.16.1: resumo da semana — domingo a partir das 19h de Brasília (22h UTC; sem horário de verão). Vai pelo cron de minuto:
+// a conta grátis do Cloudflare aceita só 5 crons e os 5 Workers da família já usam um cada (um 6º derrubou a montagem).
+const ehHoraDaSemana = d => d.getUTCDay() === 0 && d.getUTCHours() >= 22;
 // Só serviços de push conhecidos (evita usar o Worker para chamar URLs arbitrárias).
 const SERVICOS_PUSH = /^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9.-]+\.notify\.windows\.com|web\.push\.apple\.com)\//;
 
@@ -135,8 +136,10 @@ export class Avisos extends DurableObject {
     return { avisou: true, resultados: await this.enviarParaTodos() };
   }
 
-  // v9.16: domingo às 19h (cron CRON_SEMANA). O push continua vazio; o service worker pergunta o motivo em /push/motivo.
-  async avisarSemana() {
+  // v9.16: domingo às 19h. O push continua vazio; o service worker pergunta o motivo em /push/motivo. Uma vez por domingo.
+  async avisarSemana(dia) {
+    if ((await this.ctx.storage.get('semanaAvisada')) === dia) return null;
+    await this.ctx.storage.put('semanaAvisada', dia);
     await this.ctx.storage.put('motivo', { tipo: 'semana', em: Date.now() });
     return this.enviarParaTodos();
   }
@@ -245,8 +248,9 @@ export default {
   },
 
   async scheduled(evento, env, ctx) {
-    if (evento?.cron === CRON_SEMANA) return ctx.waitUntil(caixa(env).avisarSemana());
     ctx.waitUntil((async () => {
+      const agora = new Date(evento?.scheduledTime || Date.now());
+      if (ehHoraDaSemana(agora)) await caixa(env).avisarSemana(agora.toISOString().slice(0, 10)).catch(() => {}); // não atrapalha o aviso de painel
       for (const arquivo of ['painel', 'carteira']) {
         const r = await env.ASSETS.fetch(new Request(`https://app.local/data/${arquivo}.enc`));
         if (!r.ok) continue;

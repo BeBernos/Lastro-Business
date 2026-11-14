@@ -28,13 +28,13 @@ import { NOME_CAMPO } from './parcial.js';
 import { alternarPausa, conselhoAtivo, derivarTarget, gatilhos, mudancasEstrategia, ordemAportes, textoItem } from './ficha.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao, vibrar } from './v8.js';
 
-const VERSAO_APP = '9.16.0';
+const VERSAO_APP = '9.16.1';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 const REMOTO = 'data/painel.enc';
 // Novidades de cada versão: aparecem uma vez em cada celular quando a versão nova entra (mostrarNovidades) e ficam
 // em menu → Novidades desta versão. Escrever para o Bruno e o Rafael, em linguagem simples.
 const NOVIDADES = {
-  '9.16.0': [
+  '9.16.1': [ // a 9.16.0 não chegou a entrar no ar (montagem falhou: limite de crons)
     ['Resumo da semana', 'Todo domingo às 19h chega o aviso do resumo da semana: quanto saiu nos últimos 7 dias (e se foi mais ou menos que na semana anterior), para onde foi, os maiores gastos, se o mês está no ritmo e o que vence nos próximos 7 dias. Aos domingos ele também fica no topo do Início; nos outros dias, menu ⋮ → Resumo da semana.', 'nova'],
   ],
   '9.15.0': [
