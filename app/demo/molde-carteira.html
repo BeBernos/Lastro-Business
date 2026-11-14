@@ -778,9 +778,9 @@ function flat(m){
   o.dolar = m.ativos.dolar; o.cripto = m.ativos.cripto;
   return o;
 }
-const NOME = {active_fix_all:'Active Fix All', index_simples_selic:'Index Simples Selic', credito_bancario_rf:'Crédito Bancário RF',
+const NOME = new Proxy({active_fix_all:'Active Fix All', index_simples_selic:'Index Simples Selic', credito_bancario_rf:'Crédito Bancário RF',
   optimus_rf:'Optimus RF', hglg11:'HGLG11', irim11:'IRIM11', knri11:'KNRI11', mxrf11:'MXRF11', trxf11:'TRXF11',
-  ivvb11:'IVVB11', smal11:'SMAL11', divo11:'DIVO11', itau_index_gold:'Itaú Index Gold', gldi11:'GLDI11', ouro:'Ouro', dolar:'Dólar', cripto:'Cripto'};
+  ivvb11:'IVVB11', smal11:'SMAL11', divo11:'DIVO11', itau_index_gold:'Itaú Index Gold', gldi11:'GLDI11', ouro:'Ouro', dolar:'Dólar', cripto:'Cripto'}, { get: (o, k) => o[k] ?? (/\d{2}$/.test(k) ? String(k).toUpperCase() : String(k).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())) });
 /* ativo desatualizado: valor não informado há mais de 14 dias em relação à última marcação */
 const STALE = k => { const t = (L.ativos_atualizado_em||{})[k]; return t ? dias(t, L.atualizado_em) > 14 : false; };
 /* variação de cada posição no mês, ajustada por aportes/resgates daquele ativo */
@@ -1377,7 +1377,7 @@ let SCORE_ATUAL = 0;
   document.getElementById('proj-body').innerHTML = Object.keys(proj.ativos).map(k=>{
     const a = proj.ativos[k];
     return `<tr><td>${NOME[k]} ${a.pago?'<span class="badge b-green">pago</span>':(a.confirmado?'<span class="badge b-green">confirmado</span>':'<span class="badge b-yellow">estimado</span>')}</td>
-      <td>${a.cotas}</td><td>${a.valor_cota.toFixed(2)}</td><td>${brl(a.total)}</td></tr>`;
+      <td>${a.cotas}</td><td>${a.valor_cota.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td><td>${brl(a.total)}</td></tr>`;
   }).join('');
   const trx = proj.ativos.trxf11;
   document.getElementById('proj-nota').innerHTML = `Isto é <b>projeção, não fato consumado</b> — só vira dinheiro quando cair na conta.` +

@@ -26,7 +26,10 @@ const NOMES = {
   optimus_rf: 'Optimus RF', lumina_soberano: 'Lumina Soberano', itau_index_gold: 'Itaú Index Gold', ouro: 'Ouro',
   dolar: 'Dólar (Index Cambial)', cripto: 'Cripto',
 };
-export const nomeAtivo = k => NOMES[k] || (/^[a-z]{4}\d{2}$/.test(k) ? k.toUpperCase() : k.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()));
+// v9.15: siglas certas nos ativos novos (tesouro_ipca_2035 → "Tesouro IPCA+ 2035", antes "Tesouro ipca 2035")
+const SIGLAS = { ipca: 'IPCA+', selic: 'Selic', cdb: 'CDB', lci: 'LCI', lca: 'LCA', cdi: 'CDI', rf: 'RF', etf: 'ETF', fii: 'FII', pre: 'Prefixado', prefixado: 'Prefixado' };
+export const nomeAtivo = k => NOMES[k] || (/^[a-z]{4}\d{2}$/.test(k) ? k.toUpperCase()
+  : k.split('_').map((p, i) => SIGLAS[p] || (/^[a-z]{4}\d{2}$/.test(p) ? p.toUpperCase() : i === 0 ? p.replace(/^./, c => c.toUpperCase()) : p)).join(' '));
 
 export const CLASSES_NOVO = ['renda_fixa', 'fiis', 'etfs'];
 const CLASSES = [['renda_fixa', 'Renda fixa'], ['fiis', 'FIIs'], ['etfs', 'ETFs'], ['ouro', 'Ouro'], ['dolar', 'Dólar'], ['cripto', 'Cripto']];

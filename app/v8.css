@@ -547,3 +547,9 @@ html.demo body::before{content:"Demonstração · dados fictícios";position:fix
 .hoje .destaques li{display:flex;align-items:center;gap:10px}
 .hoje .destaques li > button:first-child{flex:1;min-width:0}
 .hoje .destaques .btn.mini{flex:none;width:auto;margin:0;padding:7px 14px;min-height:36px;font-size:13.5px;border-radius:999px}
+/* v9.15: a faixa da demonstração cobria o título da tela */
+html.demo[data-ui="v8"] .topo{padding-top:26px}
+/* v9.15: o que o gráfico do saldo já conta sem estar confirmado */
+[data-ui="v8"] .hero-pendente{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:var(--ink-2)}
+[data-ui="v8"] .hero-pendente svg{flex:none;margin-top:2px}
+[data-ui="v8"] .hero-pendente .link{display:inline;padding:0;margin:0;min-height:0;font-size:inherit}

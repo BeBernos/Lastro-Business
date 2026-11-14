@@ -140,8 +140,9 @@ function gerarCarteira(hoje, p) {
   };
   const historico_mensal = {};
   for (let i = 12; i >= 1; i--) {
-    const m = somaMes(periodo, -i), f = 1 - i * 0.012; // patrimônio crescendo ~1,2% ao mês (aportes + mercado)
-    const a = JSON.parse(JSON.stringify(ativos), (k, v) => (typeof v === 'number' ? c2(v * f) : v));
+    // patrimônio crescendo ~1,2% ao mês (aportes + mercado); cada ativo num ritmo seu, senão "melhor" e "pior" empatam
+    const m = somaMes(periodo, -i), ritmo = k => 0.004 + ([...k].reduce((s, c) => s + c.charCodeAt(0), 0) % 13) * 0.0012;
+    const a = JSON.parse(JSON.stringify(ativos), (k, v) => (typeof v === 'number' ? c2(v * (1 - i * ritmo(k))) : v));
     historico_mensal[m] = { status: 'fechado', atualizado_em: `${m}-${pad(diasDo(m))}`, dividendos: 81.6, aportes: 1500, resgates: 0, resultado_mercado: c2(soma(a) * 0.004),
       fluxos: [{ tipo: 'aporte', ativo: 'tesouro_ipca_2035', valor: 1500, data: `${m}-21`, origem: 'caixa' }], composicao: composicao(a), ativos: a,
       dividendos_detalhe: { xpml11: 43.2, visc11: 38.4 }, patrimonio_total: c2(soma(a)) };
@@ -162,7 +163,7 @@ function gerarCarteira(hoje, p) {
     plano_aportes: [{ mes: periodo, ativo: 'tesouro_ipca_2035', valor: 1200, motivo: 'meta da viagem ao Japão' }, { mes: periodo, ativo: 'ivvb11', valor: 600, motivo: 'dolarização com dinheiro novo' }],
     metas: [{ id: 'japao', nome: 'Viagem ao Japão', alvo: 38000, prazo: `${Number(periodo.slice(0, 4)) + 2}-04`, ativos: ['tesouro_ipca_2035'], guardado: null }, { id: 'reserva', nome: 'Reserva de 6 meses', alvo: 42000, prazo: null, ativos: ['tesouro_selic'], guardado: null }],
     analises: [{ data: hoje, tipo: 'info', titulo: 'Dólar abaixo do alvo', texto: 'A carteira tem 18% em dólar (IVVB11 e cripto) para um alvo de 20%: o aporte do mês em IVVB11 aproxima sem vender nada.', acao: 'Seguir o plano de aportes.' }],
-    score_historico: { nota: 'Score no fechamento de cada mês.', [somaMes(periodo, -2)]: { total: 81, reserva: 30, aderencia: 34, disciplina: 17 }, [somaMes(periodo, -1)]: { total: 86, reserva: 30, aderencia: 36, disciplina: 20 } },
+    score_historico: { nota: 'Score no fechamento de cada mês.', [somaMes(periodo, -2)]: { total: 81, reserva: 24, aderencia: 36, disciplina: 21 }, [somaMes(periodo, -1)]: { total: 86, reserva: 27, aderencia: 37, disciplina: 22 } },
     projecao_aposentadoria: { nota: 'Premissas da projeção.', taxa_retorno_anual: 0.08, taxa_e_nominal: true, cenarios_aporte_mensal: [1000, 1800, 2500], aviso: 'Retorno de 8% a.a. é premissa, não promessa.', inflacao_anual: 0.04 },
     limites_concentracao: { nota: 'Limites dos alertas.', por_classe_atencao_pct: 40, por_classe_critico_pct: 55, por_ativo_no_patrimonio_atencao_pct: 25, por_ativo_no_patrimonio_critico_pct: 35, gap_alocacao_acima_pp: 4, gap_alocacao_abaixo_pp: 2 },
     limites_entrada: { nota: 'Variação acima disso pede conferência.', renda_fixa_pct: 5, cotas_pct: 30, fundos_pct: 20, cripto_usd_pct: 50 },

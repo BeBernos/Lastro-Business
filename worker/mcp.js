@@ -95,8 +95,9 @@ export async function rotaConector(acao, request, env, armazem) {
       if (e.status) throw e;
       throw new Error('a chave mandada pelo app não abre o painel publicado');
     }
-    // religar (token novo) mantém o mesmo endereço: o conector no claude.ai continua funcionando
-    cfg.segredo = guardado?.segredo || b64url(crypto.getRandomValues(new Uint8Array(32)));
+    // religar (token novo) mantém o mesmo endereço: o conector no claude.ai continua funcionando;
+    // v9.15: "novoLink" sorteia outro (o antigo para de funcionar na hora — para quando o link vazou)
+    cfg.segredo = (!corpo.novoLink && guardado?.segredo) || b64url(crypto.getRandomValues(new Uint8Array(32)));
     cfg.em = new Date().toISOString();
     await armazem.gravarConector(cfg);
     return json({ ligado: true, url: `${origem}/mcp/${cfg.segredo}`, em: cfg.em });

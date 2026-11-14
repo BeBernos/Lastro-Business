@@ -28,12 +28,18 @@ import { NOME_CAMPO } from './parcial.js';
 import { alternarPausa, conselhoAtivo, derivarTarget, gatilhos, mudancasEstrategia, ordemAportes, textoItem } from './ficha.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao, vibrar } from './v8.js';
 
-const VERSAO_APP = '9.14.0';
+const VERSAO_APP = '9.15.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 const REMOTO = 'data/painel.enc';
 // Novidades de cada versão: aparecem uma vez em cada celular quando a versão nova entra (mostrarNovidades) e ficam
 // em menu → Novidades desta versão. Escrever para o Bruno e o Rafael, em linguagem simples.
 const NOVIDADES = {
+  '9.15.0': [
+    ['Caixa sem números brigando', 'Quando o gráfico do saldo já conta algo que ainda não foi confirmado (ex.: um salário que caiu ontem e ninguém marcou), o destaque avisa quanto é e leva à agenda para confirmar. O "Mínimo" agora é de hoje em diante, igual ao do painel.', 'correcao'],
+    ['Prints nas ideias', 'Menu ⋮ → Ideias e feedback: dá para anexar até 3 prints junto da ideia.', 'nova'],
+    ['Trocar o endereço do conector', 'Menu → Claude direto: se o link do conector vazar, "Trocar o endereço" cria outro na hora e o antigo para de funcionar.', 'nova'],
+    ['Pequenos acertos', 'Nomes de ativos com as siglas certas ("Tesouro IPCA+ 2035"); a renda passiva no Hoje mostra a média de 3 meses quando os dividendos do mês ainda não caíram.', 'melhoria'],
+  ],
   '9.14.0': [
     ['"Hoje" no Início', 'O "Para olhar" virou "Hoje": o que pede ação vem primeiro e, quando dá para fazer na hora, a linha tem o botão ao lado — Investir (o aporte do mês, quando já cabe) e Feito (o passo do plano de ação com data nesta semana). Gatilhos da estratégia e a hora de rodar o Plano levam direto para o Claude.', 'nova'],
   ],
@@ -1388,7 +1394,11 @@ async function enviarGithubJuntos(gh, arquivos, mensagem) {
     const pai = ref?.object?.sha;
     const commitPai = pai && (await json(`${git}/commits/${pai}`));
     if (!commitPai?.tree?.sha) throw new Error('resposta inesperada do GitHub');
-    const arvore = await json(`${git}/trees`, { method: 'POST', body: JSON.stringify({ base_tree: commitPai.tree.sha, tree: arquivos.map(a => ({ path: a.caminho, mode: '100644', type: 'blob', content: JSON.stringify(a.envelope) })) }) });
+    // v9.15: arquivo binário (imagem do feedback) vai como blob em base64 antes da árvore
+    const itens = await Promise.all(arquivos.map(async a => (a.base64
+      ? { path: a.caminho, mode: '100644', type: 'blob', sha: (await json(`${git}/blobs`, { method: 'POST', body: JSON.stringify({ content: a.base64, encoding: 'base64' }) })).sha }
+      : { path: a.caminho, mode: '100644', type: 'blob', content: JSON.stringify(a.envelope) })));
+    const arvore = await json(`${git}/trees`, { method: 'POST', body: JSON.stringify({ base_tree: commitPai.tree.sha, tree: itens }) });
     const commit = await json(`${git}/commits`, { method: 'POST', body: JSON.stringify({ message: mensagem, tree: arvore.sha, parents: [pai] }) });
     try {
       await json(`${git}/refs/heads/${encodeURIComponent(gh.branch)}`, { method: 'PATCH', body: JSON.stringify({ sha: commit.sha, force: false }) });
@@ -3699,8 +3709,20 @@ const CABECALHO_FEEDBACK = '# Ideias e feedback do Lastro\n\nAnotadas no app (me
 const linhaFeedback = f => {
   const d = new Date(f.em);
   const quando = `${d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} ${d.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}`;
-  return `- [ ] ${f.texto.replace(/\s*\n\s*/g, ' / ')}\n  <sub>${quando} · v${f.versao}${f.tela ? ` · ${f.tela}` : ''}</sub>`;
+  const prints = (f.links || []).map((l, i) => ` ![print ${i + 1}](${l})`).join('');
+  return `- [ ] ${f.texto.replace(/\s*\n\s*/g, ' / ')}${prints}\n  <sub>${quando} · v${f.versao}${f.tela ? ` · ${f.tela}` : ''}</sub>`;
 };
+// v9.15: prints junto da ideia (pedido do Bruno, 07/11). Encolhe para JPEG de até 1280 px antes de guardar/enviar.
+const MAX_PRINTS = 3;
+async function encolherImagem(arquivo) {
+  const img = await createImageBitmap(arquivo);
+  const f = Math.min(1, 1280 / Math.max(img.width, img.height));
+  const tela = Object.assign(document.createElement('canvas'), { width: Math.round(img.width * f), height: Math.round(img.height * f) });
+  tela.getContext('2d').drawImage(img, 0, 0, tela.width, tela.height);
+  const blob = await new Promise(ok => tela.toBlob(ok, 'image/jpeg', 0.8));
+  return b64.de(new Uint8Array(await blob.arrayBuffer()));
+}
+const semPrints = t => t.replace(/\s*!\[[^\]]*\]\([^)]*\)/g, ' 📷').trim();
 async function lerListaFeedback(gh) {
   const url = `https://api.github.com/repos/${gh.repo}/contents/${CAMINHO_FEEDBACK}`;
   const cab = { Authorization: `Bearer ${gh.token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
@@ -3714,6 +3736,13 @@ function ideiasAbertas(md) {
   return (md || '').split('\n').filter(l => l.startsWith('- [ ] ')).map(l => l.slice(6).trim());
 }
 async function enviarFeedback(gh, entradas) {
+  // os prints vão antes, num commit só; a lista (com os links) vai depois pelo caminho de sempre, que confere o sha
+  const prints = entradas.flatMap(f => (f.imagens || []).map((base64, i) => {
+    const nome = `imagens/${f.em.replace(/[^0-9]/g, '').slice(0, 14)}-${i + 1}.jpg`;
+    (f.links = f.links || [])[i] = nome;
+    return { caminho: `feedback/${nome}`, base64 };
+  }));
+  if (prints.length) await enviarGithubJuntos(gh, prints, `Lastro: ${prints.length === 1 ? 'print' : `${prints.length} prints`} do feedback`);
   const { url, cab, j, texto: md } = await lerListaFeedback(gh);
   const antes = md ?? CABECALHO_FEEDBACK;
   const texto = `${antes.trimEnd()}\n\n${entradas.map(linhaFeedback).join('\n')}\n`;
@@ -3732,6 +3761,9 @@ async function abrirFeedback() {
     <form id="formFb">
       <label for="fbTexto">O que melhorar?</label>
       <textarea class="campo area-nota" id="fbTexto" rows="4" maxlength="1500" placeholder="Ex.: na Agenda, queria ver o total da semana" required></textarea>
+      <label for="fbImg">Prints (opcional, até ${MAX_PRINTS})</label>
+      <input type="file" class="campo" id="fbImg" accept="image/*" multiple>
+      <p class="nota" id="fbImgNota">${estado.github ? 'Vão para o repositório privado, junto da ideia.' : 'Ficam neste celular e vão junto ao compartilhar.'}</p>
       ${tela ? `<label class="marcar"><input type="checkbox" id="fbTela" checked><span>Sobre a tela que estava aberta<small>${esc(tela)}</small></span></label>` : ''}
       <p class="erro" id="fbErro"></p>
       <button class="btn prim" id="fbOk">${estado.github ? 'Enviar' : 'Guardar'}</button>
@@ -3748,14 +3780,16 @@ async function abrirFeedback() {
       const abertas = r ? ideiasAbertas(r.texto) : [];
       const curto = t => (t.length > 160 ? `${t.slice(0, 157)}…` : t);
       const el = folha.querySelector('#fbFila');
-      if (el) el.innerHTML = abertas.length ? `<p class="grupo">Na fila do Claude · ${abertas.length}</p><ul class="historico-app">${abertas.map(t => `<li><p>${esc(curto(t))}</p></li>`).join('')}</ul><p class="meta">As que já entraram numa versão saem desta lista sozinhas.</p>` : '<p class="meta">Nenhuma ideia na fila: tudo o que você anotou já entrou no app.</p>';
+      if (el) el.innerHTML = abertas.length ? `<p class="grupo">Na fila do Claude · ${abertas.length}</p><ul class="historico-app">${abertas.map(t => `<li><p>${esc(curto(semPrints(t)))}</p></li>`).join('')}</ul><p class="meta">As que já entraram numa versão saem desta lista sozinhas.</p>` : '<p class="meta">Nenhuma ideia na fila: tudo o que você anotou já entrou no app.</p>';
     }).catch(() => { const el = folha.querySelector('#fbFila'); if (el) el.innerHTML = ''; });
     // as já enviadas estão no GitHub: não precisam mais ficar no celular
     if (lista.some(f => f.enviado)) banco.gravar('feedback', pendentes).catch(() => {});
   }
   folha.querySelector('#fbCompartilhar')?.addEventListener('click', async () => {
     try {
-      await navigator.share({ title: 'Ideias para o Lastro', text: lista.map(f => `• ${f.texto}${f.tela ? ` (${f.tela})` : ''}`).join('\n') });
+      const files = lista.flatMap(f => (f.imagens || []).map((x, i) => new File([b64.para(x)], `print-${dataCurta(f.em).replace(/\//g, '-')}-${i + 1}.jpg`, { type: 'image/jpeg' })));
+      const texto = lista.map(f => `• ${f.texto}${f.tela ? ` (${f.tela})` : ''}`).join('\n');
+      await navigator.share({ title: 'Ideias para o Lastro', text: texto, ...(files.length && navigator.canShare?.({ files }) ? { files } : {}) });
       await banco.gravar('feedback', []);
       fecharFolha();
       aviso('Anotações compartilhadas: saíram deste celular.', { tom: 'ok' });
@@ -3768,7 +3802,15 @@ async function abrirFeedback() {
     if (!texto) return;
     const botao = folha.querySelector('#fbOk');
     botao.disabled = true;
-    const nova = { em: new Date().toISOString(), texto, tela: folha.querySelector('#fbTela')?.checked ? tela : null, versao: VERSAO_APP, enviado: false };
+    let imagens = [];
+    try {
+      imagens = await Promise.all([...(folha.querySelector('#fbImg')?.files || [])].slice(0, MAX_PRINTS).map(encolherImagem));
+    } catch {
+      botao.disabled = false;
+      erro.textContent = 'Não consegui ler uma das imagens. Tente um print (PNG ou JPEG).';
+      return;
+    }
+    const nova = { em: new Date().toISOString(), texto, tela: folha.querySelector('#fbTela')?.checked ? tela : null, versao: VERSAO_APP, enviado: false, ...(imagens.length ? { imagens } : {}) };
     const todas = [...lista, nova];
     await banco.gravar('feedback', todas);
     if (!estado.github || DEMO) {
@@ -3778,7 +3820,7 @@ async function abrirFeedback() {
     const aEnviar = todas.filter(f => !f.enviado);
     try {
       const gh = await lerGithub();
-      if (!gh) throw new Error('falta configurar a publicação (menu → Avançado)');
+      if (!gh) throw new Error('falta configurar a publicação (menu → Configurações)');
       await enviarFeedback(gh, aEnviar);
       aEnviar.forEach(f => { f.enviado = true; });
       await banco.gravar('feedback', todas);
@@ -5002,6 +5044,7 @@ async function abrirConector() {
       <details class="dobra"><summary><span>Como pôr no claude.ai</span></summary>${passos}</details>
       <p class="nota">O endereço é a senha do conector: quem tiver o link lê os dados. Não mande para ninguém.</p>
       <button type="button" class="btn" id="cnLigar">Ligar de novo (token do GitHub novo)</button>
+      <button type="button" class="btn" id="cnNovoLink">Trocar o endereço (se o link vazou)</button>
       <button type="button" class="btn perigo" id="cnDesligar">Desligar o Claude</button>` : `
       <p class="meta">Com o conector, o Claude lê o caixa e a carteira direto do Lastro e grava plano, análises e fichas sem você baixar, anexar ou importar nada. O fechamento do mês continua com os arquivos.</p>
       <p class="nota"><b>O que muda na segurança:</b> para o Claude ler, a chave da família fica guardada no servidor do Lastro (hoje ela só existe nos celulares). "Desligar o Claude" apaga a chave de lá na hora.</p>
@@ -5023,6 +5066,15 @@ async function abrirConector() {
       b.disabled = false; b.textContent = 'Ligar o Claude';
       aviso(`Não deu para ligar: ${err.message}`, { erro: true, fixo: true });
     }
+  });
+  folha.querySelector('#cnNovoLink')?.addEventListener('click', async () => {
+    if (!estado.cofre?.bruta) return aviso('Tranque e destranque o app (digital ou senha) e tente de novo.', { erro: true, fixo: true });
+    if (!(await confirmar({ titulo: 'Trocar o endereço?', texto: 'O endereço atual para de funcionar agora. Depois, no claude.ai (Configurações → Conectores → Lastro), troque a URL pela nova — o app já copia para você.', sim: 'Trocar', manter: true }))) return abrirConector();
+    try {
+      const r = await conectorPedido('ligar', { chave: b64.de(estado.cofre.bruta), novoLink: true });
+      await abrirConector();
+      await copiar(r.url);
+    } catch (err) { aviso(`Não deu para trocar: ${err.message}`, { erro: true, fixo: true }); }
   });
   folha.querySelector('#cnDesligar')?.addEventListener('click', async () => {
     if (!(await confirmar({ titulo: 'Desligar o Claude?', texto: 'A chave da família sai do servidor agora e o endereço do conector para de funcionar. Para ligar de novo, o app cria um endereço novo.', sim: 'Desligar', perigo: true, manter: true }))) return abrirConector();
