@@ -25,14 +25,20 @@ import { abrirComDigital, abrirComSenha, criarProtecao, protegido, regravarProte
 import { ligarEscolhas } from './escolha.js';
 import { DEMO } from './modo.js';
 import { NOME_CAMPO } from './parcial.js';
+import { alternarPausa, conselhoAtivo, derivarTarget, gatilhos, mudancasEstrategia, ordemAportes, textoItem } from './ficha.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao, vibrar } from './v8.js';
 
-const VERSAO_APP = '9.12.4';
+const VERSAO_APP = '9.13.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 const REMOTO = 'data/painel.enc';
 // Novidades de cada versão: aparecem uma vez em cada celular quando a versão nova entra (mostrarNovidades) e ficam
 // em menu → Novidades desta versão. Escrever para o Bruno e o Rafael, em linguagem simples.
 const NOVIDADES = {
+  '9.13.0': [
+    ['A estratégia manda no app', 'A estratégia que o Claude grava no Plano passa a ser a única fonte: a meta de alocação do painel sai dela sozinha (antes eram três cópias que se desencontravam). Quando ela mudar, o app avisa o que mudou (alvos, ordens, gatilhos), com Desfazer.', 'nova'],
+    ['Pausar na ordem dos aportes', 'Carteira › Alocação → Estratégia: cada item da ordem do dinheiro novo tem Pausar/Retomar. O Investir já abre no primeiro item, avisa quando o ativo está fora da ordem ou pausado e, no Resgate, quando a estratégia pede para evitar aquele ativo.', 'nova'],
+    ['Gatilhos vigiados', 'Os gatilhos da estratégia com número (dólar, CDI, salário) são conferidos pelo app; quando um dispara, aparece no Para olhar com "Levar para o Claude".', 'nova'],
+  ],
   '9.12.4': [
     ['Instruções do Projeto que se atualizam sozinhas', 'Com o Claude direto ligado: menu → Instruções do Projeto → "Copiar o texto curto" e cole uma vez no Projeto. O Claude passa a ler as instruções completas pelo conector, e quando elas mudarem não precisa recolar nada.', 'nova'],
     ['Painéis para testes baixam direto', 'Configurações → Baixar os painéis para testes: os dois vão para a pasta Downloads, sem passar pelo Compartilhar (que continua no aviso, se preferir).', 'melhoria'],
@@ -908,7 +914,7 @@ function renderizarApp(aba, { remendo = false } = {}) {
   const html = `<div class="app-conteudo">${htmlTopo(estado.aba, estado.dados, { lancar: estado.github })}${outroMes ? '' : htmlSubabas(estado.aba, sub)}${comMes ? seletorMes(estado.dados, estado.motor, outroMes) : ''}
     <main class="app-aba">${outroMes ? telaDoMes(estado.aba, outroMes, estado.motor, estado.dados, { github: estado.github, hoje: hojeBrasil() }) : htmlAba(estado.aba, estado.motor, estado.dados, {
       github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, ordemInicio: lerOrdemInicio(), assinaturas: estado.assinaturas, hoje: hojeBrasil(),
-      docCarteira: estado.cart.frame?.contentDocument, carteira: estado.cart.dados, estimativa: estimativaAtual(), cdiHist: estado.cdiHist?.cdi,
+      docCarteira: estado.cart.frame?.contentDocument, carteira: estado.cart.dados, estimativa: estimativaAtual(), cdiHist: estado.cdiHist?.cdi, gatilhos: valoresGatilhos(),
     })}</main></div>
     ${htmlNav(estado.aba, { lancar: !!estado.github })}`;
   // redesenho no lugar (depois de lançar, simulador): sem a animação de entrada — senão a tela pisca
@@ -1054,6 +1060,7 @@ function ligarApp(r) {
     if (el.dataset.ativoAbrir) return abrirAtivo(el.dataset.ativoAbrir);
     if (el.dataset.pesquisar !== undefined) return abrirPesquisa(el.dataset.pesquisar);
     if (el.hasAttribute('data-revisar-estrategia')) return abrirPesquisa(null, { estrategia: true });
+    if (el.dataset.pausar !== undefined) return pausarItem(el.dataset.pausar);
     if (el.hasAttribute('data-fichas')) return abrirPesquisa(null, { fichas: true });
     if (el.hasAttribute('data-simular-troca')) return abrirSimuladorTroca();
     if (el.dataset.externo) return abrirExterno(Number(el.dataset.externo));
@@ -1617,6 +1624,7 @@ function mostrarCarteira(conteudo) {
     if (estado.resumoOk) renderizarApp(estado.aba, { remendo: true });
     gravarAgenda();
     if (estado.resumoOk) setTimeout(conciliarAgora, 1200); // v9.0
+    if (estado.resumoOk) setTimeout(avisarEstrategia, 1800); // v9.13
     if (estado.resumoOk) setTimeout(() => atualizarCriptoBinance().then(depoisDoAviso).then(() => atualizarItau()), 2500); // v9.3 / v9.9
     atualizarCotacoes();
     atualizarCdiHist(); // v9.6
@@ -4092,6 +4100,8 @@ function abrirInvestir(tipo = 'aporte', preenchido = {}) {
   const todos = listaAtivos(cart);
   const ativos = tipo === 'dividendo' ? todos.filter(a => a.classe === 'fiis' || a.classe === 'etfs') : todos;
   const r = { ativo: '', valor: '', data: hoje, motivo: 'necessidade_caixa', ...preenchido };
+  // v9.13: o aporte abre no primeiro item da ordem de aportes da estratégia (sem os pausados)
+  if (tipo === 'aporte' && !r.ativo) r.ativo = ordemAportes(cart.estrategia, todos).find(o => o.chaves.length === 1)?.chaves[0] || '';
   // v9.9.13: aporte num investimento que a carteira ainda não tem (o plano pede Tesouro, VWRA11…)
   const NOVO = '__novo';
   if (tipo === 'aporte' && r.ativo && r.ativo !== NOVO && !todos.some(a => a.chave === r.ativo)) {
@@ -4204,6 +4214,8 @@ function abrirInvestir(tipo = 'aporte', preenchido = {}) {
         else txt += ' Isso já é no mês que vem: lance o resgate depois do fechamento, no dia em que cair.';
       }
     }
+    const cons = tipo !== 'dividendo' && k !== NOVO && conselhoAtivo(cart.estrategia, k, tipo, todos);
+    if (cons) txt = `${txt ? `${txt} ` : ''}${cons.texto}`;
     if (a && tipo === 'dividendo') {
       const p = previsto(k);
       if (p && !$i('#lValor').value) $i('#lValor').value = virgula(p.toFixed(2));
@@ -4907,7 +4919,7 @@ function abrirSimuladorTroca(r0 = {}) {
 
 // v9.7: as instruções do Projeto "Vida financeira" moram no app (projeto.txt, fonte única). Mudou o texto → subir
 // VERSAO_PROJETO; o menu avisa até o Bruno copiar de novo (localStorage 'lastro-projeto' = versão copiada).
-const VERSAO_PROJETO = '9.12.4';
+const VERSAO_PROJETO = '9.13.0';
 // v9.12.4: com o conector, o Projeto guarda só este texto curto e lê as instruções completas pela ferramenta
 // "instrucoes" (worker/mcp.js) — mudar as instruções não exige mais recolar ('lastro-projeto' = 'auto').
 const PROJETO_CURTO = 'Sou o Bruno. Neste Projeto, antes de responder qualquer mensagem, chame a ferramenta "instrucoes" do conector Lastro e siga o texto que ela devolver: são as instruções completas e sempre atualizadas (modos CAIXA, CARTEIRA, PLANO e PESQUISA). Se o conector Lastro não estiver entre as ferramentas, não continue: me peça para ligá-lo (no app: menu → Claude direto; na conversa: ligue o conector Lastro).';
@@ -5065,8 +5077,56 @@ const alertasDoPlano = () => {
   const cart = estado.cart.dados;
   if (!cart) return [];
   const classes = new Map(listaAtivos(cart).map(a => [a.chave, a.classe]));
-  return alertasPlano(cart, estado.cdiHist?.cdi, { liquidez: k => prazoResgate(cart, k, classes.get(k)) });
+  const est = cart.estrategia || {};
+  // v9.13: o que o Bruno pausou no app e os gatilhos que o app viu disparar vão junto para o Claude
+  const extra = [
+    ...(est.pausados || []).map(p => ({ tom: 'atencao', titulo: `Pausado no app em ${dataCurta(p.em)}`, texto: `"${p.item}" na ordem de aportes. Decida se continua pausado, sai da estratégia ou volta.` })),
+    ...gatilhos(est, valoresGatilhos()).filter(g => g.disparou).map(g => ({ tom: 'atencao', titulo: 'Gatilho da estratégia disparou', texto: `${g.texto} (hoje: ${numBr(g.agora)}).` })),
+  ];
+  return [...extra, ...alertasPlano(cart, estado.cdiHist?.cdi, { liquidez: k => prazoResgate(cart, k, classes.get(k)) })];
 };
+// v9.13: valores de hoje para os gatilhos da estratégia (ficha.js) — dólar da rota /cotacoes, CDI do Banco Central e o
+// salário do mês no caixa (o previsto conta: a renda mudou assim que o valor novo entra na agenda)
+const numBr = v => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+function valoresGatilhos() {
+  const sal = (estado.dados?.receitas || []).filter(r => r.categoria === 'salario').reduce((t, r) => t + (Number(r.valor) || 0), 0);
+  return { dolar: estado.cot?.dados?.ptax?.agora ?? null, cdi: cdiAnualDe(estado.cdiHist?.cdi), salario: sal || null };
+}
+
+// v9.13: a estratégia que chegou (conector, resposta pequena ou fechamento) é comparada com a última vista neste celular
+// (IDB 'estrategiaVista' = { estrategia, target_allocation }); mudou → aviso com o que mudou e Desfazer. Pausas são do app.
+async function avisarEstrategia() {
+  const cart = estado.cart.dados;
+  if (!estado.github || !cart?.estrategia) return;
+  const vista = await banco.ler('estrategiaVista').catch(() => null);
+  const agora = { estrategia: cart.estrategia, target_allocation: cart.target_allocation };
+  await banco.gravar('estrategiaVista', agora).catch(() => {});
+  if (!vista?.estrategia) return;
+  const linhas = mudancasEstrategia(vista.estrategia, cart.estrategia, cart.meta_dolarizacao);
+  if (!linhas.length) return;
+  const abrir = () => {
+    const folha = abrirFolha(`
+      <h2>A estratégia mudou</h2>
+      <p class="meta">O Claude gravou uma estratégia nova${cart.estrategia.revisada_em ? ` (revisada em ${dataCurta(cart.estrategia.revisada_em)})` : ''}. As telas, as dicas do Investir e os gatilhos já seguem esta versão.</p>
+      <ul class="passos-curtos">${linhas.map(l => `<li>${esc(l)}</li>`).join('')}</ul>
+      <button type="button" class="btn prim" id="estOk">Entendi</button>
+      <button type="button" class="btn" id="estVolta">Desfazer: voltar à estratégia anterior</button>`);
+    folha.querySelector('#estOk').onclick = () => fecharFolha();
+    folha.querySelector('#estVolta').onclick = async () => {
+      if (!(await confirmar({ titulo: 'Voltar à estratégia anterior?', texto: 'A carteira volta aos alvos, ordens e gatilhos de antes desta mudança. Para mudar de novo, fale com o Claude.', sim: 'Voltar', perigo: true }))) return;
+      const antes = vista.estrategia;
+      await aplicarLancamento((cf, c) => ({ cf, cart: { ...c, estrategia: { ...antes, pausados: c.estrategia?.pausados || [] }, target_allocation: derivarTarget(antes) || vista.target_allocation || c.target_allocation } }), 'Estratégia: voltou à anterior');
+    };
+  };
+  aviso({ titulo: 'A estratégia mudou', detalhe: linhas.slice(0, 2).join(' · ') + (linhas.length > 2 ? ` · e mais ${linhas.length - 2}` : '') }, { acao: { rotulo: 'Ver', fn: abrir }, duracao: 15000 });
+}
+async function pausarItem(texto) {
+  const cart = estado.cart.dados;
+  const item = (cart?.estrategia?.prioridade_aporte || []).find(i => textoItem(i) === texto);
+  if (!item) return;
+  const pausado = (cart.estrategia.pausados || []).some(p => p.item === texto);
+  await aplicarLancamento((cf, c) => ({ cf, cart: { ...c, estrategia: alternarPausa(c.estrategia, item, hojeBrasil()) } }), `Estratégia: ${pausado ? 'retomado' : 'pausado'} "${texto}"`);
+}
 
 // v9.5 (item 8): MODO PESQUISA de um ativo ou revisão da estratégia — 2 passos travados como o Levar para o Claude
 function abrirPesquisa(ativo, { estrategia = false, fichas = false, passo = 0, nome = ativo || '' } = {}) {

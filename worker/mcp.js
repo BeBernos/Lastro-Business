@@ -195,7 +195,8 @@ const REGRAS = {
   plano_acao: 'Objeto {atualizado_em, concluidos, total, passos:[{n, titulo, status:"pendente"|"CONCLUIDO"|"CANCELADO", quando:"AAAA-MM-DD", valor, valor_ref, nota}], anteriores}. Troca o plano inteiro; mantenha os passos que o Bruno já marcou como feitos ou descartados. valor_ref = chave do ativo; ativo novo = nome em minúsculas com _ (ex.: tesouro_prefixado_2029, vwra11), que é a chave que o app cria em "+ Investimento novo".',
   plano_aportes: 'Lista [{mes:"AAAA-MM", ativo, valor, motivo}]. Troca a lista inteira.',
   fichas_ativos: 'Objeto ativo → ficha. Só troca a ficha dos ativos enviados.',
-  target_allocation: 'Objeto classe → % (o painel da carteira compara a alocação com isto). Deve bater com estrategia.alvos.',
+  target_allocation: 'Não mande: com estrategia.alvos, o Lastro calcula sozinho (soma os alvos por grupo do painel).',
+  estrategia: 'Objeto inteiro (troca a estratégia; leia antes). alvos [{classe, pct, tese?, painel?}] somando 100 — classes reserva, renda_fixa, fiis, etfs, acoes_br, dolar, ouro, cripto; alvo que cai em mais de um grupo do painel (renda_fixa, etfs_fiis, dolar, ouro, cripto) leva "painel" com a divisão (ex.: dolar 17 com VWRA11/IVVB11 = {"etfs_fiis": 15, "dolar": 2}). prioridade_aporte, prioridade_resgate e evitar_retirar_de: listas de {ativo: chave, nome} (ou classe por extenso: "FIIs"). gatilhos: texto, ou {texto, se: {indicador: "dolar"|"cdi"|"salario", op: ">"|"<", valor}} para o app vigiar. Não mande "pausados" (é do Bruno; o Lastro mantém).',
   analise_mercado: 'Objeto inteiro (como no painel), com data_geral do dia. Em ativos, cada um com urgencia "alta" precisa de d7 ou dm com número (0 se ainda não há histórico) — sem isso o painel da carteira quebra.',
 };
 
@@ -214,16 +215,16 @@ async function gravar(cfg, { arquivo, campos, resumo, so_validar }) {
   if (!ARQ[arquivo]) throw new Error('arquivo tem de ser "caixa" ou "carteira"');
   if (!campos || typeof campos !== 'object' || Array.isArray(campos)) throw new Error('campos tem de ser um objeto campo → valor');
   const atual = await abrir(cfg, arquivo);
-  const { dados, mudou, ignorados } = juntarParcial(atual.dados, { ...campos, lastro_parcial: arquivo });
+  const { dados, mudou, ignorados, estrategia } = juntarParcial(atual.dados, { ...campos, lastro_parcial: arquivo });
   const rotulo = `Do Claude: ${mudou.map(k => NOME_CAMPO[k] || k).join(', ')}${arquivo === 'carteira' ? ' na carteira' : ' no caixa'}${resumo ? ` (${String(resumo).slice(0, 120)})` : ''}`;
   const antesDepois = Object.fromEntries(mudou.map(k => [k, { antes: tamanho(atual.dados[k]), depois: tamanho(dados[k]), ...(Array.isArray(dados[k]) ? { itens: `${(atual.dados[k] || []).length} → ${dados[k].length}` } : {}) }]));
-  if (so_validar) return { valido: true, vai_mudar: antesDepois, ignorados, historico: rotulo, proximo_passo: 'Mostre ao Bruno e chame gravar de novo com so_validar=false depois do "pode gravar".' };
+  if (so_validar) return { valido: true, vai_mudar: antesDepois, ...(estrategia.length ? { estrategia_muda: estrategia } : {}), ignorados, historico: rotulo, proximo_passo: 'Mostre ao Bruno e chame gravar de novo com so_validar=false depois do "pode gravar".' };
   if (arquivo === 'caixa') (dados.atualizacoes ||= []).push({ data: hojeBR(), acao: `[app] ${rotulo}` });
   if (arquivo === 'carteira') (dados.meta_arquivo ||= {}).alterado_app = hojeBR();
   const html = atual.conteudo.html.replace(ARQ[arquivo].re, (_, abre, _v, fecha) => abre + JSON.stringify(dados).replace(/<\//g, '<\\/') + fecha);
   const envelope = await cifrar({ ...atual.conteudo, html }, atual.chave, salDo(atual.envelope), atual.envelope.kdf.iteracoes);
   const sha = await publicar(cfg, [{ caminho: caminhoDe(cfg, arquivo), envelope }], `Lastro: ${rotulo} (conector)`);
-  return { gravado: true, mudou, ignorados, commit: sha, aviso: 'Chega no app em 1 a 5 minutos (o site é remontado a cada envio).' };
+  return { gravado: true, mudou, ...(estrategia.length ? { estrategia_mudou: estrategia } : {}), ignorados, commit: sha, aviso: 'Chega no app em 1 a 5 minutos (o site é remontado a cada envio).' };
 }
 
 // v9.12.4: as instruções do Projeto vêm do repositório (a mesma fonte do menu → Instruções do Projeto do app): parte do

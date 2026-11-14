@@ -2,6 +2,7 @@
 // v9.6: resposta parcial do Claude — em vez do arquivo inteiro (a carteira tem ~75 KB e o caixa ~200 KB; escrever tudo
 // de novo é o que mais demora), só os campos que mudaram: {"lastro_parcial": "carteira"|"caixa", "data", ...campos}.
 // Só os campos da lista entram (nunca posições, valores ou o mês); análises novas somam às de antes (mesmo título troca).
+import { conferirAlvos, derivarTarget, mudancasEstrategia } from './ficha.js';
 export const CAMPOS_PARCIAIS = {
   // v9.10: meta de alocação e análise de mercado também (o PLANO não conseguia corrigi-las fora do fechamento)
   carteira: { plano_aportes: 'lista', meta_dolarizacao: 'objeto', estrategia: 'objeto', analises: 'lista', metas: 'lista', fichas_ativos: 'objeto', plano_acao: 'objeto', target_allocation: 'objeto', analise_mercado: 'objeto' },
@@ -34,14 +35,28 @@ export function juntarParcial(base, parcial) {
       const sem = (v.ativos || []).filter(a => a?.urgencia === 'alta' && a.d7 == null && a.dm == null).map(a => a.n);
       if (sem.length) throw new Error(`Na análise de mercado, ativo com urgência "alta" precisa de "d7" ou "dm" com número (use 0 se ainda não há histórico): ${sem.join(', ')}.`);
     }
+    if (k === 'estrategia') conferirAlvos(v.alvos); // v9.13: alvos que não somam 100% quebrariam a meta do painel
     if (k === 'fichas_ativos') dados.fichas_ativos = { ...(base.fichas_ativos || {}), ...v }; // ficha nova troca só a daquele ativo
     else if (k === 'analises') {
       const titulos = new Set(v.map(a => a?.titulo));
       dados.analises = [...(base.analises || []).filter(a => !titulos.has(a?.titulo)), ...v];
-    } else dados[k] = v;
+    } else if (k === 'estrategia') dados.estrategia = 'pausados' in v || !base.estrategia?.pausados ? v : { ...v, pausados: base.estrategia.pausados }; // as pausas são do Bruno
+    else dados[k] = v;
     mudou.push(k);
   }
   if (!mudou.length) throw new Error('O arquivo não trouxe nada que o Lastro saiba juntar.');
   const ignorados = Object.keys(parcial).filter(k => !(k in campos) && k !== 'lastro_parcial' && k !== 'data');
-  return { dados, mudou, ignorados };
+  // v9.13: com alvos na estratégia, a meta do painel (target_allocation) é sempre calculada deles — uma fonte só
+  const alvo = parcial.lastro_parcial === 'carteira' && (mudou.includes('estrategia') || mudou.includes('target_allocation')) && derivarTarget(dados.estrategia);
+  if (alvo) {
+    const igual = (x, y) => JSON.stringify(Object.entries(x || {}).sort()) === JSON.stringify(Object.entries(y || {}).sort());
+    if ('target_allocation' in parcial && !igual(parcial.target_allocation, alvo)) ignorados.push('target_allocation (calculado da estratégia)');
+    dados.target_allocation = alvo;
+    const i = mudou.indexOf('target_allocation'), difere = !igual(base.target_allocation, alvo);
+    if (difere && i < 0) mudou.push('target_allocation');
+    if (!difere && i >= 0) mudou.splice(i, 1);
+  }
+  if (!mudou.length) throw new Error(alvo ? 'A meta de alocação (target_allocation) é calculada da estratégia: para mudá-la, mude estrategia.alvos.' : 'O arquivo não trouxe nada que o Lastro saiba juntar.');
+  const estrategia = mudou.includes('estrategia') ? mudancasEstrategia(base.estrategia, dados.estrategia, dados.meta_dolarizacao) : [];
+  return { dados, mudou, ignorados, estrategia };
 }
