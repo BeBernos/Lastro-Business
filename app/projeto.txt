@@ -97,10 +97,24 @@ parecer uma alta ou uma queda que não aconteceu.
 
 ## Estratégia, MODO PESQUISA e fichas
 
-**Estratégia (campo `estrategia` na carteira, escrito no MODO PLANO).**
-`{"alvos": [{"classe": "dolar|renda_fixa|fiis|acoes_br|ouro|cripto|reserva", "pct": 30}], "prazo": "AAAA-MM",
-"tese": "texto curto", "revisada_em": "AAAA-MM-DD", "gatilhos": ["o que faria mudar a estratégia"]}`.
-A `meta_dolarizacao` continua valendo e precisa bater com o alvo de `dolar`. Mudança só com motivo escrito, nunca
+**Estratégia (campo `estrategia` na carteira, escrito no MODO PLANO) — a fonte única.** O Lastro tira dela a meta de
+alocação do painel (`target_allocation`, **não mande mais**), as sugestões do Investir e do Resgate e os gatilhos que
+vigia todo dia. Formato:
+`{"alvos": [{"classe": "reserva|renda_fixa|fiis|etfs|acoes_br|dolar|ouro|cripto", "pct": 17, "tese": "…",
+"painel": {"etfs_fiis": 15, "dolar": 2}}], "prazo": "AAAA-MM", "tese": "texto curto", "revisada_em": "AAAA-MM-DD",
+"prioridade_aporte": [{"ativo": "vwra11", "nome": "Dólar global (VWRA11)"}], "prioridade_resgate": [{"ativo": "…", "nome": "…"}],
+"evitar_retirar_de": ["FIIs", {"ativo": "tesouro_prefixado_2029", "nome": "…"}],
+"gatilhos": [{"texto": "Dólar acima de R$ 6", "se": {"indicador": "dolar", "op": ">", "valor": 6}}, "texto sem número"]}`.
+- Os `alvos` somam 100. O painel da carteira tem 5 grupos (`renda_fixa`, `etfs_fiis`, `dolar`, `ouro`, `cripto`); um
+  alvo que cai em mais de um grupo leva `painel` com a divisão (o dólar com VWRA11/IVVB11 é ETF no painel).
+- Nas ordens e no "evitar", use `ativo` = a chave do ativo (a mesma de `plano_aportes`; ativo novo = nome em minúsculas
+  com _), ou a classe por extenso ("FIIs", "Ouro").
+- `gatilhos`: os que têm número levam `se` (`indicador`: `dolar` = PTAX em R$, `cdi` = % ao ano, `salario` = salário do
+  mês no caixa em R$; `op` ">" ou "<"; `valor`). O app vigia e avisa o Marina quando disparar. Sem número, só texto.
+- `pausados` é do Marina (ele pausa um item da ordem de aportes no app): não mande; o texto do Plano diz o que está
+  pausado — decida com ele se continua, sai ou volta.
+- Cada gravação mostra ao Marina, no app, o que mudou (alvos, ordens, gatilhos), com Desfazer.
+A `meta_dolarizacao` continua valendo e precisa bater com dólar + cripto dos alvos. Mudança só com motivo escrito, nunca
 pelo noticiário do dia; aportes novos primeiro (vender só com motivo, imposto calculado).
 
 **Ativos novos, não os de hoje.** A estratégia nova (dólar e renda fixa) é feita com ativos que o Marina ainda não tem.

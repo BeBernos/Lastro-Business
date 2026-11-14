@@ -12,6 +12,7 @@ import { dolarizacao, listaAtivos, nomeAtivo, planoDoMes, resultadoDoMes } from 
 import { CATEGORIAS_RECEITA, hojeBrasil, LISTAS_CAIXA, tickerDividendo } from './lancamentos.js';
 import { composicaoFatura, gastoDoDia } from './extrato.js';
 import { alertasPlano, alocacaoVsAlvo, rendimentoRendaFixa } from './estrategia.js';
+import { gatilhos, INDICADORES, pausa, textoItem } from './ficha.js';
 import { prazoResgate } from './liquidez.js';
 import { escada } from './rendafixa.js';
 import { agendaClaude, aportePlanejado, dolarMesAMes, mesCurto, orcamentoDoMes, progressoMetas, rendaPassiva, resumoMeses } from './indicadores.js';
@@ -518,7 +519,8 @@ function estrategiaCartao(cart, opcoes = {}) {
     <div class="cartao-topo"><h2>Estratégia</h2>${a.revisada ? `<small class="suave">revisada ${esc(a.revisada.split('-').reverse().slice(0, 2).join('/'))}</small>` : ''}</div>
     <p class="cartao-sub">${a.tese ? esc(a.tese) : a.fonte === 'target' ? 'Alvo atual do gestor de carteira. A estratégia nova (mais dólar e renda fixa) entra quando você revisar com o Claude.' : ''}${a.reservaFora ? ` Sem a reserva de emergência (${brl0(a.reservaFora)}).` : ''}</p>
     <ul class="orc-lista">${a.linhas.map(linha).join('')}</ul>
-    ${a.prioridade.length ? `<p class="nota">Próximos aportes, nesta ordem: ${esc(a.prioridade.join(' → '))}.</p>` : ''}
+    ${ordemCartao(cart, opcoes)}
+    ${gatilhosCartao(cart, opcoes)}
     ${pontosDoPlano(cart, opcoes)}
     ${opcoes.github ? `<div class="acoes-ativo">
       <button type="button" class="btn prim" data-revisar-estrategia>Revisar com o Claude</button>
@@ -526,6 +528,30 @@ function estrategiaCartao(cart, opcoes = {}) {
       <button type="button" class="btn" data-fichas>Fichas dos ativos</button>
     </div>` : ''}
   </section>`;
+}
+
+// v9.13: ordem dos aportes com "Pausar" (a única parte da estratégia que o app muda; o resto é do Claude no PLANO)
+function ordemCartao(cart, opcoes = {}) {
+  const est = cart.estrategia || {};
+  const lista = est.prioridade_aporte || [];
+  if (!lista.length) return '';
+  const linha = (i, n) => {
+    const p = pausa(est, i), t = textoItem(i);
+    return `<li class="est-ordem${p ? ' pausado' : ''}"><span><span class="n">${n + 1}.</span><span class="t">${esc(t)}</span>${p ? `<small> · pausado em ${esc(p.em.split('-').reverse().slice(0, 2).join('/'))}</small>` : ''}</span>${opcoes.github ? `<button type="button" class="link" data-pausar="${esc(t)}">${p ? 'Retomar' : 'Pausar'}</button>` : ''}</li>`;
+  };
+  return `<div class="pontos-plano"><p class="rotulo">Dinheiro novo, nesta ordem</p><ol class="est-ordens">${lista.map(linha).join('')}</ol>
+    ${opcoes.github ? '<p class="nota">Pausar tira o item das sugestões do Investir até você retomar; a pausa vai junto no próximo Plano com o Claude.</p>' : ''}</div>`;
+}
+
+// v9.13: gatilhos da estratégia — os que têm número o app vigia todo dia; os outros só você sabe quando acontecem
+function gatilhosCartao(cart, opcoes = {}) {
+  const lista = gatilhos(cart.estrategia, opcoes.gatilhos || {});
+  if (!lista.length) return '';
+  const nb = v => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  const desc = g => (!g.vigiado ? 'só você sabe quando acontece' : g.agora == null ? `o app vigia o ${INDICADORES[g.se.indicador]} (sem o valor de hoje ainda)` : `${INDICADORES[g.se.indicador]} hoje: ${nb(g.agora)} · dispara ${g.se.op === '>' ? 'acima' : 'abaixo'} de ${nb(Number(g.se.valor))}`);
+  return `<div class="pontos-plano"><p class="rotulo">Gatilhos para rever a estratégia</p>
+    <ul>${lista.map(g => `<li class="tom-${g.disparou ? 'atencao' : 'info'}">${icTom(g.disparou ? 'atencao' : 'info')}<div><b>${g.disparou ? 'Disparou: ' : ''}${esc(g.texto)}</b><small>${esc(desc(g))}</small></div></li>`).join('')}</ul>
+    ${lista.some(g => g.disparou) && opcoes.github ? '<button type="button" class="btn prim" data-levar-claude>Levar para o Claude</button>' : ''}</div>`;
 }
 
 // v9.7: o que o app achou no plano de aportes (fundo que rende pouco, dólar em ativo que já existe, data × resgate)
@@ -1733,6 +1759,8 @@ function destaquesInicio(m, dados, cart, ctx, opcoes) {
   tenta(() => { const al = (m.alertas || []).filter(a => a.tom !== 'bom'); return al.length ? { tom: al.some(a => a.tom === 'ruim') ? 'ruim' : 'atencao', texto: al.length === 1 ? al[0].titulo : `${al.length} alertas: ${al[0].titulo}`, ir: 'analises/saude' } : null; });
   // v9.9.12: hora de rodar o Plano com o Claude antes do fechamento (o cenário mudou) — só no celular que publica
   tenta(() => { const p = opcoes.github && opcoes.hoje && agendaClaude(dados, cart, opcoes.hoje).find(x => x.qual === 'plano'); return p?.agora && opcoes.hoje < p.proxima ? { tom: 'atencao', texto: `Rodar o Plano com o Claude: ${p.motivo}`, attr: 'data-levar-claude' } : null; });
+  // v9.13: gatilho da estratégia que disparou (dólar, CDI, salário) → hora de rever com o Claude
+  tenta(() => { const g = cart && gatilhos(cart.estrategia, opcoes.gatilhos || {}).find(x => x.disparou); return g ? { tom: 'atencao', texto: `Gatilho da estratégia: ${g.texto}`, ...(opcoes.github ? { attr: 'data-levar-claude' } : { ir: 'carteira/aloc' }) } : null; });
   if (!linhas.length) return '';
   return `<section class="cartao">
     <div class="cartao-topo"><h2>Para olhar</h2></div>
