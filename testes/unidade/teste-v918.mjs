@@ -34,7 +34,7 @@ confere('topo: número com centavos menores', /class="cent"/.test(topo) && /topo
 confere('olho ligado: o número sai sem centavos', !/class="cent"/.test(htmlTopoCarvao(h, { esconder: true })));
 confere('topo sem valor não mostra R$', !/R\$/.test(htmlTopoCarvao(semCart).replace(/<[^>]+>/g, '')));
 
-confere('chave desligada por padrão', v10Ligada() === false);
+{ const { DEMO } = await import('../../app/modo.js'); confere('chave desligada por padrão (na demo, ligada)', v10Ligada() === DEMO); }
 ligarV10(true); confere('ligar a chave', v10Ligada() === true && mem['lastro-v10'] === '1');
 ligarV10(false); confere('desligar a chave', v10Ligada() === false);
 

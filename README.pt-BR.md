@@ -18,7 +18,7 @@ Ele foi feito para uma família de verdade e é usado todo dia desde outubro de 
 do cartão a partir do SMS do banco em dois toques, o resto da família acompanha tudo no próprio celular e, uma vez por
 mês, a IA fecha o mês, revisa o plano e escreve as análises.
 
-**Em números:** v9.12 (46 versões no histórico) · uso diário desde out/2026 · ~13 mil linhas, 0 dependências · AES-256-GCM de ponta a ponta · ≈260 checagens de regressão + 62 de ponta a ponta
+**Em números:** v9.29 (69 versões no histórico) · uso diário desde out/2026 · ~14 mil linhas, 0 dependências · AES-256-GCM de ponta a ponta · ≈260 checagens de regressão + 62 de ponta a ponta
 
 > A demonstração usa uma **família fictícia** (Marina, Rafael, Theo e a gata Mia), gerada na hora, com as datas sempre
 > andando junto com o calendário. Nada sai do seu navegador.
@@ -28,7 +28,7 @@ mês, a IA fecha o mês, revisa o plano e escreve as análises.
 <p align="center"><img src="docs/img/features-1-pt.png" alt="" width="100%"></p>
 <p align="center"><img src="docs/img/features-2-pt.png" alt="" width="100%"></p>
 
-<p align="center"><img src="docs/img/lancar.gif" width="300" alt=""><br><i>Uma compra entra e o "ainda dá para gastar" atualiza na hora — depois sincroniza, criptografado, com a família.</i></p>
+<p align="center"><img src="docs/img/lancar-pt.png" width="80%" alt="O ＋, o formulário da compra e o Hoje depois de salvar"><br><i>Uma compra entra e o "ainda dá para gastar" atualiza na hora — depois sincroniza, criptografado, com a família.</i></p>
 
 **Em detalhe**
 - **Caixa do dia a dia** — quanto ainda dá para gastar no mês, o calendário de contas, "pago / a receber" com um toque e uma
@@ -47,7 +47,7 @@ mês, a IA fecha o mês, revisa o plano e escreve as análises.
 O Lastro nasce de uma ideia incomum — **o painel mensal da IA é o motor de cálculo** — e de uma regra dura: **nenhum servidor
 pode ver dados financeiros**. Todo o resto decorre dessas duas.
 
-**No aparelho** — Cerca de 13 mil linhas de JavaScript puro, sem framework. Cada ação financeira é uma função pura `JSON → JSON` (lançar compra, marcar pago, aportar, resgatar) que mantém os totais que o painel confere, deixa trilha de auditoria e guarda o estado anterior cifrado para desfazer exato.
+**No aparelho** — Cerca de 14 mil linhas de JavaScript puro, sem framework. Cada ação financeira é uma função pura `JSON → JSON` (lançar compra, marcar pago, aportar, resgatar) que mantém os totais que o painel confere, deixa trilha de auditoria e guarda o estado anterior cifrado para desfazer exato.
 
 **O motor do painel** — Todo mês o Claude produz um painel HTML autossuficiente (código + dados JSON). O Lastro o carrega num iframe escondido e chama as funções dele (`calc()`, `timeline()`, `projecao12()`…); um tradutor transforma cada bloco em telas nativas, então um bloco que a IA inventar no mês seguinte aparece sem versão nova.
 
@@ -84,7 +84,7 @@ em [SECURITY.md](SECURITY.md).
 
 ## Destaques de engenharia
 
-- **Zero dependências.** ~13 mil linhas de JavaScript puro (módulos ES), sem framework e sem etapa de build — incluindo
+- **Zero dependências.** ~14 mil linhas de JavaScript puro (módulos ES), sem framework e sem etapa de build — incluindo
   um gerador de `.xlsx` próprio, gráficos em SVG e o envio de Web Push (VAPID/ES256).
 - **Sem servidor próprio, no plano grátis.** App estático + um Worker da Cloudflare com Durable Object (SQLite) para as
   inscrições de push, o cache de cotações e o servidor MCP. O GitHub é o banco de dados (arquivos cifrados, um commit por
@@ -97,7 +97,7 @@ em [SECURITY.md](SECURITY.md).
   leitor de tela.
 - **PWA que funciona sem internet**: cache no service worker, recebe arquivos e texto de SMS pelo Compartilhar, atalhos no ícone.
 
-<p align="center"><img src="docs/img/desktop.png" alt="Layout no computador" width="90%"><br><i>O mesmo app no computador.</i></p>
+<!-- foto do computador saiu na 9.29.1: a interface nova "Carvão" é feita para o celular; o desenho para tela larga vem depois -->
 
 ## Tecnologias
 

@@ -608,3 +608,6 @@ html.v10 #folha .etapas-fech button { background: var(--v10-bloco); border: 1px 
 html.v10 #folha .etapas-fech li.aqui button { border-color: rgba(255, 122, 53, .55); }
 html.v10 #folha .etapa-agora { color: var(--v10-tx2); }
 html.v10 #folha .etapa-agora b { color: var(--v10-tx); }
+
+/* v9.29.1: o "Salvo" do aviso de baixo tinha o ✓ verde da v8 — no Carvão é âmbar (sem verde) */
+html.v10 .aviso.ok > .ic { color: var(--v10-sobe); }

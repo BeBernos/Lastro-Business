@@ -2,6 +2,9 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '9.29.1': [
+    ['Sem verde no aviso de salvo', 'Na interface nova, o ✓ do aviso "Salvo" agora é âmbar, como o resto do app.', 'correcao'],
+  ],
   '9.29.0': [
     ['Interface nova: o que você pediu', 'Abertura só com a marca da digital — toque em qualquer lugar. Barra de baixo alinhada, com o ＋ no centro, e "Investimentos" virou "Carteira".', 'melhoria'],
     ['Tudo do painel refeito', 'Saiu o que as telas já mostram (botões repetidos, destaques, metas, nota, mercado). Os blocos abertos ocupam a largura toda e seguem o desenho novo: números sem caixinhas, avisos em linhas, gráficos sem grade, escolhas em brasa.', 'melhoria'],
