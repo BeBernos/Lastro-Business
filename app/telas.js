@@ -4,6 +4,7 @@
 
 import { anel, barrasH, brl, brl0, colunas, compacto, empilhada, esc, icTom, linhaSaldo, linhas, medidor, minilinha, svgIcone } from './graficos.js';
 import { contexto, proximasContas } from './resumo.js';
+import { faixasDoHoje, htmlComposicaoV10, htmlHojeV10 } from './v10.js';
 import { blocosDoPainel } from './traduzir.js';
 import { mesBonito } from './painel.js';
 import { posicao, proximoPasso, reserva } from './carteira.js';
@@ -1826,8 +1827,30 @@ export function resumoSemanaHtml(m, dados, cart, ctx, opcoes = {}) {
   </section>`;
 }
 
+// v9.19 (repaginação, etapa 2): o Hoje com a chave da interface nova — quatro blocos + até 3 faixas de ação.
+// As faixas são as linhas do "Hoje" de sempre (linhasDoHoje) mais o que hoje são cartões soltos no Início: fechamento
+// pronto, hora de fechar o mês, resumo da semana (domingo) e a próxima conta em até 3 dias.
+function hojeV10(m, dados, cart, ctx, opcoes) {
+  const extras = [];
+  if (opcoes.github && opcoes.rascunhos && Object.keys(opcoes.rascunhos).length) extras.push({ tom: 'atencao', texto: 'Fechamento pronto: ver e aplicar', attr: 'data-fech-pronto' });
+  if (opcoes.github && (ctx.mesPassou || ctx.diaHoje === ctx.dias)) extras.push({ tom: 'atencao', texto: `Hora de fechar ${MESES[ctx.mes - 1]} com o Claude`, attr: 'data-levar-claude' });
+  if (ehDomingo(opcoes.hoje) && !ctx.mesPassou) extras.push({ tom: 'info', texto: 'Resumo da semana', attr: 'data-semana' });
+  try {
+    const lim = opcoes.hoje && new Date(Date.parse(`${opcoes.hoje}T12:00:00Z`) + 3 * 864e5).toISOString().slice(0, 10);
+    const p = lim && proximasContas(m, dados).find(x => x.data >= opcoes.hoje && x.data <= lim);
+    if (p) extras.push({ tom: 'info', texto: `${nomeCurto(p.desc)} ${brl0(Math.abs(p.valor))} · ${p.data.slice(8, 10)}/${p.data.slice(5, 7)}`, ir: 'mes/agenda' });
+  } catch { /* sem agenda */ }
+  let linhas = [];
+  try { linhas = linhasDoHoje(m, dados, cart, ctx, opcoes); } catch { /* sem linhas */ }
+  let investido = null;
+  try { if (cart) investido = { total: posicao(cart).total, mercado: Number(resultadoDoMes(cart)?.mercado) || 0 }; } catch { /* carteira incompleta */ }
+  return htmlHojeV10({ c: m.c, limite: dados.regras?.limiteSaudavelItau || 0, venceDia: dados.calendario?.faturaCartao, mesProx: ctx.mes === 12 ? 1 : ctx.mes + 1, investido, faixas: faixasDoHoje(linhas, extras), github: !!opcoes.github });
+}
+
 // v9.1: um cartão só, uma linha por assunto; tocar leva à tela de cada um
-function destaquesInicio(m, dados, cart, ctx, opcoes) {
+// v9.19: as linhas do "Hoje" (aporte, plano, orçamento, metas, alertas, Claude, gatilhos), já na ordem de urgência —
+// usadas pelo cartão "Hoje" da v8 e pelas faixas do Hoje novo (v10.js)
+export function linhasDoHoje(m, dados, cart, ctx, opcoes) {
   const linhas = [];
   const tenta = fn => { try { const l = fn(); if (l) linhas.push(l); } catch { /* sem esse dado */ } };
   tenta(() => { const a = aportePlanejado(m, dados, cart, ctx); return a && { tom: a.dia ? 'bom' : 'atencao', texto: `Aporte do mês ${brl0(a.valor)} · ${a.dia ? (a.dia <= ctx.diaHoje ? 'hoje já dá' : `a partir do dia ${a.dia}`) : a.cabe > 0 ? `cabem ${brl0(a.cabe)}` : 'não cabe neste mês'}`, ir: 'carteira/visao', ...(a.dia && a.dia <= ctx.diaHoje ? { acao: { rotulo: 'Investir', attr: 'data-aporte-plano' }, peso: 1 } : {}) }; });
@@ -1856,10 +1879,14 @@ function destaquesInicio(m, dados, cart, ctx, opcoes) {
   tenta(() => { const p = opcoes.github && opcoes.hoje && agendaClaude(dados, cart, opcoes.hoje).find(x => x.qual === 'plano'); return p?.agora && opcoes.hoje < p.proxima ? { tom: 'atencao', texto: `Rodar o Plano com o Claude: ${p.motivo}`, attr: 'data-levar-claude' } : null; });
   // v9.13: gatilho da estratégia que disparou (dólar, CDI, salário) → hora de rever com o Claude
   tenta(() => { const g = cart && gatilhos(cart.estrategia, opcoes.gatilhos || {}).find(x => x.disparou); return g ? { tom: 'atencao', texto: `Gatilho da estratégia: ${g.texto}`, ...(opcoes.github ? { attr: 'data-levar-claude' } : { ir: 'carteira/aloc' }) } : null; });
-  if (!linhas.length) return '';
   // o que pede ação primeiro: problema, atenção, o que dá para fazer agora (botão), o resto
   const peso = l => (l.tom === 'ruim' ? 0 : l.tom === 'atencao' ? 1 : l.acao ? 2 : 3);
-  linhas.sort((a, b) => peso(a) - peso(b));
+  return linhas.sort((a, b) => peso(a) - peso(b));
+}
+
+function destaquesInicio(m, dados, cart, ctx, opcoes) {
+  const linhas = linhasDoHoje(m, dados, cart, ctx, opcoes);
+  if (!linhas.length) return '';
   return `<section class="cartao hoje">
     <div class="cartao-topo"><h2>Hoje</h2></div>
     <ul class="destaques">${linhas.map(l => `<li><button type="button" ${l.attr || `data-ir-aba="${l.ir}"`}>${icTom(l.tom)}<span>${esc(l.texto)}</span>${l.acao && opcoes.github ? '' : svg('<path d="m9 6 6 6-6 6"/>', 'seta')}</button>${l.acao && opcoes.github ? `<button type="button" class="btn mini" ${l.acao.attr}>${esc(l.acao.rotulo)}</button>` : ''}</li>`).join('')}</ul>
@@ -1888,6 +1915,7 @@ function aporteCartao(m, dados, cart, ctx, opcoes = {}) {
 
 function abaInicioHub(m, dados, ctx, opcoes) {
   const cart = opcoes.carteira;
+  if (opcoes.v10) return hojeV10(m, dados, cart, ctx, opcoes);
   let conf = [];
   try {
     if (cart) conf = itensConferencia(m, dados, cart, ctx);
@@ -1935,16 +1963,21 @@ export function htmlAba(aba, m, dados, opcoes = {}) {
   }
   const sub = SUBABAS[aba].some(([id]) => id === opcoes.sub) ? opcoes.sub : subPadrao(aba);
   const chave = `${aba}/${sub}`;
-  let daqui = blocos.filter(b => lugarDoBloco(b, temCarteira) === chave);
-  if (aba === 'carteira') daqui = daqui.map((b, i) => ({ b, i })).sort((x, y) => pesoSecao(x.b) - pesoSecao(y.b) || x.i - y.i).map(x => x.b);
-  // v8.5: na Agenda, a lista do mês logo abaixo do destaque (os indicadores e o aviso do agente vêm depois)
-  if (chave === 'mes/agenda') daqui = daqui.map((b, i) => ({ b, i })).sort((x, y) => (y.b.html.includes('pn-agenda') - x.b.html.includes('pn-agenda')) || x.i - y.i).map(x => x.b);
-  if (chave === 'cartao/gastos') {
-    const peso = b => { const i = ORDEM_GASTOS.findIndex(re => re.test(b.titulo || '')); return i < 0 ? ORDEM_GASTOS.length : i; };
-    daqui = daqui.map((b, i) => ({ b, i })).sort((x, y) => peso(x.b) - peso(y.b) || x.i - y.i).map(x => x.b);
-  }
-  daqui = daqui.map(b => recolherBloco(b, opcoes.abertos));
-  daqui = recolherSecoes(daqui, opcoes.abertos);
+  // os blocos do painel de uma sub-aba, já na ordem e recolhidos
+  const doLugar = chave => {
+    let daqui = blocos.filter(b => lugarDoBloco(b, temCarteira) === chave);
+    if (aba === 'carteira') daqui = daqui.map((b, i) => ({ b, i })).sort((x, y) => pesoSecao(x.b) - pesoSecao(y.b) || x.i - y.i).map(x => x.b);
+    // v8.5: na Agenda, a lista do mês logo abaixo do destaque (os indicadores e o aviso do agente vêm depois)
+    if (chave === 'mes/agenda') daqui = daqui.map((b, i) => ({ b, i })).sort((x, y) => (y.b.html.includes('pn-agenda') - x.b.html.includes('pn-agenda')) || x.i - y.i).map(x => x.b);
+    if (chave === 'cartao/gastos') {
+      const peso = b => { const i = ORDEM_GASTOS.findIndex(re => re.test(b.titulo || '')); return i < 0 ? ORDEM_GASTOS.length : i; };
+      daqui = daqui.map((b, i) => ({ b, i })).sort((x, y) => peso(x.b) - peso(y.b) || x.i - y.i).map(x => x.b);
+    }
+    daqui = daqui.map(b => recolherBloco(b, opcoes.abertos));
+    return recolherSecoes(daqui, opcoes.abertos);
+  };
+  if (opcoes.v10 && aba === 'cartao') return cartaoV10(m, dados, ctx, opcoes, doLugar);
+  const daqui = doLugar(chave);
   const partes = [
     ...(ANTES[chave]?.(m, dados, ctx, { ...opcoes, carteira: temCarteira ? opcoes.carteira : null }) || []),
     ...daqui.filter(b => !b.explicacao).map(b => b.html),
@@ -1952,6 +1985,20 @@ export function htmlAba(aba, m, dados, opcoes = {}) {
     entenda(daqui.filter(b => b.explicacao), opcoes.abertos),
   ].filter(Boolean);
   return partes.join('') || '<section class="cartao"><p class="cartao-sub">Nada nesta parte por enquanto.</p></section>';
+}
+
+// v9.20 (repaginação, etapa 3): o Cartão numa leitura só — composição → compras → por categoria → próximas faturas.
+// Tudo o que as sub-abas Fatura, Gastos e Parcelas mostravam, inclusive os blocos do painel de cada uma.
+function cartaoV10(m, dados, ctx, opcoes, doLugar) {
+  const lugares = ['cartao/fatura', 'cartao/gastos', 'cartao/parcelas'].map(doLugar);
+  const corpo = l => l.filter(b => !b.explicacao).map(b => b.html);
+  const grupo = (titulo, partes) => { const h = partes.filter(Boolean).join(''); return h ? `${titulo ? `<h3 class="secao-v10">${titulo}</h3>` : ''}${h}` : ''; };
+  return [
+    grupo('', [secao(() => htmlComposicaoV10({ c: m.c, limite: dados.regras?.limiteSaudavelItau || 0 })), secao(() => composicaoCartao(dados, opcoes)), ...corpo(lugares[0])]),
+    grupo('Por categoria', [secao(() => orcamentoCartao(dados, ctx, opcoes)), ...corpo(lugares[1])]),
+    grupo('Próximas faturas', [...ANTES['cartao/parcelas'](m, dados, ctx, opcoes), ...corpo(lugares[2])]),
+    entenda(lugares.flat().filter(b => b.explicacao), opcoes.abertos),
+  ].filter(Boolean).join('') || '<section class="cartao"><p class="cartao-sub">Nada no cartão por enquanto.</p></section>';
 }
 
 // ---------- v9.11: seletor de mês (Caixa e Cartão; o Início fica sempre em hoje) ----------
