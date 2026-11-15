@@ -1,0 +1,78 @@
+/* v9.18 — repaginação, etapa 1: a casca "Carvão" (docs/superpowers/specs/2026-11-15-repaginacao-360-design.md).
+   Tudo sob html.v10 (Configurações › Interface nova). Sem verde, sem tema claro, letras de no mínimo 12 px; movimento só
+   para quem não desligou animações. As telas por dentro ainda são as da v8 — os tokens abaixo as deixam no Carvão. */
+
+html.v10 {
+  color-scheme: dark;
+  --v10-chao: #0c0a09; --v10-bloco: #16120f; --v10-linha: rgba(255, 236, 214, .08);
+  --v10-tx: #f7f0e8; --v10-tx2: #cdbfb1; --v10-mut: #a59889;
+  --v10-brasa: #ff7a35; --v10-sobe: #ffc46b; --v10-cai: #ff8a80;
+  --v10-numero: linear-gradient(120deg, #ffb347, #ff6a3a 55%, #e2433f);
+  /* os tokens da v8 no Carvão: o conteúdo antigo fica escuro e sem verde */
+  --bg: #0c0a09; --card: #16120f; --card-2: #1f1a16; --ink: #f7f0e8; --ink-2: #cdbfb1; --muted: #a59889;
+  --bom: #ffc46b; --bom-txt: #ffc46b; --s3: #c9a27a;
+  background: #0c0a09;
+}
+html.v10 body { background: #0c0a09; color: #f7f0e8; }
+
+/* topo carvão: quase preto, o laranja só no número e na linha de baixo */
+html.v10 .app-conteudo.v10 { padding: 0; }
+html.v10 .topo-carvao { position: sticky; top: 0; z-index: 5; overflow: hidden; padding: calc(env(safe-area-inset-top, 0px) + 16px) 18px 50px;
+  background: linear-gradient(180deg, #17110d, #120e0b); border-bottom: 1px solid rgba(255, 122, 53, .55); }
+html.v10.demo .topo-carvao { padding-top: calc(env(safe-area-inset-top, 0px) + 38px); } /* a faixa da demonstração fica no alto */
+html.v10 .topo-assinatura { position: absolute; right: -26px; top: 22px; width: 150px; height: 150px; opacity: .12; pointer-events: none; }
+html.v10 .topo-linha { position: relative; display: flex; align-items: center; gap: 10px; }
+html.v10 .topo-oi { flex: 1; min-width: 0; }
+html.v10 .topo-oi b { display: block; font: 700 17px/1.2 var(--display, 'Bricolage Grotesque'), sans-serif; color: var(--v10-tx); }
+html.v10 .topo-oi span { font-size: 12.5px; color: var(--v10-mut); }
+html.v10 .topo-botoes { display: flex; gap: 8px; }
+html.v10 .topo-btn { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: var(--v10-tx2);
+  background: rgba(255, 236, 214, .06); border: 1px solid var(--v10-linha); }
+html.v10 .topo-btn svg { width: 18px; height: 18px; }
+html.v10 .topo-eyebrow { position: relative; margin: 20px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #c9b6a3; }
+html.v10 .topo-num { position: relative; display: block; margin: 6px 0 12px; font: 800 52px/1 var(--display, 'Bricolage Grotesque'), sans-serif; letter-spacing: -.045em;
+  background: var(--v10-numero); -webkit-background-clip: text; background-clip: text; color: transparent; font-variant-numeric: tabular-nums; }
+html.v10 .topo-num .cent { font-size: .46em; letter-spacing: 0; vertical-align: .64em; margin-left: 2px; }
+html.v10 .topo-pilulas { position: relative; display: flex; flex-wrap: wrap; gap: 6px; }
+html.v10 .topo-pilulas span { font-size: 12.5px; font-weight: 600; color: var(--v10-tx); padding: 6px 12px; border-radius: 99px;
+  background: rgba(255, 236, 214, .08); border: 1px solid rgba(255, 236, 214, .12); }
+
+/* topo encolhido ao rolar: uma linha só com o número pequeno */
+html.v10 .resumo.compacto .topo-carvao { padding-bottom: 12px; }
+html.v10 .resumo.compacto .topo-eyebrow,
+html.v10 .resumo.compacto .topo-pilulas,
+html.v10 .resumo.compacto .topo-assinatura { display: none; }
+html.v10 .resumo.compacto .topo-num { font-size: 24px; margin: 6px 0 0; }
+
+/* o conteúdo sobe como uma folha por cima do topo */
+html.v10 .folha-v10 { position: relative; z-index: 6; margin-top: -26px; padding: 12px 16px 120px; border-radius: 28px 28px 0 0; background: var(--v10-chao); }
+html.v10 .folha-v10::before { content: ''; display: block; width: 36px; height: 4px; margin: 0 auto 12px; border-radius: 9px; background: #3a322c; }
+html.v10 .folha-v10 .subabas { position: static; }
+
+/* barra de vidro flutuante com o ＋ no meio */
+html.v10 .abas.v10-nav { left: 50%; right: auto; top: auto; bottom: calc(var(--base, 0px) + 14px); width: auto; max-width: none; height: 62px; margin: 0;
+  display: flex; align-items: center; gap: 2px; padding: 6px; border-radius: 99px; transform: translateX(-50%);
+  background: rgba(26, 22, 19, .78); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border: 1px solid rgba(255, 236, 214, .1); }
+html.v10 .v10-nav .v10-aba { width: 52px; height: 48px; border-radius: 99px; display: grid; place-items: center; color: var(--v10-mut); }
+html.v10 .v10-nav .v10-aba svg { width: 21px; height: 21px; }
+html.v10 .v10-nav .v10-aba::before { display: none; }
+html.v10 .v10-nav .v10-aba.on { color: #fff; background: rgba(255, 236, 214, .09); }
+html.v10 .v10-mais { width: 52px; height: 52px; margin: 0 4px; border-radius: 50%; display: grid; place-items: center; color: #1d0d05;
+  background: var(--v10-brasa); border: 0; }
+html.v10 .v10-mais svg { width: 24px; height: 24px; stroke-width: 2.4; }
+html.v10 .resumo.abas-fora .v10-nav { transform: translate(-50%, calc(100% + 24px + var(--base, 0px))); }
+
+/* números que sobem e caem: âmbar e coral (nunca verde) */
+html.v10 .s, html.v10 .sobe { color: var(--v10-sobe); }
+html.v10 .c, html.v10 .cai { color: var(--v10-cai); }
+
+@media (prefers-reduced-motion: no-preference) {
+  html.v10 .folha-v10 { animation: v10-sobe .42s cubic-bezier(.22, 1.2, .36, 1) both; }
+  html.v10 .topo-num { animation: v10-acende .5s ease-out both; }
+  html.v10 .topo-carvao { transition: padding .25s ease; }
+  html.v10 .topo-num { transition: font-size .25s ease, margin .25s ease; }
+  html.v10 .resumo.sem-anim .folha-v10,
+  html.v10 .resumo.sem-anim .topo-num { animation: none; }
+  @keyframes v10-sobe { from { transform: translateY(36px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes v10-acende { from { opacity: 0; filter: brightness(.6); } to { opacity: 1; filter: none; } }
+}
