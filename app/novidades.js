@@ -2,6 +2,10 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '9.26.0': [
+    ['Interface nova: as telas redesenhadas do zero', 'Com a interface nova ligada, Investimentos, Cartão, Caixa e Análises foram redesenhados do zero no jeito que você escolheu, "Carteira de cartões": o que importa vira um cartão que você desliza — cada ativo com o código grande, cada fatura (a aberta em brasa e as próximas), cada mês dos próximos 12, cada análise do Claude e cada ativo no mercado. Embaixo, barras agora × alvo (estratégia, orçamento por categoria, a nota de saúde), listas com ícone (compras, contas a pagar com o botão de pago, recorrentes) e o que fazer agora. O topo das Análises mostra a nota do mês.', 'nova'],
+    ['Nada sumiu: Tudo do painel', 'No fim de cada tela, "Tudo do painel" abre tudo o que o painel do Claude mostra sobre o assunto, inteiro — e "Voltar" volta ao desenho novo.', 'melhoria'],
+  ],
   '9.25.0': [
     ['Interface nova: tudo no desenho novo', 'Com a interface nova ligada, todos os cartões por dentro das telas — inclusive os que vêm do painel do Claude — passaram para o desenho Carvão: blocos escuros iguais, títulos menores, linhas com filete, barras finas em âmbar (atenção em laranja, problema em coral), botões em pílula, sem cartão dentro de cartão e sem "Toque para abrir". O Caixa ganhou o saldo da conta no topo, com o pior dia e como o mês fecha, e o que se repetia saiu de dentro.', 'melhoria'],
   ],
