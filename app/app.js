@@ -33,7 +33,7 @@ import { abrirDiscar, abasLancar, ligarAbasLancar, botaoCategoria, abrirConta, m
 import { conciliarAgora, depoisDoAviso, atualizarCriptoBinance, atualizarItau, configurarIntegracoes } from './integracoes.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao } from './v8.js';
 
-const VERSAO_APP = '9.26.0';
+const VERSAO_APP = '9.28.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 document.documentElement.classList.toggle('v10', v10Ligada()); // v9.18: a repaginação (Carvão), atrás da chave em Configurações
 const REMOTO = 'data/painel.enc';
@@ -743,6 +743,10 @@ function ligarApp(r) {
     if (el.hasAttribute('data-planilha-fatura')) return exportarPlanilhaFatura();
     if (el.hasAttribute('data-passo')) return marcarPasso(el.dataset.passo, el.dataset.como);
     if (el.hasAttribute('data-igualar-patrimonio')) return igualarPatrimonio();
+    if (el.dataset.fechar) { // v9.27: o "Ver menos" do que o "Ver todos" abriu
+      estado.abertos.delete(el.dataset.fechar);
+      return renderizarApp(estado.aba, { remendo: true });
+    }
     if (el.dataset.abrir) {
       estado.abertos.add(el.dataset.abrir);
       return renderizarApp(estado.aba, { remendo: true });
@@ -1568,11 +1572,8 @@ function menuHtml() {
 function grupoCaixaV10() {
   let s = {};
   try { s = estado.motor ? situacoesMais(estado.motor, estado.dados, estado.cart.dados, new Date()) : {}; } catch { /* sem motor */ }
-  return `<p class="grupo">Caixa</p>
-    ${itemMenu('ir:mes/agenda', 'sino', 'Contas a pagar', esc(s.contas || 'Agenda e contas do mês'))}
-    ${itemMenu('ir:mes/meses', 'ordem', 'Próximos 12 meses', 'A sobra de cada mês e as decisões da projeção')}
-    ${itemMenu('ir:mes/geral', 'resumo', 'Saldo no banco', 'O caixa do mês e conferir com o saldo do banco')}
-    <p class="grupo">Análises</p>
+  // v9.27: o Caixa saiu daqui — agora está na barra (pedido do Bruno: sem duplicidade)
+  return `<p class="grupo">Análises</p>
     ${itemMenu('ir:analises/saude', 'ideia', 'Análises do Claude', esc(s.analises || 'Saúde, mercado e histórico'))}
     ${itemMenu('ir:analises/mercado', 'subir', 'Mercado', 'O que o Claude viu em cada ativo')}
     ${itemMenu('ir:analises/conferir', 'lista', 'Conferir caixa × carteira', esc(s.conferir || 'Patrimônio, dividendos e resgates'))}`;
@@ -2016,7 +2017,7 @@ function travar() {
   estado.travado = true;
   mostrarTrava();
   destrancado = new Promise(r => { aoDestrancar = r; });
-  if (!document.hidden) destravar();
+  if (!document.hidden && !v10Ligada()) destravar(); // v9.27: na interface nova, a digital só ao tocar na tela
   return destrancado;
 }
 
@@ -4520,7 +4521,7 @@ function prepararAmbiente() {
     clearTimeout(timerTrava);
     esquecerSessao(); // o app não foi recarregado: a cópia guardada ao sair não serve mais
     const fora = Date.now() - saiuEm;
-    if (estado.travado) return destravar(); // trancou em segundo plano: pede a digital agora
+    if (estado.travado) return v10Ligada() ? undefined : destravar(); // trancou em segundo plano: pede a digital agora (na interface nova, só ao tocar)
     if (estado.cofre && fora > TEMPO_FORA) return trancarEVoltar();
     descobrir();
     if (estado.painelPendente && estado.conteudo) mostrarPainel(estado.conteudo);

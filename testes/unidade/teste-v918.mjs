@@ -12,7 +12,7 @@ const { cf, cart } = gerarDemo('2026-11-14');
 const norm = o => JSON.parse(JSON.stringify(o).replace(/ /g, ' ')); // o formatador usa espaço que não quebra
 const m = { c: { saldo: 2282.56, diasRest: 16, itau: 2812, caixa: 2127 } };
 
-confere('quatro destinos na ordem', DESTINOS.map(d => d.id).join() === 'hoje,invest,cartao,mais');
+confere('quatro destinos na ordem de prioridade (v9.27)', DESTINOS.map(d => d.id).join() === 'hoje,caixa,cartao,invest');
 const h = norm(numerosDoTopo('inicio', m, cf, cart, agora));
 confere('Hoje: dá para gastar, hoje e semana', h.valor === 2282.56 && h.pilulas.includes('Hoje R$ 143') && h.pilulas.includes('Semana R$ 999'), JSON.stringify(h));
 confere('Hoje: saudação pela hora e mês', /^Boa noite/.test(h.titulo) && /nov/.test(h.sub) && /16 dias/.test(h.sub), JSON.stringify(h));
@@ -21,12 +21,12 @@ confere('mês virado: "Falta fechar" e sem valor', /^Falta fechar/.test(virado.e
 const semCart = numerosDoTopo('carteira', m, cf, null, agora);
 confere('carteira não carregada: aviso e nada de NaN/undefined', semCart.eyebrow === 'Carteira ainda não carregada' && semCart.valor === null && !/NaN|undefined/.test(JSON.stringify(semCart)));
 const ct = norm(numerosDoTopo('carteira', m, cf, cart, agora));
-confere('Investimentos: patrimônio e variação do mês', ct.valor > 100000 && ct.pilulas.some(p => /^[▲▼] R\$ .* no mês$/.test(p)), JSON.stringify(ct));
+confere('Investimentos: patrimônio, título e variação do mês (seta desenhada, v9.28)', ct.valor > 100000 && ct.titulo === 'Investimentos' && ct.pilulas.some(p => p.seta && /^R\$ .* no mês$/.test(p.texto)), JSON.stringify(ct));
 const cc = norm(numerosDoTopo('cartao', m, cf, cart, agora));
 confere('Cartão: fatura, quanto cabe e vencimento', cc.valor === 2812 && cc.pilulas.includes(`Cabem R$ ${(5600 - 2812).toLocaleString('pt-BR')}`) && cc.pilulas.includes('Vence 07/12'), JSON.stringify(cc));
 confere('outras abas: só o título', numerosDoTopo('analises', m, cf, cart, agora).valor === null);
 
-confere('barra do Rafael sem ＋ e com Mais', !/appLancar/.test(htmlNavV10('inicio', { lancar: false })) && /id="appMenu"/.test(htmlNavV10('inicio', { lancar: false })));
+confere('barra do Rafael sem ＋; o Mais (⋯) está no topo', !/appLancar/.test(htmlNavV10('inicio', { lancar: false })) && /id="appMenu"/.test(htmlTopoCarvao({ titulo: 'x', pilulas: [] })) && !/id="appMenu"/.test(htmlNavV10('inicio', { lancar: false })));
 confere('barra de quem publica com ＋', /id="appLancar"/.test(htmlNavV10('inicio', { lancar: true })));
 confere('barra marca o destino atual', /data-aba="carteira"[^>]*aria-current="page"|aria-current="page"[^>]*data-aba="carteira"/.test(htmlNavV10('carteira', { lancar: true })));
 const topo = htmlTopoCarvao(h);

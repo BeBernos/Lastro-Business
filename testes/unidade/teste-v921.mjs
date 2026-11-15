@@ -22,9 +22,9 @@ const agora = new Date('2026-11-14T21:00:00-03:00');
 const { cf, cart } = gerarDemo('2026-11-14');
 const m = { c: { saldo: 2282.56, diasRest: 16, itau: 2812, caixa: 2127 } };
 const t = JSON.parse(JSON.stringify(numerosDoTopo('carteira', m, cf, cart, agora)).replace(/ /g, ' '));
-confere('topo: estado junto do patrimônio', /^Patrimônio investido · (Saudável|Atenção|Fora do plano)$/.test(t.eyebrow), t.eyebrow);
-confere('topo: pílula da estratégia', t.pilulas.some(p => /^Estratégia \d+% fiel$/.test(p)), t.pilulas.join(' | '));
-confere('topo: variação do mês e posição continuam', t.pilulas.some(p => /no mês$/.test(p)) && t.pilulas.some(p => /^posição \d\d\/\d\d$/.test(p)));
+confere('topo: o estado é uma pílula com ícone (v9.28)', t.eyebrow === 'Patrimônio investido' && t.pilulas.some(p => /^(Saudável|Atenção|Fora do plano)$/.test(p.texto) && p.tom), JSON.stringify(t.pilulas));
+confere('topo: pílula da estratégia', t.pilulas.some(p => /^\d+% fiel$/.test(p)), JSON.stringify(t.pilulas));
+confere('topo: variação do mês e a posição (no subtítulo)', t.pilulas.some(p => /no mês$/.test(p.texto || '')) && /^posição de \d\d\/\d\d$/.test(t.sub), t.sub);
 confere('topo sem NaN/undefined', !/NaN|undefined/.test(JSON.stringify(t)));
 
 console.log(`v9.21 Investimentos no Carvão: ${ok} ok, ${falhas} falhas`);
