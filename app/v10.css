@@ -66,6 +66,89 @@ html.v10 .resumo.abas-fora .v10-nav { transform: translate(-50%, calc(100% + 24p
 html.v10 .s, html.v10 .sobe { color: var(--v10-sobe); }
 html.v10 .c, html.v10 .cai { color: var(--v10-cai); }
 
+/* ---------- v9.19 (etapa 2): o Hoje — quatro blocos e as faixas de ação ---------- */
+html.v10 .hoje-v10 .blocos-v10 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+html.v10 .bloco-v10 { display: block; width: 100%; text-align: left; font: inherit; color: var(--v10-tx); background: var(--v10-bloco);
+  border: 1px solid var(--v10-linha); border-radius: 22px; padding: 13px 13px 12px; }
+html.v10 .bloco-v10.vazio { color: var(--v10-mut); }
+html.v10 .bloco-cab { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--v10-mut); }
+html.v10 .bloco-cab svg { width: 16px; height: 16px; color: #ffb347; flex: none; }
+html.v10 .bloco-v10 b { display: block; margin-top: 8px; font: 700 21px/1.1 var(--display, 'Bricolage Grotesque'), sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+html.v10 .bloco-v10 small { display: block; margin-top: 3px; font-size: 12px; color: var(--v10-tx2); }
+html.v10 .bloco-v10 small.sobe { color: var(--v10-sobe); }
+html.v10 .bloco-v10 small.cai { color: var(--v10-cai); }
+html.v10 .barra-v10 { display: block; height: 4px; margin-top: 10px; border-radius: 9px; overflow: hidden; background: rgba(255, 255, 255, .08); }
+html.v10 .barra-v10 i { display: block; height: 100%; border-radius: 9px; background: #ffb347; }
+html.v10 .faixas-v10 { display: grid; gap: 8px; margin-top: 10px; }
+html.v10 .faixa-v10 { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; border-radius: 20px;
+  background: linear-gradient(90deg, rgba(255, 179, 71, .12), rgba(255, 179, 71, .03)); border: 1px solid rgba(255, 179, 71, .28); }
+html.v10 .faixa-v10.tom-ruim { background: linear-gradient(90deg, rgba(255, 138, 128, .14), rgba(255, 138, 128, .03)); border-color: rgba(255, 138, 128, .4); }
+html.v10 .faixa-texto { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 8px 0; text-align: left; font: inherit; font-size: 14px;
+  color: var(--v10-tx); background: none; border: 0; }
+html.v10 .faixa-texto svg { width: 18px; height: 18px; color: #ffb347; flex: none; }
+html.v10 .faixa-v10.tom-ruim .faixa-texto svg { color: var(--v10-cai); }
+html.v10 .faixa-acao-v10 { flex: none; font: inherit; font-size: 13px; font-weight: 700; color: #1d0d05; background: var(--v10-tx); border: 0; border-radius: 99px; padding: 9px 15px; }
+
+/* ---------- o ＋ e as folhas no Carvão ---------- */
+html.v10 #folha { background: #15110e; border-top: 1px solid rgba(255, 122, 53, .45); border-radius: 28px 28px 0 0; color: var(--v10-tx); }
+html.v10 #folha .alca { background: #3a322c; }
+html.v10 .discar-op { background: var(--v10-bloco); border: 1px solid var(--v10-linha); color: var(--v10-tx); }
+html.v10 .discar-op small { color: var(--v10-mut); font-size: 12px; }
+html.v10 .discar-ic { color: #ffb347; background: rgba(255, 179, 71, .1); }
+html.v10 .discar-fechar { background: var(--v10-brasa); color: #1d0d05; }
+html.v10 #folha .campo { background: #1d1814; border-color: rgba(255, 236, 214, .12); color: var(--v10-tx); }
+html.v10 #folha #lValor { font: 800 40px/1.1 var(--display, 'Bricolage Grotesque'), sans-serif; letter-spacing: -.03em; color: #ff8a4c; text-align: center; }
+html.v10 #folha .btn.prim { background: var(--v10-brasa); color: #1d0d05; border-color: transparent; }
+
+/* ---------- v9.19.1: lançar no Carvão — desenho novo (mesmos campos e regras por baixo) ---------- */
+html.v10 .cat-ic { --cat: #ff9a52 !important; } /* ícones de categoria no âmbar da marca: nada de verde */
+html.v10 #folha h2 { text-align: center; font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--v10-mut); margin: 0 0 12px; }
+html.v10 #folha .escolha { background: #1d1814; border-radius: 99px; padding: 4px; gap: 2px; margin-bottom: 8px; }
+html.v10 #folha .escolha button { min-height: 38px; border-radius: 99px; font-size: 13px; color: var(--v10-tx2); background: none; box-shadow: none; }
+html.v10 #folha .escolha button.on { background: #2c241f; color: #fff; }
+html.v10 #formLanc { display: flex; flex-direction: column; }
+html.v10 #formLanc label { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--v10-mut); margin: 14px 2px 6px; }
+html.v10 #formLanc label[for="lValor"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+html.v10 #formLanc #lValor { order: -1; margin: 6px 0 2px; padding: 4px 0; border: 0; background: none; text-align: center;
+  font: 800 52px/1.05 var(--display, 'Bricolage Grotesque'), sans-serif; letter-spacing: -.04em; color: #ff8a4c; }
+html.v10 #formLanc #lValor::placeholder { color: #4a3b31; }
+html.v10 #formLanc .campo { border-radius: 16px; border: 1px solid rgba(255, 236, 214, .1); background: #1d1814; color: var(--v10-tx); font-size: 15px; min-height: 48px; }
+html.v10 #formLanc .campo-cat { display: flex; align-items: center; gap: 10px; text-align: left; }
+html.v10 #formLanc .cat-rapidas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+html.v10 #formLanc .cat-rapida { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 4px 10px; border-radius: 18px;
+  background: #1d1814; border: 1px solid rgba(255, 236, 214, .08); color: var(--v10-tx2); font-size: 12px; }
+html.v10 #formLanc .cat-rapida.on { border-color: var(--v10-brasa); color: #fff; background: rgba(255, 122, 53, .1); }
+html.v10 #formLanc .cat-rapida span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+html.v10 #formLanc .marcar { display: flex; gap: 12px; align-items: flex-start; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 500;
+  color: var(--v10-tx); margin: 12px 0 0; padding: 12px 14px; border-radius: 16px; background: #1a1512; border: 1px solid rgba(255, 236, 214, .06); }
+html.v10 #formLanc .marcar small { display: block; font-size: 12px; color: var(--v10-mut); margin-top: 2px; }
+html.v10 #formLanc .marcar input { accent-color: #ff7a35; width: 20px; height: 20px; margin-top: 1px; flex: none; }
+html.v10 #formLanc .nota { font-size: 12.5px; color: var(--v10-tx2); }
+html.v10 #formLanc #lOk { margin-top: 20px; min-height: 56px; border-radius: 18px; border: 0; background: var(--v10-brasa); color: #1d0d05; font-size: 16px; font-weight: 700; }
+html.v10 #formLanc #lOk small { font-weight: 600; opacity: .75; }
+html.v10 #formLanc #lColar { align-self: center; margin-top: 12px; color: #ffb347; }
+html.v10 #folha .sms-caixa { background: #1d1814; border: 1px solid rgba(255, 179, 71, .25); border-radius: 18px; }
+
+/* v9.20 (etapa 3): o Cartão numa leitura só — composição, ritmo e títulos de seção */
+html.v10 .comp-v10 { background: var(--v10-bloco); border: 1px solid var(--v10-linha); border-radius: 22px; padding: 16px 15px 14px; margin-bottom: 12px; }
+html.v10 .comp-barra-v10 { position: relative; display: flex; gap: 3px; height: 12px; }
+html.v10 .comp-barra-v10 > i { display: block; height: 100%; border-radius: 6px; min-width: 3px; }
+html.v10 .comp-v10 .p1 { background: #e2433f; }
+html.v10 .comp-v10 .p2 { background: #ff7a35; }
+html.v10 .comp-v10 .p3 { background: #ffb347; }
+html.v10 .comp-v10 .livre { background: rgba(255, 236, 214, .1); }
+html.v10 .comp-v10 .estouro { background: var(--v10-cai); }
+html.v10 .marca-v10 { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--v10-tx); border-radius: 2px; }
+html.v10 .comp-legenda-v10 { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 9px 14px; }
+html.v10 .comp-legenda-v10 li { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--v10-tx2); }
+html.v10 .comp-legenda-v10 li > i { flex: none; width: 9px; height: 9px; border-radius: 3px; }
+html.v10 .comp-legenda-v10 b { margin-left: auto; color: var(--v10-tx); font-variant-numeric: tabular-nums; }
+html.v10 .comp-legenda-v10 li.cai, html.v10 .comp-legenda-v10 li.cai b { color: var(--v10-cai); }
+html.v10 .ritmo-v10 { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--v10-linha); font-size: 14px; font-weight: 600; color: var(--v10-tx); }
+html.v10 .ritmo-v10.cai { color: var(--v10-cai); }
+html.v10 .ritmo-v10 small { display: block; margin-top: 3px; font-size: 12.5px; font-weight: 500; color: var(--v10-mut); }
+html.v10 .secao-v10 { margin: 26px 4px 10px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--v10-mut); }
+
 @media (prefers-reduced-motion: no-preference) {
   html.v10 .folha-v10 { animation: v10-sobe .42s cubic-bezier(.22, 1.2, .36, 1) both; }
   html.v10 .topo-num { animation: v10-acende .5s ease-out both; }

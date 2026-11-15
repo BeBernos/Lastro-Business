@@ -2,6 +2,12 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '9.20.0': [
+    ['Interface nova: o Cartão', 'Com a interface nova ligada (Configurações), o Cartão virou uma leitura só, sem as abas Fatura, Gastos e Parcelas: a barra do que compõe a fatura e quanto ainda cabe, o ritmo até o fim do mês, as compras (cada uma abre para editar), o gasto por categoria com o orçamento e as próximas faturas.', 'nova'],
+  ],
+  '9.19.0': [
+    ['Interface nova: o Hoje', 'Com a interface nova ligada (Configurações), o Hoje ficou no desenho novo: quatro blocos — fatura, quanto cabe no cartão, saldo no banco e o investido — e, só quando há algo a fazer, até três faixas com o mais urgente primeiro (aporte, passo do plano, conta chegando, fechamento). O ＋ ganhou um desenho novo: o valor grande no centro, as categorias em botões e o botão que já mostra quanto sobra no mês depois do gasto.', 'nova'],
+  ],
   '9.18.0': [
     ['Interface nova em teste', 'Em Configurações › Interface nova: o começo da repaginação, com o visual Carvão — o topo escuro com o número em laranja, a tela subindo como uma folha e a barra de vidro com o ＋ no meio. As telas por dentro ainda são as de hoje; mudam nas próximas versões. Dá para desligar quando quiser.', 'nova'],
   ],

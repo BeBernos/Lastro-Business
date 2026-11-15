@@ -89,3 +89,60 @@ export function htmlNavV10(abaAtual, { lancar = false } = {}) {
   const meio = lancar ? `<button type="button" class="v10-mais" id="appLancar" aria-label="Lançar" aria-haspopup="dialog">${ic('<path d="M12 5v14M5 12h14"/>')}</button>` : '';
   return `<nav class="abas v10-nav" aria-label="Seções">${botao(hoje)}${botao(invest)}${meio}${botao(cartao)}${botao(mais)}</nav>`;
 }
+
+// ---------- v9.19 (etapa 2): o Hoje — quatro blocos e, só quando há o que fazer, até 3 faixas de ação ----------
+const pesoDaLinha = l => (l.tom === 'ruim' ? 0 : l.tom === 'atencao' ? 1 : l.acao ? 2 : 3); // a mesma regra de linhasDoHoje
+export function faixasDoHoje(linhas, extras = []) {
+  return [...extras, ...linhas].map((l, i) => ({ l, i })).sort((a, b) => pesoDaLinha(a.l) - pesoDaLinha(b.l) || a.i - b.i).slice(0, 3).map(x => x.l);
+}
+
+const ICONES_HOJE = {
+  cartao: '<rect x="3" y="5.5" width="18" height="13" rx="3"/><path d="M3 10h18M7 15h4"/>',
+  folga: '<path d="M4 16a8 8 0 0 1 16 0"/><path d="M12 16l4-5"/>',
+  banco: '<path d="M4 10l8-5 8 5M6 10v7M10 10v7M14 10v7M18 10v7M4 19h16"/>',
+  sobe: '<path d="M4 16l5-5 4 3 7-7M15 7h5v5"/>',
+};
+const TOM_ICONE = { ruim: '<path d="M12 7v6m0 3.5v.01"/>', atencao: '<path d="M12 7v6m0 3.5v.01"/>', bom: '<path d="M6.5 12.5l3.5 3.5 7.5-8"/>', info: '<path d="M12 11v6m0-9.5v.01"/>' };
+
+export function htmlHojeV10({ c = {}, limite = 0, venceDia = null, mesProx = null, investido = null, faixas = [], github = false }) {
+  const cabe = Math.max(0, limite - (c.itau || 0));
+  const pctCabe = limite > 0 ? Math.min(100, Math.round((cabe / limite) * 100)) : 0;
+  const bloco = (attr, icone, rotulo, valor, rodape) => `<button type="button" class="bloco-v10" ${attr}>
+      <span class="bloco-cab">${ic(icone)}${esc(rotulo)}</span><b class="num">${valor}</b>${rodape}</button>`;
+  const invest = investido
+    ? bloco('data-aba="carteira"', ICONES_HOJE.sobe, 'Investido', esc(brl0(investido.total)), `<small class="${investido.mercado < 0 ? 'cai' : 'sobe'}">${investido.mercado < 0 ? '▼' : '▲'} ${esc(brl0(Math.abs(investido.mercado)))} no mês</small>`)
+    : `<div class="bloco-v10 vazio"><span class="bloco-cab">${ic(ICONES_HOJE.sobe)}Investido</span><small>Carteira ainda não carregada</small></div>`;
+  const faixa = f => `<div class="faixa-v10 tom-${f.tom}">
+      <button type="button" class="faixa-texto" ${f.attr || `data-ir-aba="${esc(f.ir || 'inicio')}"`}>${ic(TOM_ICONE[f.tom] || TOM_ICONE.info)}<span>${esc(f.texto)}</span></button>
+      ${f.acao && github ? `<button type="button" class="faixa-acao-v10" ${f.acao.attr}>${esc(f.acao.rotulo)}</button>` : ''}</div>`;
+  return `<div class="hoje-v10">
+    <div class="blocos-v10">
+      ${bloco('data-aba="cartao"', ICONES_HOJE.cartao, 'Fatura', esc(brl0(c.itau || 0)), venceDia ? `<small>vence ${pad(venceDia)}/${pad(mesProx)}</small>` : '')}
+      ${bloco('data-aba="cartao"', ICONES_HOJE.folga, 'Cabe no cartão', esc(brl0(cabe)), `<i class="barra-v10"><i style="width:${pctCabe}%"></i></i>`)}
+      ${bloco('data-ir-aba="mes/geral"', ICONES_HOJE.banco, 'No banco', esc(brl0(c.caixa || 0)), '<small>agora</small>')}
+      ${invest}
+    </div>
+    ${faixas.length ? `<div class="faixas-v10">${faixas.map(faixa).join('')}</div>` : ''}
+  </div>`;
+}
+
+// ---------- v9.20 (etapa 3): o Cartão — composição da fatura e o ritmo até o limite saudável ----------
+// Junta o que eram o destaque da Fatura (barra) e o cartão "Até o limite saudável" (o topo já mostra o valor da fatura).
+export function htmlComposicaoV10({ c = {}, limite = 0 }) {
+  const itau = c.itau || 0, total = Math.max(limite, itau);
+  if (!total) return '';
+  const livre = Math.max(0, limite - itau);
+  const pct = v => +((Math.max(0, v) / total) * 100).toFixed(1);
+  const partes = [['p1', 'Parcelas', c.parcelas || 0], ['p2', 'Fixos', c.agendado || 0], ['p3', 'Gastos do mês', c.gastoLivre || 0]];
+  const acima = limite && itau > limite;
+  const fim = limite ? (acima
+    ? `<li class="cai"><i class="estouro"></i>Acima do limite<b>${esc(brl0(itau - limite))}</b></li>`
+    : `<li><i class="livre"></i>Ainda cabe<b>${esc(brl0(livre))}</b></li>`) : '';
+  const proj = c.itauProjetado, estoura = limite && proj > limite;
+  const ritmo = limite && Number.isFinite(proj) ? `<p class="ritmo-v10${estoura ? ' cai' : ''}">No ritmo atual fecha em ${esc(brl0(proj))}${estoura && c.diaEstouro && !c.limiteJaRompido ? ` — passa do limite por volta do dia ${c.diaEstouro}` : ''}${!acima && c.diasRest > 0 && c.tetoPorDia > 0 ? `<small>Cabem ${esc(brl(c.tetoPorDia))} por dia até o fim do mês</small>` : ''}</p>` : '';
+  return `<section class="comp-v10">
+    <div class="comp-barra-v10" role="img" aria-label="Composição da fatura">${partes.map(([k, , v]) => `<i class="${k}" style="width:${pct(v)}%"></i>`).join('')}${livre > 0 ? `<i class="livre" style="width:${pct(livre)}%"></i>` : ''}${acima ? `<b class="marca-v10" style="left:${pct(limite)}%"></b>` : ''}</div>
+    <ul class="comp-legenda-v10">${partes.map(([k, n, v]) => `<li><i class="${k}"></i>${n}<b>${esc(brl0(v))}</b></li>`).join('')}${fim}</ul>
+    ${ritmo}
+  </section>`;
+}

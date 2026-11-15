@@ -32,7 +32,7 @@ import { abrirDiscar, abasLancar, ligarAbasLancar, botaoCategoria, abrirConta, m
 import { conciliarAgora, depoisDoAviso, atualizarCriptoBinance, atualizarItau, configurarIntegracoes } from './integracoes.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao } from './v8.js';
 
-const VERSAO_APP = '9.18.0';
+const VERSAO_APP = '9.20.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 document.documentElement.classList.toggle('v10', v10Ligada()); // v9.18: a repaginação (Carvão), atrás da chave em Configurações
 const REMOTO = 'data/painel.enc';
@@ -561,9 +561,9 @@ function renderizarApp(aba, { remendo = false } = {}) {
   const outroMes = comMes && estado.mesVer;
   const v10 = v10Ligada();
   const cabeca = v10 ? htmlTopoCarvao(numerosDoTopo(estado.aba, estado.motor, estado.dados, estado.cart.dados), { esconder: valoresEscondidos() }) : htmlTopo(estado.aba, estado.dados, { lancar: estado.github });
-  const html = `<div class="app-conteudo${v10 ? ' v10' : ''}">${cabeca}${v10 ? '<section class="folha-v10">' : ''}${outroMes ? '' : htmlSubabas(estado.aba, sub)}${comMes ? seletorMes(estado.dados, estado.motor, outroMes) : ''}
+  const html = `<div class="app-conteudo${v10 ? ' v10' : ''}">${cabeca}${v10 ? '<section class="folha-v10">' : ''}${outroMes || (v10 && estado.aba === 'cartao') ? '' : htmlSubabas(estado.aba, sub)}${comMes ? seletorMes(estado.dados, estado.motor, outroMes) : ''}
     <main class="app-aba">${outroMes ? telaDoMes(estado.aba, outroMes, estado.motor, estado.dados, { github: estado.github, hoje: hojeBrasil() }) : htmlAba(estado.aba, estado.motor, estado.dados, {
-      github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, ordemInicio: lerOrdemInicio(), assinaturas: estado.assinaturas, hoje: hojeBrasil(), rascunhos: estado.rascunhos, fechamentoAplicado: estado.fechamentoAplicado,
+      github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, ordemInicio: lerOrdemInicio(), assinaturas: estado.assinaturas, hoje: hojeBrasil(), rascunhos: estado.rascunhos, fechamentoAplicado: estado.fechamentoAplicado, v10,
       docCarteira: estado.cart.frame?.contentDocument, carteira: estado.cart.dados, estimativa: estimativaAtual(), cdiHist: estado.cdiHist?.cdi, gatilhos: valoresGatilhos(),
     })}</main>${v10 ? '</section>' : ''}</div>
     ${v10 ? htmlNavV10(estado.aba, { lancar: !!estado.github }) : htmlNav(estado.aba, { lancar: !!estado.github })}`;
@@ -732,6 +732,7 @@ function ligarApp(r) {
     if (el.dataset.investir) return el.dataset.investir === 'valores' ? abrirValores() : abrirInvestir(el.dataset.investir);
     if (el.hasAttribute('data-levar-claude')) return abrirLevarClaude();
     if (el.hasAttribute('data-fech-pronto')) return abrirFechamentoPronto();
+    if (el.hasAttribute('data-semana')) return abrirResumoSemana(); // v9.19: faixa do Hoje novo aos domingos
     if (el.hasAttribute('data-fech-desfazer')) return desfazerFechamento();
     if (el.hasAttribute('data-planilha-fatura')) return exportarPlanilhaFatura();
     if (el.hasAttribute('data-passo')) return marcarPasso(el.dataset.passo, el.dataset.como);
@@ -2452,6 +2453,14 @@ function abrirLancar(tipo = 'cartao', preenchido = {}) {
     </form>`);
   const $f = sel => folha.querySelector(sel);
   const valor = $f('#lValor');
+  // v9.19.1: no Carvão o botão já diz quanto sobra no mês depois deste gasto (o dá para gastar do painel − o valor)
+  const atualizarSobra = () => {
+    const s0 = estado.motor?.c?.saldo;
+    if (!v10Ligada() || editar || estorno || !Number.isFinite(s0)) return;
+    $f('#lOk').innerHTML = `Lançar <small>· sobra ${esc(brlTexto(s0 - (lerValor(valor.value) || 0)))}</small>`;
+  };
+  valor.addEventListener('input', atualizarSobra);
+  atualizarSobra();
   const parc = $f('#lParc');
   const dataEl = $f('#lData');
   const pontual = $f('#lPontualBox');
