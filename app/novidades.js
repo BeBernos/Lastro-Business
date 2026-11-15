@@ -2,6 +2,9 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '9.18.0': [
+    ['Interface nova em teste', 'Em Configurações › Interface nova: o começo da repaginação, com o visual Carvão — o topo escuro com o número em laranja, a tela subindo como uma folha e a barra de vidro com o ＋ no meio. As telas por dentro ainda são as de hoje; mudam nas próximas versões. Dá para desligar quando quiser.', 'nova'],
+  ],
   '9.17.2': [
     ['Arrumação por dentro', 'O código do app foi dividido em partes menores (avisos e folhas, Binance, Itaú e conciliação, cada um no seu arquivo). Nada muda no uso: é para as próximas melhorias saírem mais rápido e com menos risco.', 'melhoria'],
   ],

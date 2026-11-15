@@ -25,14 +25,16 @@ import { DEMO } from './modo.js';
 import { NOME_CAMPO } from './parcial.js';
 import { alternarPausa, derivarTarget, gatilhos, mudancasEstrategia, textoItem } from './ficha.js';
 import { NOVIDADES } from './novidades.js';
+import { htmlNavV10, htmlTopoCarvao, ligarV10, numerosDoTopo, v10Ligada } from './v10.js';
 import { $, esc, brlTexto, dataCurta, dataHora, icone, aviso, mascarar, fecharAvisoCarregando, valoresEscondidos, trocarEsconder, confirmar, ALCANCES_EDITAR, escolherAlcance, abrirFolha, fecharFolha, configurarFolha } from './ui.js';
 import { enviarArquivo, exportarPlanilhaFatura, enviarArquivos, conectorLigado, pedidoPeloConector, mesSeguinte, etapaAberta, marcarEtapa, abrirLevarClaude, svgCadeado, abrirLancamentos, configurarClaude } from './claude.js';
 import { abrirDiscar, abasLancar, ligarAbasLancar, botaoCategoria, abrirConta, mesCurto, abrirValorFuturo, abrirNovaConta, abrirInvestir, abrirValores, configurarLancar } from './lancar.js';
 import { conciliarAgora, depoisDoAviso, atualizarCriptoBinance, atualizarItau, configurarIntegracoes } from './integracoes.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao } from './v8.js';
 
-const VERSAO_APP = '9.17.2';
+const VERSAO_APP = '9.18.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
+document.documentElement.classList.toggle('v10', v10Ligada()); // v9.18: a repaginação (Carvão), atrás da chave em Configurações
 const REMOTO = 'data/painel.enc';
 const REMOTO_CARTEIRA = 'data/carteira.enc';
 const GITHUB_PADRAO = { repo: 'usuario/repositorio', branch: 'main', caminho: 'app/data/painel.enc' };
@@ -557,12 +559,14 @@ function renderizarApp(aba, { remendo = false } = {}) {
   const comMes = ['mes', 'cartao'].includes(estado.aba) && estado.dados && estado.motor;
   if (comMes && estado.mesVer && (estado.mesVer === estado.dados.periodo || !mesesDoSeletor(estado.dados, estado.motor).includes(estado.mesVer))) estado.mesVer = null; // mês virou ou saiu da projeção
   const outroMes = comMes && estado.mesVer;
-  const html = `<div class="app-conteudo">${htmlTopo(estado.aba, estado.dados, { lancar: estado.github })}${outroMes ? '' : htmlSubabas(estado.aba, sub)}${comMes ? seletorMes(estado.dados, estado.motor, outroMes) : ''}
+  const v10 = v10Ligada();
+  const cabeca = v10 ? htmlTopoCarvao(numerosDoTopo(estado.aba, estado.motor, estado.dados, estado.cart.dados), { esconder: valoresEscondidos() }) : htmlTopo(estado.aba, estado.dados, { lancar: estado.github });
+  const html = `<div class="app-conteudo${v10 ? ' v10' : ''}">${cabeca}${v10 ? '<section class="folha-v10">' : ''}${outroMes ? '' : htmlSubabas(estado.aba, sub)}${comMes ? seletorMes(estado.dados, estado.motor, outroMes) : ''}
     <main class="app-aba">${outroMes ? telaDoMes(estado.aba, outroMes, estado.motor, estado.dados, { github: estado.github, hoje: hojeBrasil() }) : htmlAba(estado.aba, estado.motor, estado.dados, {
       github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, ordemInicio: lerOrdemInicio(), assinaturas: estado.assinaturas, hoje: hojeBrasil(), rascunhos: estado.rascunhos, fechamentoAplicado: estado.fechamentoAplicado,
       docCarteira: estado.cart.frame?.contentDocument, carteira: estado.cart.dados, estimativa: estimativaAtual(), cdiHist: estado.cdiHist?.cdi, gatilhos: valoresGatilhos(),
-    })}</main></div>
-    ${htmlNav(estado.aba, { lancar: !!estado.github })}`;
+    })}</main>${v10 ? '</section>' : ''}</div>
+    ${v10 ? htmlNavV10(estado.aba, { lancar: !!estado.github }) : htmlNav(estado.aba, { lancar: !!estado.github })}`;
   // redesenho no lugar (depois de lançar, simulador): sem a animação de entrada — senão a tela pisca
   r.classList.toggle('sem-anim', remendo);
   if (!remendo) {
@@ -669,6 +673,7 @@ function ligarBarraAbas(r) {
   let ultimo = r.scrollTop;
   r.addEventListener('scroll', () => {
     const y = r.scrollTop;
+    r.classList.toggle('compacto', y > 60 && v10Ligada()); // v9.18: topo carvão encolhe
     const fim = y + r.clientHeight >= r.scrollHeight - 24;
     const delta = y - ultimo;
     if (y < 40 || fim) mostrarAbas(true);
@@ -1532,6 +1537,7 @@ async function configHtml() {
     <button type="button" class="link voltar-menu" data-acao="menu">‹ Menu</button>
     <h2>Configurações</h2>
     <p class="grupo">Neste celular</p>
+    ${itemChave('v10', 'novidade', 'Interface nova (em teste)', 'A repaginação, aos poucos — dá para voltar', v10Ligada())}
     ${suportaAvisos() && !DEMO ? itemChave('avisos', 'avisos', 'Avisos de atualização', 'Notifica quando sai painel novo', !!estado.avisos) : ''}
     ${itemChave('lembretes', 'sino', 'Lembretes de contas', 'Na véspera e no dia de cada conta', !!estado.lembretes)}
     ${itemMenu('protecao', 'cadeado', 'Proteção do app', estado.salvo?.modo === 'senha' ? 'Senha da família a cada abertura' : 'Digital a cada abertura · trancar agora')}
@@ -1602,6 +1608,7 @@ function ligarMenu(folha) {
       b.disabled = true;
       try {
         if (qual === 'olho') alternarOlho();
+        if (qual === 'v10') { ligarV10(!v10Ligada()); document.documentElement.classList.toggle('v10', v10Ligada()); if (estado.resumoOk) renderizarApp(estado.aba); }
         if (qual === 'avisos') { if (estado.avisos) await desligarAvisos(); else await ligarAvisos({ pedir: true }); }
         if (qual === 'lembretes') { if (estado.lembretes) await desligarLembretes(); else await ligarLembretes(); }
       } catch (e) {
