@@ -50,7 +50,8 @@ confere('v10.css sem letra menor que 12 px', css.length > 0 && !pequenos.length,
 const fora = semComentario.replace(/@media\s*\(prefers-reduced-motion:\s*no-preference\)\s*\{[\s\S]*?\n\}/g, '');
 confere('movimento só para quem não desligou animações', css.length > 0 && !/(animation|transition)\s*:[^;]*\d+m?s/.test(fora));
 const seletores = [...fora.matchAll(/(^|\})\s*([^{}@]+)\{/g)].map(x => x[2].trim()).filter(Boolean);
-confere('toda regra começa com html.v10', css.length > 0 && seletores.every(s => s.split(',').every(p => p.trim().startsWith('html.v10'))), seletores.filter(s => !s.startsWith('html.v10')).slice(0, 3).join(' | '));
+const partes = s => s.replace(/\([^()]*\)/g, '()').split(','); // v9.25: vírgulas dentro de :is(...) não separam seletores
+confere('toda regra começa com html.v10', css.length > 0 && seletores.every(s => partes(s).every(p => p.trim().startsWith('html.v10'))), seletores.filter(s => !partes(s).every(p => p.trim().startsWith('html.v10'))).slice(0, 3).join(' | '));
 
 console.log(`v9.18 casca Carvão: ${ok} ok, ${falhas} falhas`);
 process.exitCode = falhas ? 1 : 0;

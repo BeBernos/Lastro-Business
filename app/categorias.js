@@ -77,8 +77,8 @@ export const ICONES = {
 export const GRUPOS = ['Alimentação', 'Casa', 'Saúde e corpo', 'Família', 'Lazer', 'Compras', 'Transporte', 'Dinheiro', 'Outros'];
 
 // Cores (círculo atrás do ícone branco, contraste ≥ 3:1): uma família por grupo, para achar de olho
-export const CORES = ['#dc2626', '#b91c1c', '#c2410c', '#d97706', '#a16207', '#4d7c0f', '#15803d', '#16a34a', '#0f766e', '#0d9488',
-  '#0891b2', '#0284c7', '#2563eb', '#1e40af', '#6d28d9', '#7c3aed', '#9333ea', '#c026d3', '#db2777', '#be185d', '#e11d48', '#92400e', '#57534e', '#475569', '#18181b'];
+export const CORES = ['#dc2626', '#b91c1c', '#c2410c', '#d97706', '#a16207', '#ca8a04', '#ea580c',
+  '#0891b2', '#0ea5e9', '#4f46e5', '#0284c7', '#2563eb', '#1e40af', '#6d28d9', '#7c3aed', '#9333ea', '#c026d3', '#db2777', '#be185d', '#e11d48', '#92400e', '#57534e', '#475569', '#18181b'];
 
 // sugerida: não está na lista do Bruno, criada para cobrir o que o agente já usa.
 // Família: Bruno, Rafael (esposa), Theo (filho) e Mia (pet) — Rafael, Theo e Mia ficam dentro de Family.
@@ -94,9 +94,9 @@ export const CATEGORIAS = [
   { nome: 'Internet/Mobile', pai: 'Home', grupo: 'Casa', icone: 'wifi', cor: '#2563eb', aliases: ['internet', 'celular', 'telefone'], conta: 'contas' },
   { nome: 'Domestic Utilities', grupo: 'Casa', icone: 'fogao', cor: '#0284c7', aliases: ['utilidades domésticas', 'utilidades'], descricao: 'Utensílios e itens para casa' },
   { nome: 'YEP', grupo: 'Casa', icone: 'predio', cor: '#1e40af', aliases: ['aquecedor (yep)', 'aquecedor', 'apartamento', 'apê'], descricao: 'Nosso apê — o futuro apartamento' },
-  { nome: 'Health', grupo: 'Saúde e corpo', icone: 'saude', cor: '#16a34a', aliases: ['saúde', 'saude', 'farmácia', 'farmacia', 'médico'] },
-  { nome: 'Gym', grupo: 'Saúde e corpo', icone: 'haltere', cor: '#15803d', aliases: ['academia'] },
-  { nome: 'Supplements', grupo: 'Saúde e corpo', icone: 'pilula', cor: '#4d7c0f', aliases: ['suplementos', 'suplemento'] },
+  { nome: 'Health', grupo: 'Saúde e corpo', icone: 'saude', cor: '#0ea5e9', aliases: ['saúde', 'saude', 'farmácia', 'farmacia', 'médico'] },
+  { nome: 'Gym', grupo: 'Saúde e corpo', icone: 'haltere', cor: '#ea580c', aliases: ['academia'] },
+  { nome: 'Supplements', grupo: 'Saúde e corpo', icone: 'pilula', cor: '#8b5cf6', aliases: ['suplementos', 'suplemento'] },
   { nome: 'Beauty', grupo: 'Saúde e corpo', icone: 'beleza', cor: '#c026d3', aliases: ['beleza', 'cabelo'] },
   { nome: 'Family', grupo: 'Família', icone: 'pessoas', cor: '#be185d', aliases: ['familia', 'família'], conta: 'familia', descricao: 'Bruno, Rafael, Theo e Mia — gastos da família', sugerida: true },
   { nome: 'Rafael', pai: 'Family', grupo: 'Família', icone: 'coracao', cor: '#be185d', aliases: ['rafael', 'mesada rafael', 'mesada rafael', 'pix rafael'], conta: 'familia', descricao: 'Mesada e Pix para o Rafael' },
@@ -109,15 +109,15 @@ export const CATEGORIAS = [
   { nome: 'Games', grupo: 'Lazer', icone: 'controle', cor: '#6d28d9', aliases: ['jogos'] },
   { nome: 'Clube', grupo: 'Lazer', icone: 'bola', cor: '#18181b', aliases: [] },
   { nome: 'Travel', grupo: 'Lazer', icone: 'aviao', cor: '#0891b2', aliases: ['viagem', 'viagens'] },
-  { nome: 'Resort', grupo: 'Lazer', icone: 'arvores', cor: '#0f766e', aliases: ['sítio', 'sitio', 'chácara'] },
+  { nome: 'Resort', grupo: 'Lazer', icone: 'arvores', cor: '#b45309', aliases: ['sítio', 'sitio', 'chácara'] },
   { nome: 'Clothing', grupo: 'Compras', icone: 'roupa', cor: '#0e7490', aliases: ['roupas', 'roupa', 'vestuário'] },
   { nome: 'Electronics', grupo: 'Compras', icone: 'tela', cor: '#a16207', aliases: ['eletrônicos', 'eletronicos'] },
   { nome: 'Transportation', grupo: 'Transporte', icone: 'carro', cor: '#0369a1', aliases: ['transporte', 'uber', 'metrô', 'metro'], conta: 'transporte' },
   { nome: 'Bank Taxes', grupo: 'Dinheiro', icone: 'banco', cor: '#475569', aliases: ['financeiro', 'tarifas', 'juros', 'iof', 'tarifa bancária'], conta: 'financeiro', descricao: 'Tarifas, juros e IOF' },
   { nome: 'Taxes', grupo: 'Dinheiro', icone: 'recibo', cor: '#57534e', aliases: ['impostos', 'imposto', 'ir'], conta: 'impostos', descricao: 'IR e outros impostos', sugerida: true },
-  { nome: 'Investments', grupo: 'Dinheiro', icone: 'alta', cor: '#0f766e', aliases: ['investimentos', 'investimento', 'aporte'] },
-  { nome: 'PIX', grupo: 'Dinheiro', icone: 'pix', cor: '#0d9488', aliases: [], descricao: 'Pix pago no cartão de crédito' },
-  { nome: 'Services', grupo: 'Outros', icone: 'prancheta', cor: '#3f6212', aliases: ['serviços', 'servicos'], descricao: 'Serviços, consertos, assinaturas de apps' },
+  { nome: 'Investments', grupo: 'Dinheiro', icone: 'alta', cor: '#ca8a04', aliases: ['investimentos', 'investimento', 'aporte'] },
+  { nome: 'PIX', grupo: 'Dinheiro', icone: 'pix', cor: '#4f46e5', aliases: [], descricao: 'Pix pago no cartão de crédito' },
+  { nome: 'Services', grupo: 'Outros', icone: 'prancheta', cor: '#92400e', aliases: ['serviços', 'servicos'], descricao: 'Serviços, consertos, assinaturas de apps' },
   { nome: 'Others', grupo: 'Outros', icone: 'pontos', cor: '#6b7280', aliases: ['outros', 'outras'] },
 ];
 
@@ -155,8 +155,21 @@ export function iconeCategoria(nome, classe = '', lista = ativa) {
   const c = typeof nome === 'object' && nome ? nome : acharCategoria(nome, lista);
   return iconeDe(c, classe);
 }
+// v9.21: o Bruno detesta verde — cor verde (ou verde-água) salva numa lista antiga vira a do outro lado do círculo
+export function semVerde(cor) {
+  const m = /^#([0-9a-f]{6})$/i.exec(cor || '');
+  if (!m) return cor;
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16) / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2;
+  if (!d) return cor;
+  const h = ((mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60 + 360) % 360;
+  if (h < 70 || h > 185) return cor;
+  const sat = d / (1 - Math.abs(2 * l - 1)), h2 = (h + 150) % 360; // verde → violeta/rosa, mesma luz e saturação
+  const f = n => { const k = (n + h2 / 30) % 12; return l - sat * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+  return `#${[0, 8, 4].map(n => Math.round(f(n) * 255).toString(16).padStart(2, '0')).join('')}`;
+}
 export function iconeDe(c, classe = '') {
-  const cor = c?.cor || '#7a7470';
+  const cor = semVerde(c?.cor) || '#7a7470';
   if (c?.emoji) return `<span class="cat-ic emoji ${classe}" style="--cat:${cor}" aria-hidden="true">${esc(c.emoji)}</span>`;
   return `<span class="cat-ic ${classe}" style="--cat:${cor}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONES[c?.icone] || ICONES.etiqueta}</svg></span>`;
 }

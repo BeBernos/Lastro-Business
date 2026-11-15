@@ -3,7 +3,7 @@ import { banco } from './banco.js';
 import { aplicarDados, extrairDados, lerArquivo, mesBonito, resumo } from './painel.js';
 import { aplicarCarteira, ehCarteira, ehDadosCarteira, extrairCarteira, lerArquivoCarteira, posicao, resumoCarteira } from './carteira.js';
 import { contexto, lerMotor, proximasContas } from './resumo.js';
-import { ABAS, CARTOES_INICIO, htmlAba, htmlNav, htmlSubabas, htmlTopo, mesesDoSeletor, ordemInicio, resumoSemanaHtml, seletorMes, SUBABAS, subPadrao, telaDoMes, variacaoAtivos } from './telas.js';
+import { ABAS, CARTOES_INICIO, htmlAba, htmlNav, htmlSubabas, htmlTopo, mesesDoSeletor, ordemInicio, resumoSemanaHtml, seletorMes, situacoesMais, SUBABAS, subPadrao, telaDoMes, variacaoAtivos } from './telas.js';
 import { extratoDoMes, filtrarExtrato, TIPOS } from './extrato.js';
 import { gerarXlsx, TIPO_XLSX } from './xlsx.js';
 import { agendaClaude, aportePlanejado, definirOrcamentos, excluirMeta, pacoteIR, registrarAssinaturas, revisarAssinaturas, salvarMeta, sugestaoOrcamento } from './indicadores.js';
@@ -25,14 +25,14 @@ import { DEMO } from './modo.js';
 import { NOME_CAMPO } from './parcial.js';
 import { alternarPausa, derivarTarget, gatilhos, mudancasEstrategia, textoItem } from './ficha.js';
 import { NOVIDADES } from './novidades.js';
-import { htmlNavV10, htmlTopoCarvao, ligarV10, numerosDoTopo, v10Ligada } from './v10.js';
+import { htmlAberturaV10, htmlNavV10, htmlTopoCarvao, ligarV10, numerosDoTopo, v10Ligada } from './v10.js';
 import { $, esc, brlTexto, dataCurta, dataHora, icone, aviso, mascarar, fecharAvisoCarregando, valoresEscondidos, trocarEsconder, confirmar, ALCANCES_EDITAR, escolherAlcance, abrirFolha, fecharFolha, configurarFolha } from './ui.js';
 import { enviarArquivo, exportarPlanilhaFatura, enviarArquivos, conectorLigado, pedidoPeloConector, mesSeguinte, etapaAberta, marcarEtapa, abrirLevarClaude, svgCadeado, abrirLancamentos, configurarClaude } from './claude.js';
 import { abrirDiscar, abasLancar, ligarAbasLancar, botaoCategoria, abrirConta, mesCurto, abrirValorFuturo, abrirNovaConta, abrirInvestir, abrirValores, configurarLancar } from './lancar.js';
 import { conciliarAgora, depoisDoAviso, atualizarCriptoBinance, atualizarItau, configurarIntegracoes } from './integracoes.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao } from './v8.js';
 
-const VERSAO_APP = '9.20.0';
+const VERSAO_APP = '9.25.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 document.documentElement.classList.toggle('v10', v10Ligada()); // v9.18: a repaginação (Carvão), atrás da chave em Configurações
 const REMOTO = 'data/painel.enc';
@@ -561,7 +561,7 @@ function renderizarApp(aba, { remendo = false } = {}) {
   const outroMes = comMes && estado.mesVer;
   const v10 = v10Ligada();
   const cabeca = v10 ? htmlTopoCarvao(numerosDoTopo(estado.aba, estado.motor, estado.dados, estado.cart.dados), { esconder: valoresEscondidos() }) : htmlTopo(estado.aba, estado.dados, { lancar: estado.github });
-  const html = `<div class="app-conteudo${v10 ? ' v10' : ''}">${cabeca}${v10 ? '<section class="folha-v10">' : ''}${outroMes || (v10 && estado.aba === 'cartao') ? '' : htmlSubabas(estado.aba, sub)}${comMes ? seletorMes(estado.dados, estado.motor, outroMes) : ''}
+  const html = `<div class="app-conteudo${v10 ? ' v10' : ''}">${cabeca}${v10 ? '<section class="folha-v10">' : ''}${outroMes || v10 ? '' : htmlSubabas(estado.aba, sub)}${comMes ? seletorMes(estado.dados, estado.motor, outroMes) : ''}
     <main class="app-aba">${outroMes ? telaDoMes(estado.aba, outroMes, estado.motor, estado.dados, { github: estado.github, hoje: hojeBrasil() }) : htmlAba(estado.aba, estado.motor, estado.dados, {
       github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, ordemInicio: lerOrdemInicio(), assinaturas: estado.assinaturas, hoje: hojeBrasil(), rascunhos: estado.rascunhos, fechamentoAplicado: estado.fechamentoAplicado, v10,
       docCarteira: estado.cart.frame?.contentDocument, carteira: estado.cart.dados, estimativa: estimativaAtual(), cdiHist: estado.cdiHist?.cdi, gatilhos: valoresGatilhos(),
@@ -572,6 +572,10 @@ function renderizarApp(aba, { remendo = false } = {}) {
   if (!remendo) {
     r.innerHTML = html;
     r.scrollTop = 0;
+    // v9.24: na interface nova não há sub-abas — um link para "aba/sub" rola até a seção dela
+    const alvo = estado.irSecao && v10 && r.querySelector(`#v10-${estado.irSecao}`);
+    if (estado.irSecao) { clearTimeout(estado.irSecaoT); estado.irSecaoT = setTimeout(() => { estado.irSecao = null; }, 900); } // fechar o menu redesenha de novo logo depois
+    if (alvo) { let y = 0; for (let e = alvo; e && e !== r; e = e.offsetParent) y += e.offsetTop; r.scrollTop = y - 76; } // offsetTop: a folha entra com transform
     mostrarAbas(true);
     extrasDaTela(r);
     mascarar(r);
@@ -673,7 +677,7 @@ function ligarBarraAbas(r) {
   let ultimo = r.scrollTop;
   r.addEventListener('scroll', () => {
     const y = r.scrollTop;
-    r.classList.toggle('compacto', y > 60 && v10Ligada()); // v9.18: topo carvão encolhe
+    r.classList.toggle('compacto', y > 170 && v10Ligada()); // v9.21: cabeçalho pequeno quando o número grande sai da tela (não muda a altura da página)
     const fim = y + r.clientHeight >= r.scrollHeight - 24;
     const delta = y - ultimo;
     if (y < 40 || fim) mostrarAbas(true);
@@ -743,7 +747,7 @@ function ligarApp(r) {
     }
     if (el.dataset.aba || el.dataset.irAba) {
       const [aba, sub] = (el.dataset.aba || el.dataset.irAba).split('/');
-      if (sub) estado.sub[aba] = sub;
+      if (sub) { estado.sub[aba] = sub; estado.irSecao = `${aba}-${sub}`; }
       return irParaAba(aba);
     }
     if (el.dataset.sub) return irParaSub(el.dataset.sub);
@@ -1504,6 +1508,7 @@ function menuHtml() {
       <div class="menu-acoes"><button type="button" class="botao-sec" data-acao="atualizar">Buscar atualização</button>${gh && local ? '<button type="button" class="botao-sec" data-acao="publicar">Publicar agora</button>' : ''}</div>
     </section>
     ${estado.resumoOk && estado.vista === 'painel' ? itemMenu('resumo', 'resumo', 'Voltar ao app', 'Início, caixa, cartão, carteira e análises') : ''}
+    ${d && v10Ligada() ? grupoCaixaV10() : ''}
     ${d ? `<p class="grupo">Do dia a dia</p>
     ${itemMenu('extrato', 'lupa', 'Extrato do mês', 'Busca em tudo: contas, cartão e investimentos')}
     ${itemMenu('semana', 'resumo', 'Resumo da semana', 'Quanto saiu nos últimos 7 dias e o que vem aí (aparece sozinho aos domingos)')}
@@ -1526,6 +1531,20 @@ function menuHtml() {
     ${itemMenu('novidades', 'novidade', 'Novidades e histórico', `O que mudou na v${VERSAO_APP}`)}
     <div class="menu-config">${itemMenu('config', 'engrenagem', 'Configurações', 'Avisos, lembretes, proteção, senha, publicação e suporte')}</div>
     <p class="versao">app v${VERSAO_APP}</p>`;
+}
+
+// v9.22 (repaginação, etapa 5): no Mais da interface nova, o Caixa e as Análises (que não estão na barra) com a situação de cada um
+function grupoCaixaV10() {
+  let s = {};
+  try { s = estado.motor ? situacoesMais(estado.motor, estado.dados, estado.cart.dados, new Date()) : {}; } catch { /* sem motor */ }
+  return `<p class="grupo">Caixa</p>
+    ${itemMenu('ir:mes/agenda', 'sino', 'Contas a pagar', esc(s.contas || 'Agenda e contas do mês'))}
+    ${itemMenu('ir:mes/meses', 'ordem', 'Próximos 12 meses', 'A sobra de cada mês e as decisões da projeção')}
+    ${itemMenu('ir:mes/geral', 'resumo', 'Saldo no banco', 'O caixa do mês e conferir com o saldo do banco')}
+    <p class="grupo">Análises</p>
+    ${itemMenu('ir:analises/saude', 'ideia', 'Análises do Claude', esc(s.analises || 'Saúde, mercado e histórico'))}
+    ${itemMenu('ir:analises/mercado', 'subir', 'Mercado', 'O que o Claude viu em cada ativo')}
+    ${itemMenu('ir:analises/conferir', 'lista', 'Conferir caixa × carteira', esc(s.conferir || 'Patrimônio, dividendos e resgates'))}`;
 }
 
 async function configHtml() {
@@ -1601,7 +1620,8 @@ function ligarMenu(folha) {
       location.reload();
     },
   };
-  folha.querySelectorAll('[data-acao]').forEach(b => { b.onclick = acoes[b.dataset.acao]; });
+  const irDoMenu = alvo => () => { const [aba, sub] = alvo.split('/'); fecharFolha(); if (sub) { estado.sub[aba] = sub; estado.irSecao = `${aba}-${sub}`; } irParaAba(aba); }; // v9.22: "ir:aba/sub"
+  folha.querySelectorAll('[data-acao]').forEach(b => { b.onclick = b.dataset.acao.startsWith('ir:') ? irDoMenu(b.dataset.acao.slice(3)) : acoes[b.dataset.acao]; });
   // chaves liga/desliga (v9.12): mudam na hora e redesenham a tela em que estão (menu ou Configurações)
   folha.querySelectorAll('[data-chave]').forEach(b => {
     b.onclick = async () => {
@@ -1982,7 +2002,7 @@ function mostrarTrava() {
   const t = $('trava');
   const soSenha = estado.salvo?.modo === 'senha';
   t.hidden = false;
-  t.innerHTML = `
+  t.innerHTML = v10Ligada() ? htmlAberturaV10({ soSenha, usuario: USUARIO_SENHA }) : `
     <div class="entrada">
       <img class="marca" src="icons/logo.svg" alt="">
       <h1>Lastro trancado</h1>
@@ -2001,6 +2021,7 @@ function mostrarTrava() {
   t.querySelector('#usarSenha')?.addEventListener('click', () => {
     t.querySelector('#formTrava').hidden = false;
     t.querySelector('#usarSenha').hidden = true;
+    t.querySelector('.abertura-dica')?.setAttribute('hidden', '');
     t.querySelector('#senhaTrava').focus();
   });
   t.querySelector('#formTrava').onsubmit = async e => {
@@ -3032,7 +3053,7 @@ function abrirBusca() {
     if (b.dataset.buscaTela) {
       fecharFolha();
       const [aba, sub] = b.dataset.buscaTela.split('/');
-      if (sub) estado.sub[aba] = sub;
+      if (sub) { estado.sub[aba] = sub; estado.irSecao = `${aba}-${sub}`; }
       return irParaAba(aba);
     }
     if (b.hasAttribute('data-busca-todos')) return abrirExtrato({ texto: campo.value, tipo: 'tudo' });

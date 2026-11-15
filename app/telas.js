@@ -263,16 +263,17 @@ function heroSaldo(m, ctx, opcoes = {}) {
     const volta = futuro.find(p => p.dia > ultimo && p.saldo >= 0);
     sub = volta ? `Fica no vermelho até o dia ${ultimo} e <b>volta ao azul no dia ${volta.dia}</b>.` : 'Fica no vermelho até o fim do mês.';
   }
-  return `<section class="cartao hero">
-    <p class="rotulo">Saldo da conta hoje</p>
-    <p class="hero-valor ${tomValor(c.caixa)}">${brl(c.caixa)}</p>
+  // v9.25: na interface nova o saldo de hoje está no topo — aqui só o resto
+  return `<section class="cartao${opcoes.v10 ? '' : ' hero'}">
+    ${opcoes.v10 ? '' : `<p class="rotulo">Saldo da conta hoje</p>
+    <p class="hero-valor ${tomValor(c.caixa)}">${brl(c.caixa)}</p>`}
     <p class="hero-sub">${sub}</p>
     ${aviso}
     <div class="hero-grafico">${graficoCurva(m, ctx)}</div>
-    <div class="chips">
+    ${opcoes.v10 ? '' : `<div class="chips">
       ${minimo.saldo < 0 ? chip('ruim', `Pior momento ${brl0(minimo.saldo)} · dia ${minimo.dia}`) : chip('bom', `Mínimo daqui em diante ${brl0(minimo.saldo)} · dia ${minimo.dia}`)}
       ${chip(final.saldo < 0 ? 'ruim' : 'bom', `Fecha o mês com ${brl0(final.saldo)}`)}
-    </div>
+    </div>`}
     ${opcoes.github ? '<button type="button" class="botao-sec hero-acao" data-conferir-banco>Conferir com o saldo do banco</button>' : ''}
   </section>`;
 }
@@ -1395,11 +1396,12 @@ function heroCarteira(cart, opcoes) {
   // aparece num dia depois da posição — no mesmo dia eram dois números quase iguais e confusos (−715,65 × −722)
   const base = baseMesAnterior(cart);
   const noMes = base?.noMes(p.total);
-  return `<section class="cartao hero">
-    <p class="rotulo">Patrimônio investido</p>
-    <p class="hero-valor">${brl(p.total)}</p>
+  // v9.21: na interface nova o patrimônio está no topo — aqui só o resto
+  return `<section class="cartao${opcoes.v10 ? '' : ' hero'}">
+    ${opcoes.v10 ? '' : `<p class="rotulo">Patrimônio investido</p>
+    <p class="hero-valor">${brl(p.total)}</p>`}
     <p class="hero-sub">Posição de ${dd}/${mm}, ${p.h.atualizacoesApp?.at(-1)?.data === p.data ? 'atualizada no app' : 'registrada pelo gestor de carteira'}</p>
-    ${noMes ? `<p class="est-var ${noMes.valor < 0 ? 'ruim' : 'bom'}">${noMes.valor < 0 ? '−' : '+'}${brl(Math.abs(noMes.valor))} (${pctSinal(noMes.valor / noMes.base)}) no mês · desde o fechamento de ${mesCurto(base.mes)}</p>` : ''}
+    ${noMes && !opcoes.v10 ? `<p class="est-var ${noMes.valor < 0 ? 'ruim' : 'bom'}">${noMes.valor < 0 ? '−' : '+'}${brl(Math.abs(noMes.valor))} (${pctSinal(noMes.valor / noMes.base)}) no mês · desde o fechamento de ${mesCurto(base.mes)}</p>` : ''}
     ${String(p.data).slice(0, 10) < hojeBrasil() ? blocoEstimativa(opcoes.estimativa, opcoes, cart) : ''}
     <div class="chips">
       ${r ? (r.atual >= r.alvo ? chip('bom', `Reserva de emergência completa · ${brl0(r.atual)}`) : chip('atencao', `Reserva ${brl0(r.atual)} de ${brl0(r.alvo)}`)) : ''}
@@ -1976,7 +1978,10 @@ export function htmlAba(aba, m, dados, opcoes = {}) {
     daqui = daqui.map(b => recolherBloco(b, opcoes.abertos));
     return recolherSecoes(daqui, opcoes.abertos);
   };
-  if (opcoes.v10 && aba === 'cartao') return cartaoV10(m, dados, ctx, opcoes, doLugar);
+  if (opcoes.v10 && LEITURAS_V10[aba]) {
+    const lugar = aba !== 'carteira' ? doLugar : k => { const l = doLugar(k); return k === 'carteira/visao' ? [...l.filter(ehRoteiro), ...l.filter(b => !ehRoteiro(b))] : l; };
+    return leituraV10(LEITURAS_V10[aba], lugar, opcoes.abertos, VAZIO_V10[aba], [m, dados, ctx, { ...opcoes, carteira: temCarteira ? opcoes.carteira : null }]);
+  }
   const daqui = doLugar(chave);
   const partes = [
     ...(ANTES[chave]?.(m, dados, ctx, { ...opcoes, carteira: temCarteira ? opcoes.carteira : null }) || []),
@@ -1987,18 +1992,63 @@ export function htmlAba(aba, m, dados, opcoes = {}) {
   return partes.join('') || '<section class="cartao"><p class="cartao-sub">Nada nesta parte por enquanto.</p></section>';
 }
 
-// v9.20 (repaginação, etapa 3): o Cartão numa leitura só — composição → compras → por categoria → próximas faturas.
-// Tudo o que as sub-abas Fatura, Gastos e Parcelas mostravam, inclusive os blocos do painel de cada uma.
-function cartaoV10(m, dados, ctx, opcoes, doLugar) {
-  const lugares = ['cartao/fatura', 'cartao/gastos', 'cartao/parcelas'].map(doLugar);
-  const corpo = l => l.filter(b => !b.explicacao).map(b => b.html);
-  const grupo = (titulo, partes) => { const h = partes.filter(Boolean).join(''); return h ? `${titulo ? `<h3 class="secao-v10">${titulo}</h3>` : ''}${h}` : ''; };
+// Repaginação (v9.20–v9.24): cada destino é uma leitura só, de cima para baixo, juntando as sub-abas de antes —
+// tudo o que elas mostravam, inclusive os blocos do painel de cada uma. Grupo = [título, sub-aba, partes do app antes
+// dos blocos do painel, partes depois] (antes/depois: lista pronta ou função (m, dados, ctx, opcoes); sem eles, os
+// ANTES/DEPOIS da sub-aba). Título só onde há conteúdo, com âncora para os links (data-ir-aba) rolarem até ele; as
+// explicações de todas as partes vão juntas no Entenda do fim.
+export function leituraV10(grupos, doLugar, abertos, vazio, args = []) {
+  const parte = (f, padrao) => (typeof f === 'function' ? f(...args) : f || padrao?.(...args) || []);
+  const lugares = grupos.map(g => doLugar(g[1]));
   return [
-    grupo('', [secao(() => htmlComposicaoV10({ c: m.c, limite: dados.regras?.limiteSaudavelItau || 0 })), secao(() => composicaoCartao(dados, opcoes)), ...corpo(lugares[0])]),
-    grupo('Por categoria', [secao(() => orcamentoCartao(dados, ctx, opcoes)), ...corpo(lugares[1])]),
-    grupo('Próximas faturas', [...ANTES['cartao/parcelas'](m, dados, ctx, opcoes), ...corpo(lugares[2])]),
-    entenda(lugares.flat().filter(b => b.explicacao), opcoes.abertos),
-  ].filter(Boolean).join('') || '<section class="cartao"><p class="cartao-sub">Nada no cartão por enquanto.</p></section>';
+    ...grupos.map(([titulo, chave, antes, depois], i) => {
+      const h = [...parte(antes, ANTES[chave]), ...lugares[i].filter(b => !b.explicacao).map(b => b.html), ...parte(depois, DEPOIS[chave])].filter(Boolean).join('');
+      return h ? `${titulo ? `<h3 class="secao-v10" id="v10-${chave.replace('/', '-')}">${titulo}</h3>` : ''}${h}` : '';
+    }),
+    entenda(lugares.flat().filter(b => b.explicacao), abertos),
+  ].filter(Boolean).join('') || `<section class="cartao"><p class="cartao-sub">${vazio}</p></section>`;
+}
+
+// Cartão (v9.20): composição → compras → por categoria → próximas faturas. Investimentos (v9.21): posição de hoje →
+// roteiro (o próximo passo) → metas e movimentar → estratégia → ativos → renda → evolução (o patrimônio e o estado ficam
+// no topo). Caixa e Análises (v9.24): a mesma ideia, uma seção por sub-aba de antes.
+export const LEITURAS_V10 = {
+  cartao: [
+    ['', 'cartao/fatura', (m, dados, ctx, opcoes) => [secao(() => htmlComposicaoV10({ c: m.c, limite: dados.regras?.limiteSaudavelItau || 0 })), secao(() => composicaoCartao(dados, opcoes))]],
+    ['Por categoria', 'cartao/gastos', (m, dados, ctx, opcoes) => [secao(() => orcamentoCartao(dados, ctx, opcoes))]],
+    ['Próximas faturas', 'cartao/parcelas'],
+  ],
+  carteira: [
+    ['', 'carteira/visao', (...a) => ANTES['carteira/visao'](...a).slice(0, 1), (...a) => ANTES['carteira/visao'](...a).slice(1)],
+    ['Estratégia', 'carteira/aloc'],
+    ['Seus ativos', 'carteira/ativos'],
+    ['Renda', 'carteira/renda'],
+    ['Evolução', 'carteira/futuro'],
+  ],
+  mes: [['', 'mes/geral'], ['Contas a pagar', 'mes/agenda'], ['Contas do mês', 'mes/contas'], ['Próximos 12 meses', 'mes/meses']],
+  analises: [['', 'analises/saude'], ['Mercado', 'analises/mercado'], ['Histórico', 'analises/historico'], ['Conferir caixa × carteira', 'analises/conferir']],
+};
+const VAZIO_V10 = { cartao: 'Nada no cartão por enquanto.', carteira: 'Nada nos investimentos por enquanto.', mes: 'Nada no caixa por enquanto.', analises: 'Nenhuma análise por enquanto.' };
+const ehRoteiro = b => /class="roteiro-n"/.test(b.html || ''); // o bloco "steps" do painel, trocado por roteiroCarteira
+
+// v9.22 (repaginação, etapa 5): a linha de situação dos itens do Mais que levam ao Caixa e às Análises
+export function situacoesMais(m, dados, cart, agora = new Date()) {
+  const ctx = contexto(dados, agora);
+  const dm = d => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+  let contas = 'Agenda e contas do mês';
+  try {
+    const l = proximasContas(m, dados, agora).filter(x => x.valor < 0);
+    contas = ctx.mesPassou ? `O mês virou — falta fechar ${MESES[ctx.mes - 1]}` : l.length ? `${l.length} ${l.length === 1 ? 'conta' : 'contas'} até o fim do mês · próxima ${dm(l[0].data)}` : 'Nada a pagar até o fim do mês';
+  } catch { /* sem agenda */ }
+  const n = (dados.analises || []).length;
+  let conferir = 'Precisa da carteira carregada';
+  if (cart) {
+    try {
+      const p = itensConferencia(m, dados, cart, ctx).filter(i => i.tom === 'ruim' || i.tom === 'atencao').length;
+      conferir = p ? `${p} ${p === 1 ? 'ponto' : 'pontos'} para conferir` : 'Caixa e carteira batem';
+    } catch { conferir = 'Patrimônio, dividendos e resgates'; }
+  }
+  return { contas, analises: n ? `${n} ${n === 1 ? 'análise' : 'análises'} do Claude` : 'Saúde, mercado e histórico', conferir };
 }
 
 // ---------- v9.11: seletor de mês (Caixa e Cartão; o Início fica sempre em hoje) ----------

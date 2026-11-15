@@ -2,7 +2,8 @@
 // Funções puras: os destinos da barra, os números do topo de cada tela e o HTML do topo e da barra. A chave fica no
 // aparelho ('lastro-v10'); desligada, o app é o de antes. As telas por dentro mudam nas etapas 2–5.
 import { brl, brl0, esc } from './graficos.js';
-import { posicao } from './carteira.js';
+import { posicao, reserva } from './carteira.js';
+import { alocacaoVsAlvo } from './estrategia.js';
 import { resultadoDoMes } from './investimentos.js';
 import { contexto } from './resumo.js';
 
@@ -26,7 +27,7 @@ export function ligarV10(on) {
 
 function saudacao(agora) {
   const h = Number(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hourCycle: 'h23' }));
-  return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  return h >= 5 && h < 12 ? 'Bom dia' : h >= 12 && h < 18 ? 'Boa tarde' : 'Boa noite'; // madrugada é "Boa noite"
 }
 
 // { titulo, sub, eyebrow, valor (número ou null), pilulas }
@@ -44,7 +45,10 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
     if (!cart) return { ...base, eyebrow: 'Carteira ainda não carregada' };
     const p = posicao(cart), r = resultadoDoMes(cart);
     const mercado = Number(r?.mercado) || 0;
-    return { ...base, eyebrow: 'Patrimônio investido', valor: p.total, pilulas: [`${mercado < 0 ? '▼' : '▲'} ${brl0(Math.abs(mercado))} no mês`, `posição ${p.data.slice(8, 10)}/${p.data.slice(5, 7)}`] };
+    let s = { estado: null, fiel: null };
+    try { s = saudeCarteira(alocacaoVsAlvo(cart), reserva(cart)); } catch { /* carteira sem estratégia */ }
+    return { ...base, eyebrow: `Patrimônio investido${s.estado ? ` · ${s.estado}` : ''}`, valor: p.total,
+      pilulas: [`${mercado < 0 ? '▼' : '▲'} ${brl0(Math.abs(mercado))} no mês`, ...(s.fiel != null ? [`Estratégia ${s.fiel}% fiel`] : []), `posição ${p.data.slice(8, 10)}/${p.data.slice(5, 7)}`] };
   }
   if (aba === 'cartao') {
     const limite = dados.regras?.limiteSaudavelItau || 0;
@@ -52,6 +56,14 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
     const prox = ctx.mes === 12 ? 1 : ctx.mes + 1;
     return { ...base, eyebrow: `Fatura de ${MESES[ctx.mes - 1]} até agora`, valor: c.itau,
       pilulas: [`Cabem ${brl0(Math.max(0, limite - c.itau))}`, ...(dia ? [`Vence ${pad(dia)}/${pad(prox)}`] : [])] };
+  }
+  if (aba === 'mes' && Array.isArray(m?.tl?.porDia) && m.tl.porDia.length && Number.isFinite(c.caixa)) {
+    // v9.25: o Caixa também responde no topo — o saldo de hoje, o pior ponto daqui em diante e como o mês fecha
+    const futuro = m.tl.porDia.filter(p => p.dia >= ctx.diaHoje);
+    const min = (futuro.length ? futuro : m.tl.porDia).reduce((a, p) => (p.saldo < a.saldo ? p : a));
+    const fim = m.tl.porDia[m.tl.porDia.length - 1];
+    return { ...base, titulo: 'Caixa', eyebrow: 'Saldo da conta hoje', valor: c.caixa,
+      pilulas: [`${min.saldo < 0 ? 'Pior momento' : 'Mínimo'} ${brl0(min.saldo)} · dia ${min.dia}`, `Fecha com ${brl0(fim.saldo)}`] };
   }
   const nomes = { mes: 'Caixa', analises: 'Análises' };
   return { ...base, titulo: nomes[aba] || base.titulo, sub: '' };
@@ -77,7 +89,9 @@ export function htmlTopoCarvao(info, { esconder = false } = {}) {
     ${info.eyebrow ? `<p class="topo-eyebrow">${esc(info.eyebrow)}</p>` : ''}
     ${numero}
     ${info.pilulas.length ? `<div class="topo-pilulas">${info.pilulas.map(p => `<span>${esc(p)}</span>`).join('')}</div>` : ''}
-  </header>`;
+  </header>
+  <!-- v9.21: fora do header (o overflow dele escondia o cabeçalho fixo) -->
+  <div class="topo-mini" aria-hidden="true"><span>${esc(info.eyebrow || info.titulo)}</span>${info.valor != null ? `<b class="num">${esc(brl0(info.valor))}</b>` : ''}</div>`;
 }
 
 // Mais abre o menu de hoje (#appMenu); o ＋ (#appLancar) só no celular de quem publica
@@ -145,4 +159,41 @@ export function htmlComposicaoV10({ c = {}, limite = 0 }) {
     <ul class="comp-legenda-v10">${partes.map(([k, n, v]) => `<li><i class="${k}"></i>${n}<b>${esc(brl0(v))}</b></li>`).join('')}${fim}</ul>
     ${ritmo}
   </section>`;
+}
+
+// ---------- v9.21 (etapa 4): "os investimentos vão bem?" — o quanto a carteira segue a estratégia ----------
+// fiel = 100 − metade da soma das distâncias entre o % de cada classe e o alvo (0 = tudo no lugar errado, 100 = no alvo).
+// Saudável ≥ 90; Atenção ≥ 75 (ou reserva de emergência incompleta); abaixo disso, Fora do plano.
+export function saudeCarteira(aloc, res) {
+  if (!aloc?.linhas?.length) return { estado: null, fiel: null };
+  const fora = aloc.linhas.reduce((t, l) => t + Math.abs((Number(l.pct) || 0) - (Number(l.alvo) || 0)), 0) / 2;
+  const fiel = Math.max(0, Math.min(100, Math.round(100 - fora)));
+  const reservaCheia = !res || !(res.alvo > 0) || res.atual >= res.alvo;
+  const estado = fiel >= 90 && reservaCheia ? 'Saudável' : fiel >= 75 ? 'Atenção' : 'Fora do plano';
+  return { estado, fiel };
+}
+
+// ---------- v9.23 (etapa 6): a abertura — a marca acesa (anéis que acendem um por um), a saudação e a digital embaixo ----------
+// Os ids são os da trava de sempre (mostrarTrava liga os mesmos eventos): destravar, usarSenha, formTrava, senhaTrava, erroTrava.
+const DIGITAL = '<path d="M7.5 18.5c1.3-1.7 2-3.9 2-6.5a2.5 2.5 0 0 1 5 0c0 1-.1 2-.3 3"/><path d="M5 15.5c.6-1.1 1-2.3 1-3.5a6 6 0 0 1 10.6-3.9"/><path d="M18.4 10.5c.1.5.1 1 .1 1.5 0 2.8-.7 5.3-1.9 7.4"/><path d="M12 12c0 3.3-1 6.2-2.6 8.3"/><path d="M14.6 17.5c-.4 1.3-1 2.5-1.7 3.5"/>';
+export function htmlAberturaV10({ soSenha = false, agora = new Date(), usuario = '' } = {}) {
+  return `<div class="abertura-v10">
+    <div class="abertura-marca">
+      <i class="anel-v10 a1"></i><i class="anel-v10 a2"></i><i class="anel-v10 a3"></i>
+      <img src="icons/logo.svg" alt="">
+    </div>
+    <h1>${esc(saudacao(agora))}</h1>
+    <p class="abertura-sub">${soSenha ? 'Digite a senha da família para abrir.' : 'O Lastro está trancado.'}</p>
+    <div class="abertura-acoes">
+      ${soSenha ? '' : `<button type="button" class="abertura-digital" id="destravar" aria-label="Destrancar com a digital">${ic(DIGITAL)}</button><span class="abertura-dica">Toque para abrir</span>`}
+      <form id="formTrava"${soSenha ? '' : ' hidden'}>
+        ${usuario}
+        <label for="senhaTrava">Senha da família</label>
+        <input class="campo mono" id="senhaTrava" name="password" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" required>
+        <p class="erro" id="erroTrava"></p>
+        <button class="btn prim">Destrancar com a senha</button>
+      </form>
+      ${soSenha ? '' : '<button type="button" class="link" id="usarSenha">Usar a senha da família</button>'}
+    </div>
+  </div>`;
 }

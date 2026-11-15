@@ -2,6 +2,25 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '9.25.0': [
+    ['Interface nova: tudo no desenho novo', 'Com a interface nova ligada, todos os cartões por dentro das telas — inclusive os que vêm do painel do Claude — passaram para o desenho Carvão: blocos escuros iguais, títulos menores, linhas com filete, barras finas em âmbar (atenção em laranja, problema em coral), botões em pílula, sem cartão dentro de cartão e sem "Toque para abrir". O Caixa ganhou o saldo da conta no topo, com o pior dia e como o mês fecha, e o que se repetia saiu de dentro.', 'melhoria'],
+  ],
+  '9.24.0': [
+    ['Interface nova: Caixa e Análises', 'Com a interface nova ligada, o Caixa e as Análises também viraram uma leitura só, sem abas — e todo atalho (do Mais, do Hoje ou da busca) rola a tela direto até a parte certa, como "Contas a pagar" ou "Conferir caixa × carteira".', 'nova'],
+  ],
+  '9.23.0': [
+    ['Interface nova: a abertura', 'Com a interface nova ligada, a tela de abrir o Lastro mudou: a marca no anel em brasa, os anéis acendendo um por um, a saudação (bom dia, boa tarde, boa noite) e a digital embaixo — é só tocar. A senha da família continua no link de baixo.', 'nova'],
+  ],
+  '9.22.0': [
+    ['Interface nova: o Mais', 'Com a interface nova ligada, o Mais (⋯ na barra) ganhou no topo o que não está na barra: Caixa (contas a pagar, próximos 12 meses, saldo no banco) e Análises (as do Claude, o mercado e a conferência entre caixa e carteira) — cada um com uma linha dizendo como está, como "3 contas até o fim do mês · próxima 20/11".', 'nova'],
+  ],
+  '9.21.0': [
+    ['Interface nova: Investimentos', 'Com a interface nova ligada (Configurações), Investimentos virou uma leitura só, sem as abas Visão, Alocação, Ativos, Renda e Evolução. No topo, o patrimônio e se a carteira está Saudável, em Atenção ou Fora do plano — com o quanto ela segue a estratégia ("Estratégia 92% fiel"). Embaixo, nesta ordem: o que fazer agora, a estratégia, os seus ativos (toque para aportar, resgatar ou atualizar), a renda e a evolução.', 'nova'],
+  ],
+  '9.20.1': [
+    ['Categorias com cor de novo', 'Os ícones das categorias voltaram a ter cada um a sua cor — e nenhuma é verde: Saúde, Academia, Suplementos, Investimentos, Pix, Serviços e Sítio ganharam cores novas, e uma cor verde que você tenha escolhido antes aparece trocada.', 'melhoria'],
+    ['Interface nova: o topo parou de piscar', 'Ao rolar a tela, o topo encolhia, a página pulava e ele voltava a crescer, sem parar. Agora o topo sobe junto com a tela e um cabeçalho fino aparece em cima com o número principal.', 'correcao'],
+  ],
   '9.20.0': [
     ['Interface nova: o Cartão', 'Com a interface nova ligada (Configurações), o Cartão virou uma leitura só, sem as abas Fatura, Gastos e Parcelas: a barra do que compõe a fatura e quanto ainda cabe, o ritmo até o fim do mês, as compras (cada uma abre para editar), o gasto por categoria com o orçamento e as próximas faturas.', 'nova'],
   ],
