@@ -26,13 +26,14 @@ import { NOME_CAMPO } from './parcial.js';
 import { alternarPausa, derivarTarget, gatilhos, mudancasEstrategia, textoItem } from './ficha.js';
 import { NOVIDADES } from './novidades.js';
 import { htmlAberturaV10, htmlNavV10, htmlTopoCarvao, ligarV10, numerosDoTopo, v10Ligada } from './v10.js';
+import { ligarCarrosseis } from './carvao.js';
 import { $, esc, brlTexto, dataCurta, dataHora, icone, aviso, mascarar, fecharAvisoCarregando, valoresEscondidos, trocarEsconder, confirmar, ALCANCES_EDITAR, escolherAlcance, abrirFolha, fecharFolha, configurarFolha } from './ui.js';
 import { enviarArquivo, exportarPlanilhaFatura, enviarArquivos, conectorLigado, pedidoPeloConector, mesSeguinte, etapaAberta, marcarEtapa, abrirLevarClaude, svgCadeado, abrirLancamentos, configurarClaude } from './claude.js';
 import { abrirDiscar, abasLancar, ligarAbasLancar, botaoCategoria, abrirConta, mesCurto, abrirValorFuturo, abrirNovaConta, abrirInvestir, abrirValores, configurarLancar } from './lancar.js';
 import { conciliarAgora, depoisDoAviso, atualizarCriptoBinance, atualizarItau, configurarIntegracoes } from './integracoes.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao } from './v8.js';
 
-const VERSAO_APP = '9.25.0';
+const VERSAO_APP = '9.26.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 document.documentElement.classList.toggle('v10', v10Ligada()); // v9.18: a repaginação (Carvão), atrás da chave em Configurações
 const REMOTO = 'data/painel.enc';
@@ -560,10 +561,11 @@ function renderizarApp(aba, { remendo = false } = {}) {
   if (comMes && estado.mesVer && (estado.mesVer === estado.dados.periodo || !mesesDoSeletor(estado.dados, estado.motor).includes(estado.mesVer))) estado.mesVer = null; // mês virou ou saiu da projeção
   const outroMes = comMes && estado.mesVer;
   const v10 = v10Ligada();
+  if (estado.tudo && estado.tudo !== estado.aba) estado.tudo = null; // trocou de tela: sai do "Tudo do painel"
   const cabeca = v10 ? htmlTopoCarvao(numerosDoTopo(estado.aba, estado.motor, estado.dados, estado.cart.dados), { esconder: valoresEscondidos() }) : htmlTopo(estado.aba, estado.dados, { lancar: estado.github });
   const html = `<div class="app-conteudo${v10 ? ' v10' : ''}">${cabeca}${v10 ? '<section class="folha-v10">' : ''}${outroMes || v10 ? '' : htmlSubabas(estado.aba, sub)}${comMes ? seletorMes(estado.dados, estado.motor, outroMes) : ''}
     <main class="app-aba">${outroMes ? telaDoMes(estado.aba, outroMes, estado.motor, estado.dados, { github: estado.github, hoje: hojeBrasil() }) : htmlAba(estado.aba, estado.motor, estado.dados, {
-      github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, ordemInicio: lerOrdemInicio(), assinaturas: estado.assinaturas, hoje: hojeBrasil(), rascunhos: estado.rascunhos, fechamentoAplicado: estado.fechamentoAplicado, v10,
+      github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, ordemInicio: lerOrdemInicio(), assinaturas: estado.assinaturas, hoje: hojeBrasil(), rascunhos: estado.rascunhos, fechamentoAplicado: estado.fechamentoAplicado, v10, tudo: v10 && estado.tudo === estado.aba,
       docCarteira: estado.cart.frame?.contentDocument, carteira: estado.cart.dados, estimativa: estimativaAtual(), cdiHist: estado.cdiHist?.cdi, gatilhos: valoresGatilhos(),
     })}</main>${v10 ? '</section>' : ''}</div>
     ${v10 ? htmlNavV10(estado.aba, { lancar: !!estado.github }) : htmlNav(estado.aba, { lancar: !!estado.github })}`;
@@ -745,6 +747,16 @@ function ligarApp(r) {
       estado.abertos.add(el.dataset.abrir);
       return renderizarApp(estado.aba, { remendo: true });
     }
+    if (el.dataset.detalhe) { // v9.26: a folha de detalhe de um cartão (só leitura; o conteúdo vem num <template> ao lado)
+      const t = document.getElementById(el.dataset.detalhe);
+      if (t) { abrirFolha(`<div class="detalhe-cv">${t.innerHTML}</div>`); mascarar($('folha')); }
+      return;
+    }
+    if (el.dataset.tudo !== undefined) { // v9.26: "Tudo do painel" de cada tela (a leitura de antes) e a volta
+      estado.tudo = el.dataset.tudo || null;
+      if (el.dataset.tudoSecao) estado.irSecao = el.dataset.tudoSecao;
+      return renderizarApp(estado.aba);
+    }
     if (el.dataset.aba || el.dataset.irAba) {
       const [aba, sub] = (el.dataset.aba || el.dataset.irAba).split('/');
       if (sub) { estado.sub[aba] = sub; estado.irSecao = `${aba}-${sub}`; }
@@ -789,6 +801,25 @@ function ligarApp(r) {
 
 // Abas entram no histórico (só quando o app é a tela base), para o "voltar" do Android
 // retornar ao Início antes de sair do app.
+// v9.26: de dentro de uma folha (menu, busca) para "aba/sub". Fechar a folha fazia history.back(), que chega depois
+// (assíncrono): trocar de tela antes disso fazia o "voltar" desfazer a troca e a tela antiga reaparecia.
+// Mesma tela: fecha normalmente (não há troca para desfazer). Outra tela: a entrada da folha no histórico vira a
+// da tela nova (como se a aba tivesse sido tocada de onde se estava) e o desenho é direto — sem "voltar" pendente.
+function irDaFolha(alvo) {
+  const [aba, sub] = alvo.split('/');
+  if (sub) { estado.sub[aba] = sub; estado.irSecao = `${aba}-${sub}`; }
+  const st = history.state;
+  if (!st?.folha || st.vista !== 'resumo' || aba === estado.aba) {
+    fecharFolha();
+    return aba === estado.aba ? renderizarApp(aba) : irParaAba(aba);
+  }
+  const resto = { ...st, aba };
+  delete resto.folha;
+  history.replaceState(resto, '');
+  fecharFolha(); // sem a marca "folha", só esconde o véu
+  comTransicao(() => renderizarApp(aba));
+}
+
 function irParaAba(aba) {
   if (aba === estado.aba) return renderizarApp(aba);
   const st = history.state || {};
@@ -1620,7 +1651,7 @@ function ligarMenu(folha) {
       location.reload();
     },
   };
-  const irDoMenu = alvo => () => { const [aba, sub] = alvo.split('/'); fecharFolha(); if (sub) { estado.sub[aba] = sub; estado.irSecao = `${aba}-${sub}`; } irParaAba(aba); }; // v9.22: "ir:aba/sub"
+  const irDoMenu = alvo => () => irDaFolha(alvo); // v9.22: "ir:aba/sub"
   folha.querySelectorAll('[data-acao]').forEach(b => { b.onclick = b.dataset.acao.startsWith('ir:') ? irDoMenu(b.dataset.acao.slice(3)) : acoes[b.dataset.acao]; });
   // chaves liga/desliga (v9.12): mudam na hora e redesenham a tela em que estão (menu ou Configurações)
   folha.querySelectorAll('[data-chave]').forEach(b => {
@@ -3050,12 +3081,7 @@ function abrirBusca() {
   folha.querySelector('#buscaRes').addEventListener('click', e => {
     const b = e.target.closest('button');
     if (!b) return;
-    if (b.dataset.buscaTela) {
-      fecharFolha();
-      const [aba, sub] = b.dataset.buscaTela.split('/');
-      if (sub) { estado.sub[aba] = sub; estado.irSecao = `${aba}-${sub}`; }
-      return irParaAba(aba);
-    }
+    if (b.dataset.buscaTela) return irDaFolha(b.dataset.buscaTela);
     if (b.hasAttribute('data-busca-todos')) return abrirExtrato({ texto: campo.value, tipo: 'tudo' });
     const i = todos.find(x => x.chave === b.dataset.buscaExtrato);
     if (i) abrirItemExtrato(i);
@@ -3339,6 +3365,7 @@ function igualarPatrimonio() {
 const SIMULADORES = '[data-proxy*="proj12Scenario"], [data-proxy*="simDecisoes"], [data-proxy="#simValor"], [data-proxy="#simModo"], [data-proxy="#sim-valor"]';
 function extrasDaTela(r) {
   marcarPendencias();
+  ligarCarrosseis(r); // v9.26: o cartão que encaixa acende em brasa
   for (const el of r.querySelectorAll(SIMULADORES)) {
     const cartao = el.closest('section') || el.parentElement;
     if (!cartao || cartao.querySelector('.selo-sim')) continue;

@@ -65,6 +65,13 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
     return { ...base, titulo: 'Caixa', eyebrow: 'Saldo da conta hoje', valor: c.caixa,
       pilulas: [`${min.saldo < 0 ? 'Pior momento' : 'Mínimo'} ${brl0(min.saldo)} · dia ${min.dia}`, `Fecha com ${brl0(fim.saldo)}`] };
   }
+  if (aba === 'analises' && typeof m?.sc?.total === 'number') {
+    // v9.26: as Análises respondem no topo com a nota de saúde do mês (um número que não é dinheiro)
+    const n = [...(dados?.analises || []), ...(cart?.analises || [])].filter(a => a && (a.titulo || a.texto)).length;
+    const st = String(m.sc.status || '').toLowerCase();
+    return { ...base, titulo: 'Análises', eyebrow: 'Saúde financeira do mês', valor: null, numeroTexto: String(m.sc.total), numeroSufixo: ' de 100',
+      pilulas: [st ? st.charAt(0).toUpperCase() + st.slice(1) : '', n ? `${n} ${n === 1 ? 'análise' : 'análises'} do Claude` : ''].filter(Boolean) };
+  }
   const nomes = { mes: 'Caixa', analises: 'Análises' };
   return { ...base, titulo: nomes[aba] || base.titulo, sub: '' };
 }
@@ -76,6 +83,8 @@ export function htmlTopoCarvao(info, { esconder = false } = {}) {
   if (info.valor != null) {
     const [inteiro, cent] = brl(info.valor).split(',');
     numero = `<b class="hero-valor topo-num num">${esc(inteiro)}${esconder || !cent ? '' : `<span class="cent">,${esc(cent)}</span>`}</b>`;
+  } else if (info.numeroTexto) {
+    numero = `<b class="topo-num num">${esc(info.numeroTexto)}${info.numeroSufixo ? `<span class="cent">${esc(info.numeroSufixo)}</span>` : ''}</b>`;
   }
   return `<header class="topo-carvao">
     <img class="topo-assinatura" src="icons/logo.svg" alt="">
@@ -91,7 +100,7 @@ export function htmlTopoCarvao(info, { esconder = false } = {}) {
     ${info.pilulas.length ? `<div class="topo-pilulas">${info.pilulas.map(p => `<span>${esc(p)}</span>`).join('')}</div>` : ''}
   </header>
   <!-- v9.21: fora do header (o overflow dele escondia o cabeçalho fixo) -->
-  <div class="topo-mini" aria-hidden="true"><span>${esc(info.eyebrow || info.titulo)}</span>${info.valor != null ? `<b class="num">${esc(brl0(info.valor))}</b>` : ''}</div>`;
+  <div class="topo-mini" aria-hidden="true"><span>${esc(info.eyebrow || info.titulo)}</span>${info.valor != null ? `<b class="num">${esc(brl0(info.valor))}</b>` : info.numeroTexto ? `<b class="num">${esc(info.numeroTexto)}${esc(info.numeroSufixo || '')}</b>` : ''}</div>`;
 }
 
 // Mais abre o menu de hoje (#appMenu); o ＋ (#appLancar) só no celular de quem publica

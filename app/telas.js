@@ -4,7 +4,8 @@
 
 import { anel, barrasH, brl, brl0, colunas, compacto, empilhada, esc, icTom, linhaSaldo, linhas, medidor, minilinha, svgIcone } from './graficos.js';
 import { contexto, proximasContas } from './resumo.js';
-import { faixasDoHoje, htmlComposicaoV10, htmlHojeV10 } from './v10.js';
+import { faixasDoHoje, htmlComposicaoV10, htmlHojeV10, saudeCarteira } from './v10.js';
+import { acoesCv, barrasAlvoCv, blocoCv, carrosselCv, CHECK, cartaoCv, codigoAtivo, diaCv, linhaCv, linkCv, listaCv, numerosCv, secaoCv, tudoDoPainelCv, variacaoCv } from './carvao.js';
 import { blocosDoPainel } from './traduzir.js';
 import { mesBonito } from './painel.js';
 import { posicao, proximoPasso, reserva } from './carteira.js';
@@ -1947,6 +1948,8 @@ function abaInicioHub(m, dados, ctx, opcoes) {
 export function htmlAba(aba, m, dados, opcoes = {}) {
   const ctx = contexto(dados, opcoes.agora || new Date());
   if (aba === 'inicio' || !SUBABAS[aba]) return abaInicioHub(m, dados, ctx, opcoes);
+  // v9.26: a interface nova desenha cada tela do zero; a leitura de antes (com os blocos do painel) só em "Tudo do painel"
+  if (opcoes.v10 && TELAS_CV[aba] && !opcoes.tudo) return TELAS_CV[aba](m, dados, ctx, opcoes);
   let blocos = [];
   try {
     if (opcoes.doc) blocos = blocosDoPainel(opcoes.doc, { trocas: trocasDeGraficos(m, dados, ctx), abertos: opcoes.abertos, diaHoje: ctx.mesPassou ? 0 : ctx.diaHoje, pular: PULAR_DO_CAIXA });
@@ -1980,7 +1983,8 @@ export function htmlAba(aba, m, dados, opcoes = {}) {
   };
   if (opcoes.v10 && LEITURAS_V10[aba]) {
     const lugar = aba !== 'carteira' ? doLugar : k => { const l = doLugar(k); return k === 'carteira/visao' ? [...l.filter(ehRoteiro), ...l.filter(b => !ehRoteiro(b))] : l; };
-    return leituraV10(LEITURAS_V10[aba], lugar, opcoes.abertos, VAZIO_V10[aba], [m, dados, ctx, { ...opcoes, carteira: temCarteira ? opcoes.carteira : null }]);
+    const leitura = leituraV10(LEITURAS_V10[aba], lugar, opcoes.abertos, VAZIO_V10[aba], [m, dados, ctx, { ...opcoes, carteira: temCarteira ? opcoes.carteira : null }]);
+    return opcoes.tudo ? `<div class="tudo-topo-cv"><button type="button" class="link-cv" data-tudo="">‹ Voltar</button><h2>Tudo do painel</h2><p>O que o painel do Claude mostra sobre este assunto, inteiro.</p></div>${leitura}` : leitura;
   }
   const daqui = doLugar(chave);
   const partes = [
@@ -2030,6 +2034,282 @@ export const LEITURAS_V10 = {
 };
 const VAZIO_V10 = { cartao: 'Nada no cartão por enquanto.', carteira: 'Nada nos investimentos por enquanto.', mes: 'Nada no caixa por enquanto.', analises: 'Nenhuma análise por enquanto.' };
 const ehRoteiro = b => /class="roteiro-n"/.test(b.html || ''); // o bloco "steps" do painel, trocado por roteiroCarteira
+
+// ---------- v9.26: o redesenho "Carteira de cartões" (escolhido pelo Bruno em 15/11/2026; .impeccable/surfaces) ----------
+// Cada tela da interface nova é desenhada do zero com os componentes de carvao.js — o que importa vira um cartão que se
+// desliza (o que encaixa acende em brasa: ligarCarrosseis) e tocar abre a folha do item; os blocos do painel do Claude
+// saem da frente e ficam em "Tudo do painel" (LEITURAS_V10, a leitura de antes), no fim de cada tela. As âncoras
+// v10-aba-sub continuam: os links "aba/sub" rolam até a seção certa.
+const DIAS_SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const semanaDe = iso => DIAS_SEM[new Date(`${iso}T12:00:00`).getDay()];
+const tomTile = tom => `<span class="ic-tile tom-${tom}">${tom === 'ideia' ? svg(ICONE_IDEIA) : icTom(tom)}</span>`;
+const tile = d => `<span class="ic-tile">${svg(d)}</span>`;
+const PAGAVEIS = ['receitas', 'despesasFixas', 'despesasVariaveis', 'obrigacoesCaixa'];
+const ABRIR_FATURA = { compra: 'data-compra', compraFatura: 'data-compra-fatura', parcelamento: 'data-parcelamento', assinatura: 'data-assinatura' };
+// A folha de detalhe de um cartão (só leitura, serve à Rafael também): o conteúdo vai num <template> ao lado do
+// cartão e o toque (data-detalhe) abre ele numa folha. Quem publica continua com as folhas que gravam onde já existiam.
+const detalheCv = (id, titulo, corpo) => `<template id="${id}"><h2 class="detalhe-titulo">${esc(titulo)}</h2>${corpo}</template>`;
+const linhasDet = pares => listaCv(pares.filter(Boolean).map(([t, v, sub = '']) => linhaCv({ titulo: t, valor: v, sub })));
+const tomMercado = u => ({ alta: 'ruim', media: 'atencao', média: 'atencao' }[String(u || '').toLowerCase()] || 'bom');
+const ROTULO_MERCADO = { ruim: 'Agir', atencao: 'Acompanhar', bom: 'Tranquilo' };
+const ORDEM_TOM = { ruim: 0, atencao: 1, bom: 2 };
+
+function investimentosCv(m, dados, ctx, o) {
+  const cart = o.carteira, gh = !!o.github;
+  if (!cart) return `<span id="v10-carteira-visao"></span>${semCarteira(o)}${tudoDoPainelCv('carteira', 'O patrimônio')}`;
+  const partes = ['<span id="v10-carteira-visao"></span>'], modelos = [];
+  const aloc = alocacaoVsAlvo(cart);
+  const merc = cart.analise_mercado?.ativos || [];
+  // 1. seus ativos: os cartões; "Ver todos" troca o carrossel pela grade inteira
+  const ativos = variacaoAtivos(cart).filter(a => a.valor > 0).sort((a, b) => b.valor - a.valor);
+  if (ativos.length) {
+    const todos = (o.abertos || new Set()).has('cv:ativos');
+    const cartao = (a, i) => {
+      const cod = codigoAtivo(a.nome), id = `det-ativo-${i}`;
+      if (!gh) {
+        const cl = aloc?.linhas.find(l => l.classe === a.classe);
+        const mk = merc.find(x => codigoAtivo(x.n) === cod);
+        modelos.push(detalheCv(id, a.nome, `${linhasDet([
+          ['Valor', esc(brl(a.valor))],
+          a.var != null ? ['Variação no mês', `${a.var < 0 ? '−' : '+'}${pct1(Math.abs(a.var * 100))}`] : null,
+          ['Peso na carteira', pct1(a.pct * 100)],
+          cl ? [cl.nome, `${pct1(cl.pct)}`, `alvo ${pct1(cl.alvo)} para a classe`] : null,
+        ])}${mk ? `<p class="cv-resumo">${chip(tomMercado(mk.urgencia), ROTULO_MERCADO[tomMercado(mk.urgencia)])}</p><p class="cv-texto">${comNegrito(mk.acao || '')}</p>` : ''}`));
+      }
+      return cartaoCv({
+        codigo: cod, nome: a.nome, valor: esc(brl0(a.valor)), destaque: i === 0,
+        rodape: `${variacaoCv(a.var, `${pct1(Math.abs((a.var || 0) * 100))} no mês`)}<span>${pct1(a.pct * 100)} da carteira</span>`,
+        attr: gh ? `data-ativo-abrir="${esc(a.chave)}"` : `data-detalhe="${id}"`,
+      });
+    };
+    partes.push(secaoCv('Seus ativos', { id: 'v10-carteira-ativos', contagem: ativos.length, link: !todos && ativos.length > 2 ? linkCv('Ver todos', 'data-abrir="cv:ativos"') : '' }),
+      todos ? `<div class="grade-cv">${ativos.map(cartao).join('')}</div>` : carrosselCv(ativos.map(cartao), 'Seus ativos'));
+  }
+  // 2. estratégia: agora × alvo por classe, uma linha cada (a nota só onde está fora do alvo)
+  if (aloc) {
+    const s = saudeCarteira(aloc, reserva(cart));
+    const linhas = aloc.linhas.map(l => {
+      const d = l.pct - l.alvo, perto = Math.abs(d) < 2;
+      return { rotulo: l.nome, valor: pct1(l.pct), atual: l.pct, alvo: l.alvo, tom: perto ? '' : d < 0 ? 'atencao' : '', nota: perto ? '' : l.falta > 0 ? `faltam ${brl0(l.falta)} para ${pct1(l.alvo)}` : `${brl0(-l.falta)} acima de ${pct1(l.alvo)}` };
+    });
+    partes.push(secaoCv('Estratégia', { id: 'v10-carteira-aloc', link: linkCv('Ordem e gatilhos', 'data-tudo="carteira" data-tudo-secao="carteira-aloc"') }),
+      blocoCv(`<p class="cv-resumo"><b>${s.fiel}% fiel</b> ao alvo${aloc.revisada ? ` · revisada em ${esc(ddmm(aloc.revisada))}` : ''}</p>
+        ${barrasAlvoCv(linhas, { compacto: true })}<p class="cv-legenda"><i></i>agora<em></em>alvo</p>
+        ${gh ? acoesCv([{ rotulo: 'Revisar estratégia', attr: 'data-revisar-estrategia' }, { rotulo: 'Pesquisar ativo', attr: 'data-pesquisar=""' }]) : ''}`));
+  }
+  // 3. o próximo passo, em destaque; o resto do que pede ação numa lista curta
+  let fazer = [];
+  try { fazer = linhasDoHoje(m, dados, cart, ctx, o).filter(l => (/^carteira/.test(l.ir || '') || l.attr === 'data-levar-claude') && (l.tom !== 'info' || l.acao)); } catch { /* sem linhas */ }
+  const destino = l => l.attr || `data-ir-aba="${esc(l.ir || 'carteira')}"`;
+  if (fazer.length) {
+    const [p1, ...resto] = fazer;
+    // o botão é o da própria linha; sem ele, "Investir" quando a linha é o aporte do mês; sem nenhum, a seta (leva ao assunto)
+    const acao1 = gh ? p1.acao || (/aporte/i.test(p1.texto) ? { rotulo: 'Investir', attr: 'data-aporte-plano' } : null) : null;
+    partes.push(`<div class="passo-cv tom-${p1.tom}"><button type="button" class="passo-txt" ${destino(p1)}>${tomTile(p1.tom)}<span><b>${esc(p1.texto)}</b><small>próximo passo</small></span>${acao1 ? '' : svg('<path d="m9 6 6 6-6 6"/>', 'li-seta')}</button>${acao1 ? `<button type="button" class="li-acao principal" ${acao1.attr}>${esc(acao1.rotulo)}</button>` : ''}</div>`);
+    if (resto.length) partes.push(blocoCv(listaCv(resto.slice(0, 2).map(l => linhaCv({ icone: tomTile(l.tom), titulo: l.texto, attr: destino(l), acao: gh && l.acao ? { rotulo: l.acao.rotulo, attr: l.acao.attr } : null })))));
+  }
+  // 4. renda
+  const p = posicao(cart);
+  const nums = [];
+  // dividendos do mês pelo caixa (o que caiu e o que vai cair); sem nenhum, o registrado na carteira
+  const divs = (dados.receitas || []).filter(r => tickerDividendo(r.descricao));
+  const recebido = divs.filter(r => r.status === 'confirmado').reduce((s, r) => s + (r.valor || 0), 0);
+  const aReceber = divs.filter(r => r.status !== 'confirmado').reduce((s, r) => s + (r.valor || 0), 0);
+  if (divs.length) nums.push({ rotulo: `Dividendos de ${MESES[ctx.mes - 1]}`, valor: esc(brl(recebido + aReceber)), sub: `${esc(brl(recebido))} já caiu${aReceber ? ` · ${esc(brl(aReceber))} a cair` : ''}` });
+  else if (p.h.dividendos > 0) nums.push({ rotulo: 'Dividendos no mês', valor: esc(brl(p.h.dividendos)) });
+  try {
+    const rp = rendaPassiva(dados, cart, (m.c?.fixas || 0) + (m.c?.variaveis || 0));
+    if (rp?.atual && rp.atual.pct >= 0.005) nums.push({ rotulo: 'Renda passiva', valor: pctBr(rp.atual.pct), sub: `das despesas de ${esc(mesCurto(rp.atual.mes))}` });
+  } catch { /* sem histórico */ }
+  if (nums.length) partes.push(secaoCv('Renda', { id: 'v10-carteira-renda' }), blocoCv(numerosCv(nums)));
+  // 5. metas: um cartão por meta
+  const metas = progressoMetas(cart, ctx.hoje || o.hoje);
+  if (metas.length || gh) {
+    partes.push(secaoCv('Metas', { link: gh ? linkCv('Nova meta', 'data-meta="nova"') : '' }), carrosselCv(metas.map((mt, i) => {
+      const quando = mt.concluida ? 'Meta alcançada' : mt.porMes ? `${brl0(mt.porMes)} por mês até ${mesCurto(mt.prazo)}` : `faltam ${brl0(mt.falta)}`;
+      if (!gh) modelos.push(detalheCv(`det-meta-${i}`, mt.nome, linhasDet([['Guardado', esc(brl(mt.atual))], ['Meta', esc(brl(mt.alvo))], ['Falta', esc(brl(mt.falta))], mt.prazo ? ['Prazo', esc(mesCurto(mt.prazo))] : null, mt.porMes ? ['Por mês', esc(brl(mt.porMes))] : null])));
+      return cartaoCv({
+        codigo: `${Math.round(mt.pct * 100)}%`, nome: mt.nome, classe: 'meta', destaque: i === 0,
+        valor: `${esc(brl0(mt.atual))}<small> de ${esc(brl0(mt.alvo))}</small>`,
+        rodape: `<i class="cv-barra"><i style="width:${Math.round(mt.pct * 100)}%"></i></i><span>${esc(quando)}</span>`,
+        attr: gh ? `data-meta="${esc(mt.id)}"` : `data-detalhe="det-meta-${i}"`,
+      });
+    }), 'Metas') || (gh ? blocoCv('<p class="cv-nota">Nenhuma meta ainda — reserva, viagem, apê: quanto e até quando.</p>') : ''));
+  }
+  // 6. evolução e, num dia depois da posição gravada, a estimativa de hoje pelas cotações
+  const evo = secao(() => graficoEvolucaoCarteira(cart));
+  if (evo) partes.push(secaoCv('Evolução', { id: 'v10-carteira-futuro' }), blocoCv(evo));
+  if (String(p.data).slice(0, 10) < hojeBrasil()) { const e = secao(() => blocoEstimativa(o.estimativa, o, cart)); if (e) partes.push(blocoCv(e)); }
+  // 7. movimentar (quem publica)
+  if (gh) {
+    partes.push(secaoCv('Movimentar'), acoesCv([{ rotulo: 'Aporte', attr: 'data-investir="aporte"', principal: true }, { rotulo: 'Resgate', attr: 'data-investir="resgate"' }, { rotulo: 'Dividendo', attr: 'data-investir="dividendo"' }, { rotulo: 'Atualizar valores', attr: 'data-investir="valores"' }], 'grade2'),
+      '<p class="rotulo-cv">Com o Claude</p>', acoesCv([{ rotulo: 'Atualização parcial', attr: 'data-modelo="parcial"' }, { rotulo: 'Fechamento do mês', attr: 'data-modelo="fechamento"' }], 'grade2'));
+  }
+  partes.push(`<p class="cv-nota">Posição de ${esc(ddmm(p.data))}, ${p.h.atualizacoesApp?.at(-1)?.data === p.data ? 'atualizada no app' : 'registrada pelo gestor de carteira'}.</p>`,
+    tudoDoPainelCv('carteira', 'Score, dividendos, renda fixa, simuladores e mais'), ...modelos);
+  return partes.join('');
+}
+
+function cartaoTelaCv(m, dados, ctx, o) {
+  const gh = !!o.github, c = m.c || {};
+  const limite = dados.regras?.limiteSaudavelItau || 0;
+  const venc = dados.calendario?.faturaCartao, mesProx = ctx.mes === 12 ? 1 : ctx.mes + 1;
+  const partes = ['<span id="v10-cartao-fatura"></span>'], modelos = [];
+  const itens = composicaoFatura(dados).grupos.filter(g => g.k === 'compra' || g.k === 'fatura').flatMap(g => g.itens)
+    .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  const linhaCompra = (i, editar) => {
+    const [k, v] = Object.entries(i.abrir || {})[0] || [];
+    return linhaCv({
+      icone: iconeCategoria(i.categoria || 'Others', 'peq'), titulo: i.descricao,
+      sub: esc([i.data ? ddmm(i.data) : '', i.categoria ? nomeCategoria(i.categoria) : ''].filter(Boolean).join(' · ')),
+      valor: `${i.valor > 0 ? '−' : ''}${esc(brl(Math.abs(i.valor)))}`, valorSub: i.valor > 0 ? 'estorno' : '',
+      attr: editar && gh && ABRIR_FATURA[k] ? `${ABRIR_FATURA[k]}="${esc(v)}"` : '',
+    });
+  };
+  // as faturas: a aberta e as próximas (o que já está comprometido); tocar abre a folha de cada uma
+  modelos.push(detalheCv('det-fatura-0', `Fatura de ${MESES[ctx.mes - 1]}`, `${htmlComposicaoV10({ c, limite })}${itens.length ? `<p class="rotulo-cv">Compras · ${itens.length}</p>${listaCv(itens.map(i => linhaCompra(i, false)))}` : ''}`));
+  const futuras = (m.cf?.meses || []).slice(0, 6);
+  futuras.forEach((f, i) => modelos.push(detalheCv(`det-fatura-${i + 1}`, `Fatura de ${MESES[f.mes - 1]} ${f.ano}`,
+    `<p class="cv-resumo"><b>${esc(brl(f.total))}</b> já comprometido</p>${listaCv([...f.ativas].sort((a, b) => b.valor - a.valor).map(pc => linhaCv({ titulo: nomeCurto(pc.nome), sub: esc(pc.atual ? `parcela ${pc.atual}` : ''), valor: esc(brl(pc.valor)) })))}${(m.cf.recorrentes || []).length ? `<p class="cv-nota">Mais ${m.cf.recorrentes.length} recorrentes, iguais todo mês.</p>` : ''}`)));
+  const faturas = [cartaoCv({
+    topo: 'aberta', codigo: maiuscula(MESES[ctx.mes - 1]), valor: esc(brl(c.itau || 0)), destaque: true, classe: 'fatura', attr: 'data-detalhe="det-fatura-0"',
+    rodape: `${limite ? `<span>cabem ${esc(brl0(Math.max(0, limite - (c.itau || 0))))}</span>` : ''}${venc ? `<span>vence ${pad(venc)}/${pad(mesProx)}</span>` : ''}`,
+  }), ...futuras.map((f, i) => cartaoCv({
+    topo: 'já comprometido', codigo: maiuscula(MESES[f.mes - 1]), nome: String(f.ano), valor: esc(brl(f.total)), classe: 'fatura', attr: `data-detalhe="det-fatura-${i + 1}"`,
+    rodape: `<span>${f.ativas.length} ${f.ativas.length === 1 ? 'parcela' : 'parcelas'}${(m.cf.recorrentes || []).length ? ' e recorrentes' : ''}</span>`,
+  }))];
+  partes.push(secaoCv('Faturas', { link: linkCv('Planilha', 'data-planilha-fatura') }), carrosselCv(faturas, 'Faturas'));
+  partes.push(secao(() => htmlComposicaoV10({ c, limite })));
+  // compras: as mais novas, cada uma abre o editor (quem publica)
+  if (itens.length) partes.push(secaoCv('Compras', { contagem: itens.length, link: linkCv('Ver todas', 'data-extrato-abrir') }), blocoCv(listaCv(itens.slice(0, 6).map(i => linhaCompra(i, true)))));
+  // por categoria, com o orçamento como o traço do alvo
+  const it = (dados.despesasVariaveis || []).find(x => x.id === 'var-itau');
+  const cats = (it?.categorias || []).filter(x => x.valor > 0).sort((a, b) => b.valor - a.valor);
+  if (cats.length) {
+    let orc = [];
+    try { orc = orcamentoDoMes(dados, ctx); } catch { /* sem orçamento */ }
+    const linhas = cats.slice(0, 8).map(x => {
+      const ob = orc.find(z => z.cat === x.cat || z.nome === nomeCategoria(x.cat));
+      return { icone: iconeCategoria(x.cat, 'micro'), rotulo: nomeCategoria(x.cat), valor: brl0(x.valor), atual: x.valor, alvo: ob ? ob.limite : null,
+        tom: ob ? (ob.pct >= 1 ? 'ruim' : ob.pct >= 0.8 ? 'atencao' : '') : '',
+        nota: ob ? (ob.pct >= 1 ? `passou ${brl0(-ob.sobra)} do orçamento de ${brl0(ob.limite)}` : `orçamento ${brl0(ob.limite)} · sobram ${brl0(ob.sobra)}`) : '' };
+    });
+    partes.push(secaoCv('Por categoria', { id: 'v10-cartao-gastos', contagem: cats.length, link: gh ? linkCv('Orçamento', 'data-orcamento') : '' }),
+      blocoCv(`${barrasAlvoCv(linhas)}${cats.length > 8 ? `<p class="cv-nota">Mais ${cats.length - 8} no Tudo do painel.</p>` : ''}${orc.length ? '<p class="cv-legenda"><i></i>gasto<em></em>orçamento</p>' : ''}`));
+  }
+  // recorrentes
+  const rec = (it?.assinaturas || []).map((a, i) => ({ ...a, i })).sort((x, y) => (x.dia ?? 99) - (y.dia ?? 99));
+  if (rec.length || gh) {
+    const total = rec.reduce((s, a) => s + a.valor, 0);
+    partes.push(secaoCv('Recorrentes', { id: 'v10-cartao-parcelas', contagem: rec.length || null, link: gh ? linkCv('Adicionar', 'data-nova-recorrente') : '' }),
+      blocoCv(`${rec.length ? `<p class="cv-resumo"><b>${esc(brl(total))}</b> por mês · ${esc(brl0(total * 12))} por ano</p>` : '<p class="cv-nota">Nenhuma cobrança recorrente.</p>'}
+        ${listaCv(rec.slice(0, 5).map(a => linhaCv({ icone: iconeCategoria(a.cat || adivinharCategoria(a.nome) || 'Others', 'peq'), titulo: a.nome, sub: `dia ${esc(a.dia ?? '?')}${a.foraDoMes === dados.periodo ? ' · fora deste mês' : ''}`, valor: esc(brl(a.valor)), attr: gh ? `data-assinatura="${a.i}"` : '' })))}
+        ${rec.length > 5 ? linkCv(`Ver todas (${rec.length})`, 'data-tudo="cartao" data-tudo-secao="cartao-parcelas"') : ''}`));
+  }
+  partes.push(tudoDoPainelCv('cartao', 'Parcelas mês a mês, onde cortar, histórico e mais'), ...modelos);
+  return partes.join('');
+}
+
+function caixaCv(m, dados, ctx, o) {
+  const gh = !!o.github;
+  const partes = ['<span id="v10-mes-geral"></span>'], modelos = [];
+  const curva = secao(() => graficoCurva(m, ctx));
+  if (curva) partes.push(secaoCv('O mês, dia a dia'), blocoCv(`${curva}${gh ? acoesCv([{ rotulo: 'Conferir com o saldo do banco', attr: 'data-conferir-banco' }]) : ''}`));
+  // contas e entradas daqui em diante (o salário a entrar fica junto, separado no total)
+  let contas = [];
+  try { contas = proximasContas(m, dados); } catch { /* sem agenda */ }
+  const hoje = o.hoje || hojeBrasil();
+  const aPagar = contas.filter(x => x.valor < 0).reduce((s, x) => s - x.valor, 0);
+  const aEntrar = contas.filter(x => x.valor > 0).reduce((s, x) => s + x.valor, 0);
+  partes.push(secaoCv(aEntrar ? 'Contas e entradas' : 'Contas a pagar', { id: 'v10-mes-agenda', contagem: contas.length || null, link: linkCv('O mês inteiro', 'data-tudo="mes" data-tudo-secao="mes-contas"') }));
+  partes.push(blocoCv(ctx.mesPassou
+    ? `<p class="cv-nota">O mês virou — as contas de ${esc(MESES[ctx.mes - 1])} ficam no fechamento com o Claude.</p>`
+    : contas.length
+      ? `<p class="cv-resumo"><b>${esc(brl(aPagar))}</b> a pagar${aEntrar ? ` · <b class="sobe">${esc(brl(aEntrar))}</b> a entrar` : ''} até o fim do mês</p>${listaCv(contas.slice(0, 8).map(x => {
+        const pode = gh && x.item && PAGAVEIS.includes(x.lista);
+        return linhaCv({
+          icone: diaCv(x.dia, semanaDe(x.data), x.data === hoje), titulo: nomeCurto(x.desc), sub: x.valor > 0 ? 'a receber' : 'a pagar',
+          valor: `${x.valor > 0 ? '+' : ''}${esc(brl(Math.abs(x.valor)))}`, attr: pode ? `data-conta="${esc(x.lista)}|${esc(x.item)}"` : '',
+          acao: pode ? { rotulo: x.valor > 0 ? 'Recebi' : 'Paguei', attr: `data-pagar="${esc(x.lista)}|${esc(x.item)}"`, icone: CHECK } : null,
+        });
+      }))}${contas.length > 8 ? linkCv(`Ver todas (${contas.length})`, 'data-tudo="mes" data-tudo-secao="mes-agenda"') : ''}`
+      : '<p class="cv-nota">Nada a pagar até o fim do mês.</p>'));
+  if (gh) partes.push(acoesCv([{ rotulo: '+ Entrada', attr: 'data-nova-conta="receita"' }, { rotulo: '+ A pagar', attr: 'data-nova-conta="despesa"' }, { rotulo: '+ Investir', attr: 'data-investir="aporte"' }]));
+  partes.push(blocoCv(listaCv([linhaCv({ icone: tile('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>'), titulo: 'Extrato do mês', sub: 'Busque em tudo: contas, cartão e investimentos', attr: 'data-extrato-abrir' })]), 'compacto'));
+  // próximos 12 meses: um cartão por mês com a sobra; tocar abre o que entra e o que sai
+  const meses = m.p12?.meses?.length ? resumoMeses(m.p12.meses) : [];
+  if (meses.length) {
+    const media = meses.reduce((s, x) => s + x.sobra, 0) / meses.length;
+    partes.push(secaoCv('Próximos 12 meses', { id: 'v10-mes-meses', link: linkCv('Detalhes', 'data-tudo="mes" data-tudo-secao="mes-meses"') }),
+      `<p class="cv-resumo fora">Sobra média <b class="${media < 0 ? 'cai' : ''}">${esc(brl0(media))}</b> por mês</p>`,
+      carrosselCv(meses.map((x, i) => {
+        modelos.push(detalheCv(`det-mes-${i}`, x.label, `${linhasDet([['Entra', esc(brl(x.entra))], ['Sai', esc(brl(-x.sai))], ['Sobra do mês', esc(brl(x.sobra))], ['Começar o mês com', esc(brl(x.colchao)), 'a conta desce antes do salário'], x.vermelho ? ['Vermelho no dia', String(x.minDia)] : null])}${x.fora?.length ? `<p class="cv-nota">Fora do comum: ${x.fora.map(e => esc(nomeCurto(e.desc))).join(', ')}.</p>` : ''}`));
+        return cartaoCv({
+          codigo: x.label, destaque: i === 0, classe: `mes${x.sobra < 0 ? ' negativo' : ''}`, attr: `data-detalhe="det-mes-${i}"`,
+          valor: `${x.sobra > 0 ? '+' : ''}${esc(brl0(x.sobra))}`,
+          rodape: `<span>começar com ${esc(brl0(x.colchao))}</span>${x.vermelho ? `<span class="cai">vermelho no dia ${x.minDia}</span>` : ''}`,
+        });
+      }), 'Próximos 12 meses'));
+  }
+  partes.push(tudoDoPainelCv('mes', 'Agenda, contas do mês, gráficos e projeções'), ...modelos);
+  return partes.join('');
+}
+
+function analisesCv(m, dados, ctx, o) {
+  const cart = o.carteira;
+  const partes = ['<span id="v10-analises-saude"></span>'], modelos = [];
+  // saúde do mês: a nota está no topo; aqui, de onde ela vem — cada critério na sua escala (cheio = pontos máximos)
+  const sc = m.sc;
+  const crit = sc && typeof sc.total === 'number' ? sc.crit || [] : [];
+  if (crit.length) {
+    partes.push(secaoCv('De onde vem a nota', { contagem: crit.length }), blocoCv(barrasAlvoCv(crit.map(k => ({
+      rotulo: k.n, valor: `${Math.round((k.v || 0) * k.p)}/${k.p}`, atual: (k.v || 0) * k.p, alvo: k.p, tom: k.v >= 0.8 ? '' : k.v >= 0.4 ? 'atencao' : 'ruim', nota: k.v >= 0.8 ? '' : k.d || '',
+    })), { porLinha: true })));
+  }
+  // análises do Claude: um cartão por análise, a mais nova primeiro
+  const tons = { alerta: 'ruim', atencao: 'atencao', dica: 'ideia', conquista: 'bom', info: 'info' };
+  const validas = (l, de) => (Array.isArray(l) ? l.filter(a => a && (a.titulo || a.texto)).map(a => ({ ...a, de })) : []);
+  const lista = [...validas(dados.analises, 'caixa'), ...validas(cart?.analises, 'carteira')].sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+  if (lista.length) {
+    partes.push(secaoCv('Do Claude', { contagem: lista.length }), carrosselCv(lista.map(a => `<article class="analise-cv tom-${tons[a.tipo] || 'info'}">
+        <span class="an-topo">${tomTile(tons[a.tipo] || 'info')}<small>${a.de === 'carteira' ? 'Carteira · ' : ''}${a.data ? esc(ddmm(a.data)) : ''}</small></span>
+        <b>${esc(a.titulo || '')}</b>${a.texto ? `<p>${esc(a.texto)}</p>` : ''}${a.acao ? `<p class="an-acao"><b>O que fazer:</b> ${esc(a.acao)}</p>` : ''}
+      </article>`), 'Análises do Claude'));
+  }
+  // alertas do painel que ainda não estão nos critérios da nota (sem repetir; os "tudo certo" ficam de fora)
+  const nomesCrit = crit.map(k => String(k.n || '').toLowerCase()).filter(Boolean);
+  const alertas = (m.alertas || []).filter(a => a.tom !== 'bom' && !nomesCrit.some(n => String(a.titulo || '').toLowerCase().startsWith(n)));
+  if (alertas.length) partes.push(secaoCv('Alertas'), blocoCv(listaCv(alertas.map(a => linhaCv({ icone: tomTile(a.tom), titulo: a.titulo, sub: a.texto || '' })))));
+  // mercado: um cartão por ativo, o que pede ação primeiro; tocar abre a ação inteira e o porquê
+  const merc = cart?.analise_mercado?.ativos || [];
+  if (merc.length) {
+    partes.push(secaoCv('Mercado', { id: 'v10-analises-mercado', contagem: merc.length }), carrosselCv([...merc].sort((a, b) => ORDEM_TOM[tomMercado(a.urgencia)] - ORDEM_TOM[tomMercado(b.urgencia)]).map((a, i) => {
+      const tom = tomMercado(a.urgencia);
+      modelos.push(detalheCv(`det-merc-${i}`, a.n, `<p class="cv-resumo">${chip(tom, ROTULO_MERCADO[tom])}${a.classe ? ` <span class="suave">${esc(a.classe)}</span>` : ''}</p>
+        ${typeof a.dm === 'number' ? linhasDet([['No ano', sinal(a.dm)], a.bench ? [a.bench, sinal(a.benchm)] : null]) : ''}
+        <p class="cv-texto"><b>Ação:</b> ${comNegrito(a.acao || '')}</p>${a.expl ? `<p class="cv-texto">${comNegrito(a.expl)}</p>` : ''}
+        <p class="cv-nota">Opinião do Claude a partir da sua estratégia e do mercado${a.data_ref ? ` em ${esc(ddmm(a.data_ref))}` : ''} — não é recomendação profissional.</p>`));
+      return cartaoCv({
+        codigo: codigoAtivo(a.n), nome: a.classe || a.n, classe: `mercado tom-${tom}`, destaque: i === 0, attr: `data-detalhe="det-merc-${i}"`,
+        topo: chip(tom, ROTULO_MERCADO[tom]),
+        valor: typeof a.dm === 'number' ? `${sinal(a.dm)}<small> no ano</small>` : '',
+        rodape: `<span>${comNegrito(a.acao || '')}</span>`,
+      });
+    }), 'Mercado'), '<p class="cv-nota fora">Opinião do Claude a partir da sua estratégia e do mercado — não é recomendação profissional.</p>');
+  }
+  // conferir caixa × carteira
+  if (cart) {
+    let itens = [];
+    try { itens = itensConferencia(m, dados, cart, ctx); } catch { /* sem conferência */ }
+    if (itens.length) partes.push(secaoCv('Conferir caixa × carteira', { id: 'v10-analises-conferir' }), blocoCv(listaCv(itens.map(i => linhaCv({ icone: tomTile(i.tom), titulo: i.titulo, sub: esc(i.texto || '') })))));
+  }
+  const hist = secao(() => graficoMesesFechados(dados));
+  if (hist) partes.push(secaoCv('Meses fechados', { id: 'v10-analises-historico' }), blocoCv(hist));
+  partes.push(tudoDoPainelCv('analises', 'Leitura automática, radar de risco, histórico e mais'), ...modelos);
+  return partes.join('');
+}
+
+export const TELAS_CV = { carteira: investimentosCv, cartao: cartaoTelaCv, mes: caixaCv, analises: analisesCv };
 
 // v9.22 (repaginação, etapa 5): a linha de situação dos itens do Mais que levam ao Caixa e às Análises
 export function situacoesMais(m, dados, cart, agora = new Date()) {
