@@ -6,6 +6,7 @@ import { posicao, reserva } from './carteira.js';
 import { alocacaoVsAlvo } from './estrategia.js';
 import { resultadoDoMes } from './investimentos.js';
 import { contexto } from './resumo.js';
+import { DEMO } from './modo.js';
 
 const CHAVE = 'lastro-v10';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -21,11 +22,14 @@ export const DESTINOS = [
 ];
 const MAIS = '<circle cx="5.5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18.5" cy="12" r="1.4"/>';
 
+// v9.29.1: na demo pública a interface nova já vem ligada no celular (as fotos da vitrine são dela; tela larga ainda
+// não tem desenho no Carvão); desligar grava '0'
+const celular = () => { try { return !matchMedia('(min-width: 960px)').matches; } catch { return true; } };
 export function v10Ligada() {
-  try { return localStorage.getItem(CHAVE) === '1'; } catch { return false; }
+  try { const v = localStorage.getItem(CHAVE); return v === '1' || (DEMO && v === null && celular()); } catch { return DEMO && celular(); }
 }
 export function ligarV10(on) {
-  try { if (on) localStorage.setItem(CHAVE, '1'); else localStorage.removeItem(CHAVE); } catch { /* fica só nesta abertura */ }
+  try { localStorage.setItem(CHAVE, on ? '1' : '0'); } catch { /* fica só nesta abertura */ }
 }
 
 function saudacao(agora) {

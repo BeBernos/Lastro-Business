@@ -38,5 +38,7 @@ const css = fs.readFileSync(new URL('../../app/v10.css', import.meta.url), 'utf8
 confere('Tudo: sem o recuo de 50px', !/\.tudo-corpo \{ margin-left: 50px/.test(css));
 confere('o "próximo passo" não estraga o texto da folha "Levar para o Claude"', !/^html\.v10 \.passo-txt/m.test(css) && /#folha \.passo-txt \{ display: block/.test(css));
 
+confere('9.29.1: o ✓ do aviso Salvo sem verde no Carvão', css.includes('html.v10 .aviso.ok > .ic { color: var(--v10-sobe); }'));
+
 console.log(`v9.29 ajustes do Bruno: ${ok} ok, ${falhas} falhas`);
 process.exitCode = falhas ? 1 : 0;

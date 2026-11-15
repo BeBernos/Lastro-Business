@@ -17,7 +17,7 @@ It was built for a real family and has been used every day since October 2026: t
 SMS in two taps, the rest of the family follows everything on their own phones, and once a month the AI closes the books, rebalances
 the plan and writes the analyses.
 
-**At a glance:** v9.12 (46 releases in the changelog) · used daily since Oct 2026 · ~13k lines, 0 dependencies · AES-256-GCM end to end · ≈260 regression + 62 end-to-end checks
+**At a glance:** v9.29 (69 releases in the changelog) · used daily since Oct 2026 · ~14k lines, 0 dependencies · AES-256-GCM end to end · ≈260 regression + 62 end-to-end checks
 
 > The live demo runs with a **fictitious family** (Marina, Rafael, Theo and Mia the cat) generated on the fly, with dates
 > that always move with today's calendar. Nothing leaves your browser.
@@ -27,7 +27,7 @@ the plan and writes the analyses.
 <p align="center"><img src="docs/img/features-1-en.png" alt="" width="100%"></p>
 <p align="center"><img src="docs/img/features-2-en.png" alt="" width="100%"></p>
 
-<p align="center"><img src="docs/img/lancar.gif" width="300" alt=""><br><i>A purchase goes in and the "can still spend" number updates immediately — then syncs, encrypted, to the family.</i></p>
+<p align="center"><img src="docs/img/lancar-en.png" width="80%" alt="The ＋, the purchase form and the home screen after saving"><br><i>A purchase goes in and the "can still spend" number updates immediately — then syncs, encrypted, to the family.</i></p>
 
 **In detail**
 - **Daily cash flow** — what is left to spend this month, the bills calendar, "paid / to receive" with one tap, and a 12-month
@@ -45,7 +45,7 @@ the plan and writes the analyses.
 Lastro is built around one unusual idea — **the AI's monthly dashboard is the calculation engine** — and one hard rule:
 **no server may see financial data**. Everything else follows from those two.
 
-**On the device** — ~13,000 lines of plain JavaScript, no framework. Every financial action is a pure function `JSON → JSON` (log a purchase, mark paid, invest, redeem) that keeps the totals the dashboard checks, leaves an audit trail and stores the encrypted previous state for exact undo.
+**On the device** — ~14,000 lines of plain JavaScript, no framework. Every financial action is a pure function `JSON → JSON` (log a purchase, mark paid, invest, redeem) that keeps the totals the dashboard checks, leaves an audit trail and stores the encrypted previous state for exact undo.
 
 **The dashboard engine** — Each month Claude produces a self-contained HTML dashboard (code + JSON data). Lastro loads it in a hidden iframe and calls its functions (`calc()`, `timeline()`, `projecao12()`…); a translator turns every block into native screens, so a block the AI invents next month appears without a release.
 
@@ -82,7 +82,7 @@ connector) in [SECURITY.md](SECURITY.md).
 
 ## Engineering highlights
 
-- **Zero dependencies.** ~13,000 lines of plain JavaScript (ES modules), no framework, no build step — including a
+- **Zero dependencies.** ~14,000 lines of plain JavaScript (ES modules), no framework, no build step — including a
   hand-written `.xlsx` writer, SVG charts and a Web Push (VAPID/ES256) sender.
 - **Serverless on free tiers.** Static app + a Cloudflare Worker with a Durable Object (SQLite) for push subscriptions,
   a quote cache and the MCP server. GitHub is the database (encrypted files, one commit per sync).
@@ -93,7 +93,7 @@ connector) in [SECURITY.md](SECURITY.md).
 - **Accessibility and motion care**: contrast ≥ 4.5:1 in both themes, `prefers-reduced-motion`, screen-reader labels.
 - **Offline-first PWA**: service worker cache, share target (receive files and SMS text), app shortcuts.
 
-<p align="center"><img src="docs/img/desktop.png" alt="Desktop layout" width="90%"><br><i>The same app on a desktop.</i></p>
+<!-- desktop screenshot removed in 9.29.1: the new "Carvão" interface is phone-first; a wide-screen layout comes later -->
 
 ## Tech stack
 
