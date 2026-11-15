@@ -69,6 +69,7 @@ pode ver dados financeiros**. Todo o resto decorre dessas duas.
 | **GitHub como banco cifrado** | Grátis, versionado e auditável; um commit por sincronização. |
 | **Chave selada pela digital (WebAuthn PRF)** | Nada legível nos servidores — nem no aparelho. |
 | **Notificações vazias** | O serviço de push nunca vê conteúdo; o celular decifra e escreve o texto. |
+| **Um sistema visual, escrito** | "Carvão": carvão quente + laranja brasa, uma resposta por tela, cartões que deslizam — sem verde e sem tema claro. Ver [DESIGN.md](DESIGN.md). |
 
 Em profundidade: [docs/architecture.pt-BR.md](docs/architecture.pt-BR.md).
 

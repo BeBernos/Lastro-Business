@@ -67,6 +67,7 @@ Lastro is built around one unusual idea — **the AI's monthly dashboard is the 
 | **GitHub as an encrypted database** | Free, versioned and auditable; one commit per sync. |
 | **Fingerprint-sealed key (WebAuthn PRF)** | Nothing readable on servers — or on the device. |
 | **Empty push notifications** | The push service never sees content; the phone decrypts and writes the text. |
+| **One design system, written down** | "Carvão": warm charcoal + ember orange, one answer per screen, swipeable cards — no green, no light theme. See [DESIGN.md](DESIGN.md). |
 
 Deep dive: [docs/architecture.md](docs/architecture.md).
 
