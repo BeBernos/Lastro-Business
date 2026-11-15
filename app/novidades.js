@@ -2,6 +2,15 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '9.28.0': [
+    ['Interface nova: gráficos no desenho novo', 'O saldo do mês, a evolução da carteira e os meses fechados ganharam gráficos novos: sem grade, uma linha âmbar que se desenha ao abrir, o ponto de hoje aceso e os valores só onde importam. Tocar ou arrastar continua mostrando cada dia.', 'nova'],
+    ['Telas mais enxutas', 'Investimentos: ativos, estratégia com o próximo passo, evolução e renda juntas, metas em linhas e os movimentos numa fileira de ícones. Listas mais curtas no Cartão e no Caixa (com "Ver todas"). Nas Análises, só o que pede atenção aparece aberto — o que está certo vira uma linha.', 'melhoria'],
+    ['Mais vida ao tocar', 'Os cartões e as linhas afundam um pouco ao toque, os blocos do Hoje entram em cascata e o ícone da aba acende. No Tudo do painel, as tabelas viraram listas que cabem no celular.', 'melhoria'],
+  ],
+  '9.27.0': [
+    ['Interface nova: o que você pediu', 'Abertura: sem a janela da digital pulando sozinha nem o botão dela — é só tocar na tela. Barra embaixo na ordem de prioridade: Hoje, Caixa, ＋, Cartão e Investimentos; o ⋯ (menu) foi para o topo. Hoje: o saldo do banco em primeiro e, embaixo, as contas a pagar (com o pago) e as últimas compras. Investimentos: cartões menores e "Ver menos" depois do "Ver todos". Cartão: o seletor de mês menor e sem a fatura repetida (o carrossel mostra só as próximas).', 'melhoria'],
+    ['Tudo do painel, organizado', 'O Tudo do painel de cada tela virou um índice limpo: os assuntos agrupados (Fatura, Gastos, Parcelas…), uma linha por bloco com um resumo — toque para abrir ali mesmo. Nada sumiu. No menu ⋯, o Caixa saiu (agora está na barra).', 'melhoria'],
+  ],
   '9.26.0': [
     ['Interface nova: as telas redesenhadas do zero', 'Com a interface nova ligada, Investimentos, Cartão, Caixa e Análises foram redesenhados do zero no jeito que você escolheu, "Carteira de cartões": o que importa vira um cartão que você desliza — cada ativo com o código grande, cada fatura (a aberta em brasa e as próximas), cada mês dos próximos 12, cada análise do Claude e cada ativo no mercado. Embaixo, barras agora × alvo (estratégia, orçamento por categoria, a nota de saúde), listas com ícone (compras, contas a pagar com o botão de pago, recorrentes) e o que fazer agora. O topo das Análises mostra a nota do mês.', 'nova'],
     ['Nada sumiu: Tudo do painel', 'No fim de cada tela, "Tudo do painel" abre tudo o que o painel do Claude mostra sobre o assunto, inteiro — e "Voltar" volta ao desenho novo.', 'melhoria'],

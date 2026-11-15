@@ -9,7 +9,7 @@ const c = { saldo: 2282.56, diasRest: 16, itau: 2812, caixa: 2127 };
 const base = { c, limite: 5600, venceDia: 7, mesProx: 12, investido: { total: 182620, mercado: 1400 }, faixas: [], github: true };
 
 const h = htmlHojeV10(base);
-confere('quatro blocos com os destinos', /data-aba="cartao"[\s\S]*data-aba="cartao"[\s\S]*data-ir-aba="mes\/geral"[\s\S]*data-aba="carteira"/.test(h), h.slice(0, 300));
+confere('quatro blocos com os destinos (v9.27: o banco primeiro)', /data-ir-aba="mes\/geral"[\s\S]*data-aba="cartao"[\s\S]*data-aba="cartao"[\s\S]*data-aba="carteira"/.test(h), h.slice(0, 300));
 confere('textos dos blocos', ['Fatura', 'Cabe no cartão', 'No banco', 'Investido', 'vence 07/12'].every(t => h.includes(t)));
 const semCart = htmlHojeV10({ ...base, investido: null });
 confere('carteira não carregada: aviso e sem destino', semCart.includes('Carteira ainda não carregada') && !semCart.includes('data-aba="carteira"'));

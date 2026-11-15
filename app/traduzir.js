@@ -262,7 +262,10 @@ function tabela(el, ctx) {
   // tabela compacta só quando as colunas de valor são curtas (números); texto longo vira cartãozinho
   const larguraValores = Array.from({ length: ncol - 1 }, (_, i) => Math.max(...linhas.map(l => limpo(l.children[i + 1]?.textContent || '').length)));
   const compacta = larguraValores.every(n => n <= 16) && larguraValores.reduce((a, b) => a + b, 0) <= 40;
-  if (ncol <= 4 && compacta) { // tabela compacta: nome à esquerda, números alinhados à direita
+  // v9.28: na interface nova não há tabela estreita — cada linha vira um item de lista (título + rótulo: valor), que cabe
+  // no celular sem quebrar palavra ("CATEGORI / A") nem espremer números
+  const v10 = typeof document !== 'undefined' && document.documentElement.classList.contains('v10');
+  if (ncol <= 4 && compacta && !v10) { // tabela compacta: nome à esquerda, números alinhados à direita
     const colunas = `grid-template-columns:minmax(5.5em,1fr)${' auto'.repeat(ncol - 1)}`;
     // v9.9.6: com 3 colunas de valor, o "R$" repetido não cabia no celular com a fonte do Android maior (as colunas
     // encostavam e a última saía do cartão) — tira o "R$" das células e diminui um pouco a letra

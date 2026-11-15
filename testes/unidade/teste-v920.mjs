@@ -8,7 +8,7 @@ const nb = s => s.replace(/ /g, ' ');
 const c = { itau: 3000, parcelas: 1000, agendado: 500, gastoLivre: 1500, itauProjetado: 4200, diaEstouro: 0, limiteJaRompido: false, margemAteLimite: 2600, tetoPorDia: 162.5, diasRest: 16 };
 
 const h = nb(htmlComposicaoV10({ c, limite: 5600 }));
-confere('três partes e o que cabe', ['Parcelas', 'Fixos', 'Gastos do mês', 'Ainda cabe'].every(t => h.includes(t)), h.slice(0, 400));
+confere('três partes; o que cabe só na barra (v9.28: o topo já diz)', ['Parcelas', 'Fixos', 'Gastos do mês'].every(t => h.includes(t)) && !h.includes('Ainda cabe') && /class="livre"/.test(h), h.slice(0, 400));
 confere('larguras proporcionais ao limite', /width:17\.9%/.test(h) && /width:8\.9%/.test(h) && /width:26\.8%/.test(h) && /width:46\.4%/.test(h), h.match(/width:[\d.]+%/g)?.join());
 confere('ritmo dentro do limite', h.includes('No ritmo atual fecha em R$ 4.200') && !h.includes('passa do limite'));
 confere('cabe por dia', h.includes('R$ 162,50 por dia'));
