@@ -5,7 +5,7 @@
 // (a versão nova do app passa a valer na próxima abertura).
 // data/ (painel publicado) nunca passa pelo cache — o app guarda a cópia dele cifrada.
 
-const CACHE = 'painel-app-v109';
+const CACHE = 'painel-app-v110';
 const ARQUIVOS = [
   './', 'app.js', 'banco.js', 'cofre.js', 'painel.js', 'resumo.js', 'telas.js', 'graficos.js', 'traduzir.js', 'carteira.js', 'cotacoes.js', 'trava.js', 'protecao.js', 'lancamentos.js', 'sms.js', 'categorias.js', 'investimentos.js', 'v8.js', 'v8.css', 'extrato.js', 'conciliar.js', 'binance.js', 'pluggy.js', 'xlsx.js', 'escolha.js', 'parcial.js', 'novidades.js', 'ui.js', 'v10.js', 'carvao.js', 'v10.css', 'integracoes.js', 'lancar.js', 'claude.js', 'ficha.js', 'modo.js', 'estrategia.js', 'indicadores.js', 'liquidez.js', 'rendafixa.js', 'projeto.txt', 'fontes/bricolage.woff2', 'fontes/figtree.woff2', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/badge-96.png', 'icons/logo.svg',

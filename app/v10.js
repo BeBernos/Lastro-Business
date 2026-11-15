@@ -17,7 +17,7 @@ export const DESTINOS = [
   { id: 'hoje', aba: 'inicio', nome: 'Hoje', icone: '<path d="M4 10.5 12 4l8 6.5V20H4z"/>' },
   { id: 'caixa', aba: 'mes', nome: 'Caixa', icone: '<path d="M5 8.5V7a2 2 0 0 1 2-2h10"/><rect x="4" y="8.5" width="16" height="10.5" rx="2.5"/><path d="M16 13.75h.01"/>' },
   { id: 'cartao', aba: 'cartao', nome: 'Cartão', icone: '<rect x="3" y="5.5" width="18" height="13" rx="3"/><path d="M3 10h18M7 15h4"/>' },
-  { id: 'invest', aba: 'carteira', nome: 'Investimentos', icone: '<path d="M4 19V5M4 19h16M8 15l3-4 3 2 5-6"/>' },
+  { id: 'invest', aba: 'carteira', nome: 'Carteira', icone: '<path d="M4 19V5M4 19h16M8 15l3-4 3 2 5-6"/>' },
 ];
 const MAIS = '<circle cx="5.5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18.5" cy="12" r="1.4"/>';
 
@@ -51,7 +51,7 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
     let s = { estado: null, fiel: null };
     try { s = saudeCarteira(alocacaoVsAlvo(cart), reserva(cart)); } catch { /* carteira sem estratégia */ }
     const tom = { Saudável: 'bom', Atenção: 'atencao', 'Fora do plano': 'ruim' }[s.estado];
-    return { ...base, titulo: 'Investimentos', sub: `posição de ${p.data.slice(8, 10)}/${p.data.slice(5, 7)}`, eyebrow: 'Patrimônio investido', valor: p.total,
+    return { ...base, titulo: 'Carteira', sub: `posição de ${p.data.slice(8, 10)}/${p.data.slice(5, 7)}`, eyebrow: 'Patrimônio investido', valor: p.total,
       pilulas: [...(s.estado ? [{ texto: s.estado, tom }] : []), { texto: `${brl0(Math.abs(mercado))} no mês`, seta: mercado < 0 ? 'cai' : 'sobe' }, ...(s.fiel != null ? [`${s.fiel}% fiel`] : [])] };
   }
   if (aba === 'cartao') {
@@ -207,7 +207,7 @@ export function htmlAberturaV10({ soSenha = false, agora = new Date(), usuario =
     <span class="abertura-oi">${esc(saudacao(agora))}</span>`;
   return `<div class="abertura-v10">
     ${soSenha ? `<div class="abertura-toque">${marca}<span class="abertura-sub">Digite a senha da família para abrir.</span></div>`
-      : `<button type="button" class="abertura-toque" id="destravar" aria-label="Abrir o Lastro com a digital">${marca}<span class="abertura-dica">${ic(DIGITAL)}Toque para abrir</span></button>`}
+      : `<button type="button" class="abertura-toque" id="destravar" aria-label="Abrir o Lastro com a digital">${marca}<span class="abertura-dica">${ic(DIGITAL)}</span></button>`}
     <div class="abertura-acoes">
       <form id="formTrava"${soSenha ? '' : ' hidden'}>
         ${usuario}

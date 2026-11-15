@@ -2055,16 +2055,36 @@ const IC_TUDO = {
   aviso: ICONE_IDEIA,
   texto: '<path d="M5 6h14M5 11h14M5 16h9"/>',
 };
+// blocos do painel que a tela nova já mostra inteiros (o mercado por ativo vira o carrossel das Análises)
+const REPETE_TELA_V10 = /class="mercado-acao"/;
+// "<section>…</section><section>…</section>" → um pedaço por cartão de primeiro nível (texto solto vai com o seguinte)
+function cartoesSoltos(html) {
+  const out = [];
+  let prof = 0, ini = 0;
+  for (const t of String(html).matchAll(/<(\/?)section\b[^>]*>/g)) {
+    if (!t[1]) prof++;
+    else if (--prof === 0) { out.push(html.slice(ini, t.index + t[0].length)); ini = t.index + t[0].length; }
+  }
+  const resto = html.slice(ini);
+  if (resto.trim()) out.push(resto);
+  return out;
+}
 function itemTudo(html, titulo) {
   // bloco que a leitura recolhia ("Toque para abrir"): aqui a própria linha já abre — tira a dobra de dentro
   const rec = String(html).match(/^\s*<details class="dobra"[^>]*>\s*<summary>[\s\S]*?<\/summary>([\s\S]*)<\/details>\s*$/);
   if (rec) html = rec[1];
-  const t = titulo || textoLimpo(html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/)?.[1] || html.match(/class="(?:rotulo|pn-h)"[^>]*>([\s\S]*?)<\/(?:p|b)>/)?.[1]) || 'Indicadores';
-  const sub = textoLimpo(html.match(/class="cartao-sub"[^>]*>([\s\S]*?)<\/p>/)?.[1] || html.match(/class="hero-sub"[^>]*>([\s\S]*?)<\/p>/)?.[1]);
+  const t = titulo || textoLimpo(html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/)?.[1] || html.match(/class="(?:rotulo|pn-h|pn-dobra-t)"[^>]*>([\s\S]*?)<\/(?:p|b|span)>/)?.[1] || html.match(/class="link-extrato"[\s\S]*?<b>([\s\S]*?)<\/b>/)?.[1]) || 'Indicadores';
+  const sub = textoLimpo(html.match(/class="cartao-sub"[^>]*>([\s\S]*?)<\/p>/)?.[1] || html.match(/class="hero-sub"[^>]*>([\s\S]*?)<\/p>/)?.[1] || html.match(/class="link-extrato"[\s\S]*?<small>([\s\S]*?)<\/small>/)?.[1]);
   const tipo = /pn-tab|<table|pn-registros/.test(html) ? 'tabela' : /<svg[^>]*class="[^"]*(grafico|g-)/.test(html) || /barrash|colunas|hero-grafico/.test(html) ? 'grafico'
     : /class="tiles"|pn-solto/.test(html) ? 'numeros' : /pn-callout|pn-alerta|analise/.test(html) ? 'aviso' : 'texto';
   const resumo = /^toque para abrir$/i.test(sub) ? '' : sub;
-  return { titulo: t, sub: resumo.length > 90 ? `${resumo.slice(0, 88)}…` : resumo, tipo, html: html.replace(/<details(?![^>]*\sopen)([^>]*class="[^"]*(?:dobra|comp-grupo)[^"]*")/g, '<details open$1') };
+  // v9.29: aberto, o bloco não repete o nome da linha (título do aviso igual ao da linha) nem diz "Toque para abrir"
+  html = html.replace(/<p class="cartao-sub">\s*Toque para abrir\s*<\/p>/gi, '');
+  const igual = [...html.matchAll(/<(\w+) class="pn-h"[^>]*>([\s\S]*?)<\/\1>/g)].find(x => textoLimpo(x[2]).toLowerCase() === t.toLowerCase());
+  if (igual) html = html.replace(igual[0], '');
+  // dobra única (ou grupos da fatura) já vem aberta; várias dobras (ex.: ano a ano) ficam fechadas para tocar uma a uma
+  const varias = (html.match(/<details[^>]*class="[^"]*\bdobra\b/g) || []).length > 1;
+  return { titulo: t, sub: resumo.length > 90 ? `${resumo.slice(0, 88)}…` : resumo, tipo, html: html.replace(varias ? /<details(?![^>]*\sopen)([^>]*class="[^"]*comp-grupo[^"]*")/g : /<details(?![^>]*\sopen)([^>]*class="[^"]*(?:dobra|comp-grupo)[^"]*")/g, '<details open$1').replace(/<details(?=[^>]*class="[^"]*\bdobra\b)/g, varias ? '<details data-varias' : '<details data-unica') };
 }
 export function tudoV10(aba, grupos, doLugar, abertos, args = []) {
   const parte = (f, padrao) => (typeof f === 'function' ? f(...args) : f || padrao?.(...args) || []);
@@ -2074,12 +2094,14 @@ export function tudoV10(aba, grupos, doLugar, abertos, args = []) {
       <summary><span class="ic-tile">${svg(IC_TUDO[it.tipo])}</span><span class="li-txt"><b>${esc(it.titulo)}</b>${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span>${svg('<path d="m9 6 6 6-6 6"/>', 'tudo-seta')}</summary>
       <div class="tudo-corpo">${it.html}</div>
     </details>`;
+  // peças do app: uma linha por cartão (contas do mês = entradas, saídas, investimentos…), sem os botões de lançar
+  const doApp = l => l.filter(Boolean).flatMap(cartoesSoltos).filter(h => !/class="cartao contas-acoes"|class="acoes-rapidas"/.test(h)).map(h => itemTudo(h));
   const blocos = grupos.map(([, chave, antes, depois], i) => {
     const itens = [
-      ...parte(antes, ANTES[chave]).filter(Boolean).map(h => itemTudo(h)),
-      ...lugares[i].filter(b => !b.explicacao).map(b => itemTudo(b.html, b.titulo)),
-      ...parte(depois, DEPOIS[chave]).filter(Boolean).map(h => itemTudo(h)),
-    ];
+      ...doApp(parte(antes, ANTES[chave])),
+      ...lugares[i].filter(b => !b.explicacao && !REPETE_TELA_V10.test(b.html || '')).map(b => itemTudo(b.html, b.titulo)),
+      ...doApp(parte(depois, DEPOIS[chave])),
+    ].filter(it => textoLimpo(it.html).length > 2);
     if (!itens.length) return '';
     return `${secaoCv(nomes[chave] || 'Outros', { id: `v10-${chave.replace('/', '-')}`, contagem: itens.length })}<div class="tudo-lista">${itens.map((it, j) => linha(it, `tudo:${chave}:${j}`)).join('')}</div>`;
   }).filter(Boolean);
@@ -2088,24 +2110,29 @@ export function tudoV10(aba, grupos, doLugar, abertos, args = []) {
   return blocos.join('') || '<p class="cv-nota">Nada do painel sobre este assunto.</p>';
 }
 
-// Cartão (v9.20): composição → compras → por categoria → próximas faturas. Investimentos (v9.21): posição de hoje →
-// roteiro (o próximo passo) → metas e movimentar → estratégia → ativos → renda → evolução (o patrimônio e o estado ficam
-// no topo). Caixa e Análises (v9.24): a mesma ideia, uma seção por sub-aba de antes.
+// v9.29: o que vai para "Tudo do painel" — um grupo por sub-aba de antes. As peças do app que as telas novas já mostram
+// inteiras (destaques, botões de lançar, metas, movimentar, ativos, nota, análises, mercado, conferência, 12 meses) ficam
+// de fora ([] = nenhuma); o resto (contas do mês com edição, recorrentes, estratégia, renda fixa…) continua aqui.
 export const LEITURAS_V10 = {
   cartao: [
-    ['', 'cartao/fatura', (m, dados, ctx, opcoes) => [secao(() => htmlComposicaoV10({ c: m.c, limite: dados.regras?.limiteSaudavelItau || 0 })), secao(() => composicaoCartao(dados, opcoes))]],
-    ['Por categoria', 'cartao/gastos', (m, dados, ctx, opcoes) => [secao(() => orcamentoCartao(dados, ctx, opcoes))]],
-    ['Próximas faturas', 'cartao/parcelas'],
+    ['', 'cartao/fatura', (m, dados, ctx, opcoes) => [secao(() => composicaoCartao(dados, opcoes))]],
+    ['Por categoria', 'cartao/gastos'],
+    ['Próximas faturas', 'cartao/parcelas', (m, dados, ctx, opcoes) => [secao(() => recorrentesCartao(dados, opcoes))]],
   ],
   carteira: [
-    ['', 'carteira/visao', (...a) => ANTES['carteira/visao'](...a).slice(0, 1), (...a) => ANTES['carteira/visao'](...a).slice(1)],
+    ['', 'carteira/visao', []],
     ['Estratégia', 'carteira/aloc'],
-    ['Seus ativos', 'carteira/ativos'],
+    ['Seus ativos', 'carteira/ativos', (m, dados, ctx, opcoes) => [opcoes.carteira ? secao(() => ganhosPerdas(opcoes.carteira, opcoes.abertos)) : '']],
     ['Renda', 'carteira/renda'],
     ['Evolução', 'carteira/futuro'],
   ],
-  mes: [['', 'mes/geral'], ['Contas a pagar', 'mes/agenda'], ['Contas do mês', 'mes/contas'], ['Próximos 12 meses', 'mes/meses']],
-  analises: [['', 'analises/saude'], ['Mercado', 'analises/mercado'], ['Histórico', 'analises/historico'], ['Conferir caixa × carteira', 'analises/conferir']],
+  mes: [
+    ['', 'mes/geral', []],
+    ['Contas a pagar', 'mes/agenda', []],
+    ['Contas do mês', 'mes/contas', (m, dados, ctx, opcoes) => [secao(() => contasDoMes(dados, ctx, opcoes, m)), secao(() => agendadosFuturos(dados, opcoes)), secao(() => mesesFechadosCartao(dados, opcoes))]],
+    ['Próximos 12 meses', 'mes/meses', []],
+  ],
+  analises: [['', 'analises/saude', []], ['Mercado', 'analises/mercado'], ['Histórico', 'analises/historico'], ['Conferir caixa × carteira', 'analises/conferir', []]],
 };
 const VAZIO_V10 = { cartao: 'Nada no cartão por enquanto.', carteira: 'Nada nos investimentos por enquanto.', mes: 'Nada no caixa por enquanto.', analises: 'Nenhuma análise por enquanto.' };
 const ehRoteiro = b => /class="roteiro-n"/.test(b.html || ''); // o bloco "steps" do painel, trocado por roteiroCarteira
