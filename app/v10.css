@@ -59,13 +59,13 @@ html.v10 .abas.v10-nav { left: 50%; right: auto; top: auto; bottom: calc(var(--b
   display: flex; align-items: center; gap: 0; padding: 6px; border-radius: 26px; transform: translateX(-50%);
   background: rgba(20, 16, 13, .97); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border: 1px solid rgba(255, 236, 214, .1);
   box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .7), 0 0 0 10px rgba(12, 10, 9, .55); }
-html.v10 .v10-nav .v10-aba { min-width: 58px; height: 54px; padding: 0 6px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--v10-mut); }
+html.v10 .v10-nav .v10-aba { flex: none; width: 64px; min-width: 0; height: 54px; padding: 0; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--v10-mut); }
 html.v10 .v10-nav .v10-aba span { font: 600 12px/1 var(--sans); white-space: nowrap; }
 html.v10 .v10-nav .v10-aba svg { width: 20px; height: 20px; }
 html.v10 .v10-nav .v10-aba::before { display: none; }
 html.v10 .v10-nav .v10-aba.on { color: #fff; background: rgba(255, 236, 214, .09); }
 html.v10 .v10-nav .v10-aba.on svg { color: #ffa463; }
-html.v10 .v10-mais { width: 52px; height: 52px; margin: 0 4px; border-radius: 50%; display: grid; place-items: center; color: #1d0d05;
+html.v10 .v10-mais { flex: none; width: 54px; height: 54px; margin: 0 7px; border-radius: 50%; display: grid; place-items: center; color: #1d0d05;
   background: var(--v10-brasa); border: 0; }
 html.v10 .v10-mais svg { width: 24px; height: 24px; stroke-width: 2.4; }
 html.v10 .resumo.abas-fora .v10-nav { transform: translate(-50%, calc(100% + 24px + var(--base, 0px))); }
@@ -172,8 +172,8 @@ html.v10 .abertura-toque:focus-visible { outline: none; }
 html.v10 .abertura-toque:focus-visible .abertura-marca img { outline: 2px solid var(--v10-brasa); outline-offset: 6px; }
 html.v10 .abertura-sub { margin: 8px 0 0; font-size: 14px; color: var(--v10-mut); }
 html.v10 .abertura-acoes { margin-top: auto; width: 100%; max-width: 360px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-html.v10 .abertura-dica { display: inline-flex; align-items: center; gap: 7px; margin-top: 26px; font-size: 13.5px; color: var(--v10-tx2); }
-html.v10 .abertura-dica .ic-cv, html.v10 .abertura-dica svg { width: 18px; height: 18px; color: #ffa463; }
+html.v10 .abertura-dica { display: grid; place-items: center; width: 58px; height: 58px; margin-top: 30px; border-radius: 50%; color: #ffa463; background: rgba(255, 122, 53, .08); border: 1px solid rgba(255, 122, 53, .4); } /* v9.29: só a marca da digital, sem texto */
+html.v10 .abertura-dica .ic-cv, html.v10 .abertura-dica svg { width: 28px; height: 28px; color: #ffa463; }
 html.v10 .abertura-v10 form { width: 100%; text-align: left; }
 html.v10 .abertura-v10 .link { color: var(--v10-tx2); }
 
@@ -422,13 +422,13 @@ html.v10 .barras-cv.compacto .ba-val { grid-column: 3; grid-row: 1; text-align: 
 html.v10 .barras-cv.compacto .ba-nota { grid-column: 1 / -1; margin-top: 0; }
 html.v10 .passo-cv { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 10px 12px; border-radius: 22px;
   background: linear-gradient(90deg, rgba(255, 122, 53, .16), rgba(255, 122, 53, .04)); border: 1px solid rgba(255, 122, 53, .35); }
-html.v10 .passo-txt { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 0; text-align: left; font: inherit; color: var(--v10-tx); background: none; border: 0; }
-html.v10 .passo-txt > span:last-child { min-width: 0; }
-html.v10 .passo-txt small { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; color: #ffa463; }
-html.v10 .passo-txt .li-seta { width: 16px; height: 16px; flex: none; color: var(--v10-mut); }
-html.v10 .passo-txt > span:last-of-type { flex: 1; }
+html.v10 .passo-cv .passo-txt { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 0; text-align: left; font: inherit; color: var(--v10-tx); background: none; border: 0; }
+html.v10 .passo-cv .passo-txt > span:last-child { min-width: 0; }
+html.v10 .passo-cv .passo-txt small { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; color: #ffa463; }
+html.v10 .passo-cv .passo-txt .li-seta { width: 16px; height: 16px; flex: none; color: var(--v10-mut); }
+html.v10 .passo-cv .passo-txt > span:last-of-type { flex: 1; }
 html.v10 .barras-cv.compacto .ba-rot > span:last-child { white-space: normal; overflow: visible; line-height: 1.25; } /* nome longo quebra em 2 linhas, não corta */
-html.v10 .passo-txt b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14.5px; font-weight: 600; line-height: 1.3; }
+html.v10 .passo-cv .passo-txt b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14.5px; font-weight: 600; line-height: 1.3; }
 html.v10 .acoes-cv.grade2 { display: grid; grid-template-columns: 1fr 1fr; }
 html.v10 .rotulo-cv { margin: 14px 4px 6px; font-size: 12.5px; font-weight: 600; color: var(--v10-mut); }
 html.v10 .numeros-cv > div:only-child { grid-column: 1 / -1; }
@@ -465,8 +465,6 @@ html.v10 :is(.folha-v10, #folha) .tudo-corpo :is(.cartao, .pn-solto, .hero) { ba
 html.v10 :is(.folha-v10, #folha) .tudo-corpo .cartao + .cartao { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--v10-linha); }
 html.v10 :is(.folha-v10, #folha) .tudo-corpo .cartao-topo > h2:first-child { display: none; }
 html.v10 :is(.folha-v10, #folha) .tudo-corpo .cartao-topo:has(> h2:only-child) { display: none; }
-html.v10 :is(.folha-v10, #folha) .tudo-corpo .pn-solto .tile { background: var(--v10-fundo2); border-radius: 14px; }
-html.v10 :is(.folha-v10, #folha) .tudo-corpo .pn-solto .tiles { background: none; gap: 8px; }
 html.v10 :is(.folha-v10, #folha) .tudo-corpo .hero .hero-valor { font-size: 28px; }
 
 /* v9.28: os gráficos no Carvão (areaCv, colunasCv) */
@@ -509,9 +507,35 @@ html.v10 .ok-cv small { display: block; margin-top: 2px; font-size: 12.5px; line
 html.v10 .bloco-cv > .link-cv { display: block; margin-top: 8px; }
 
 /* v9.28 (revisão): o bloco aberto no "Tudo do painel" fica recuado sob o texto, com um filete; dobras internas já abertas */
-html.v10 .tudo-corpo { margin-left: 50px; padding: 0 0 16px 12px; border-left: 1px solid var(--v10-linha); }
-html.v10 :is(.folha-v10, #folha) .tudo-corpo details > summary { pointer-events: none; }
-html.v10 :is(.folha-v10, #folha) .tudo-corpo details > summary::after { display: none; }
+/* v9.29: sem recuo — o bloco aberto ocupa a largura toda da linha (o Bruno achou desalinhado) */
+html.v10 .tudo-corpo { margin: 0; padding: 4px 0 18px; border-top: 1px solid var(--v10-linha); }
+html.v10 :is(.folha-v10, #folha) .tudo-corpo :is(details[data-unica], details.comp-grupo) > summary { pointer-events: none; }
+html.v10 :is(.folha-v10, #folha) .tudo-corpo :is(details[data-unica], details.comp-grupo) > summary::after { display: none; }
+
+/* v9.29 — o que abre no "Tudo do painel", peça por peça no Carvão (pedido do Bruno: "cards antigos, desalinhado") */
+/* números soltos: grade de duas colunas sem caixinhas, como os números das telas novas */
+html.v10 :is(.folha-v10, #folha) .tudo-corpo .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 16px; background: none; padding: 8px 0 4px; }
+html.v10 :is(.folha-v10, #folha) .tudo-corpo .tile { background: none; border: 0; border-radius: 0; padding: 0; }
+html.v10 :is(.folha-v10, #folha) .tudo-corpo .tile .rotulo { color: var(--v10-mut); font-size: 12.5px; }
+html.v10 :is(.folha-v10, #folha) .tudo-corpo .tile-valor { font-size: 21px; margin-top: 4px; letter-spacing: -.02em; }
+html.v10 :is(.folha-v10, #folha) .tudo-corpo .tile-pe { font-size: 12px; margin-top: 3px; line-height: 1.4; }
+/* avisos e callouts: linhas com filete (ícone + texto), nada de caixa dentro do bloco */
+html.v10 :is(.folha-v10, #folha) .tudo-corpo :is(.pn-callout, .pn-alerta) { background: none; border: 0; border-top: 1px solid var(--v10-linha); border-radius: 0; padding: 12px 0; }
+html.v10 :is(.folha-v10, #folha) .tudo-corpo :is(.pn-callout, .pn-alerta):first-child { border-top: 0; padding-top: 6px; }
+html.v10 :is(.folha-v10, #folha) .tudo-corpo .pn-alertas { gap: 0; }
+/* o total que ficava solto quando o título some (ex.: Entradas, O que compõe a fatura); "Editar" vai para a direita */
+html.v10 :is(.folha-v10, #folha) .tudo-corpo .cartao-topo:has(> h2:first-child) { display: flex; justify-content: flex-end; margin: 4px 0 2px; }
+html.v10 :is(.folha-v10, #folha) .tudo-corpo .cartao-topo:has(> h2:first-child) > b { margin-right: auto; font-size: 20px; letter-spacing: -.02em; }
+/* gráficos antigos: sem grade, colunas arredondadas */
+html.v10 :is(.folha-v10, #folha) .tudo-corpo svg.grafico .g-grade { display: none; }
+html.v10 :is(.folha-v10, #folha) .tudo-corpo svg.grafico rect.g-col { rx: 4px; }
+/* escolhas (meses, cenários): pílula em brasa, nunca branca */
+html.v10 :is(.folha-v10, #folha) .tudo-corpo .pn-rolagem .pn-opcao { background: var(--v10-fundo2); border: 1px solid var(--v10-linha); color: var(--v10-tx2); }
+html.v10 :is(.folha-v10, #folha) .tudo-corpo :is(.pn-rolagem, .segmento) .pn-opcao.on { background: var(--accent-soft); border-color: rgba(255, 122, 53, .45); color: #ffa463; box-shadow: none; }
+/* dobra única dentro do bloco: o título dela repete a linha — some (já vem aberta) */
+html.v10 :is(.folha-v10, #folha) .tudo-corpo .dobra-grupo > details.dobra:only-of-type > summary { display: none; }
+/* atalho (Imposto de Renda): a linha já diz o nome — fica só o botão */
+html.v10 :is(.folha-v10, #folha) .tudo-corpo .link-extrato { width: 100%; background: var(--v10-fundo2); border: 1px solid var(--v10-linha); border-radius: 18px; padding: 12px 14px; }
 
 html.v10 .bloco-v10 small svg, html.v10 .topo-pilulas span svg { display: inline-block; width: 14px; height: 14px; flex: none; vertical-align: -2px; margin-right: 3px; }
 html.v10 .topo-pilulas span { display: inline-flex; align-items: center; }
@@ -530,9 +554,9 @@ html.v10 .topo-pilulas span.tom-atencao svg { color: var(--v10-brasa); } html.v1
   @keyframes v10-surge { from { opacity: 0; } }
   @keyframes v10-cresce { from { transform: scaleY(.05); } }
   /* v9.28: o toque afunda um pouco (tudo o que se toca), os blocos do Hoje e as faixas entram em cascata, o ícone da aba acende */
-  html.v10 :is(.cartao-cv, .bloco-v10, .li-corpo, .acoes-ic-cv button, .tudo-item > summary, .passo-txt, .tudo-cv, .li-acao, .acoes-cv button) { transition: transform .18s cubic-bezier(.2, .8, .2, 1), background-color .2s; }
+  html.v10 :is(.cartao-cv, .bloco-v10, .li-corpo, .acoes-ic-cv button, .tudo-item > summary, .passo-cv .passo-txt, .tudo-cv, .li-acao, .acoes-cv button) { transition: transform .18s cubic-bezier(.2, .8, .2, 1), background-color .2s; }
   html.v10 :is(.cartao-cv, .bloco-v10, .tudo-cv):active { transform: scale(.97); }
-  html.v10 :is(.li-corpo, .tudo-item > summary, .passo-txt):active { transform: scale(.985); }
+  html.v10 :is(.li-corpo, .tudo-item > summary, .passo-cv .passo-txt):active { transform: scale(.985); }
   html.v10 :is(.acoes-ic-cv button, .li-acao, .acoes-cv button):active { transform: scale(.93); }
   html.v10 .blocos-v10 > * { animation: v10-sobe-bloco .5s cubic-bezier(.16, 1, .3, 1) both; }
   html.v10 .blocos-v10 > :nth-child(2) { animation-delay: 50ms; } html.v10 .blocos-v10 > :nth-child(3) { animation-delay: 100ms; } html.v10 .blocos-v10 > :nth-child(4) { animation-delay: 150ms; }
@@ -565,3 +589,22 @@ html.v10 .topo-pilulas span.tom-atencao svg { color: var(--v10-brasa); } html.v1
   @keyframes v10-sobe { from { transform: translateY(36px); opacity: 0; } to { transform: none; opacity: 1; } }
   @keyframes v10-acende { from { opacity: 0; filter: brightness(.6); } to { opacity: 1; filter: none; } }
 }
+
+/* v9.29: "Levar para o Claude" no Carvão — passos como blocos escuros, o de agora com contorno de brasa, o arquivo embaixo */
+html.v10 #folha .passos-lv { gap: 10px; }
+html.v10 #folha .passo-lv { background: var(--v10-bloco); border: 1px solid var(--v10-linha); border-radius: 20px; padding: 14px 16px; }
+html.v10 #folha .passo-lv.agora { border-color: rgba(255, 122, 53, .55); box-shadow: none; background: linear-gradient(180deg, rgba(255, 122, 53, .08), rgba(255, 122, 53, 0) 70%), var(--v10-bloco); }
+html.v10 #folha .passo-lv.trava { opacity: .55; }
+html.v10 #folha .passo-cab b { font: 650 15.5px/1.3 var(--display); color: var(--v10-tx); }
+html.v10 #folha .passo-lv .etapa-ic { background: var(--v10-fundo2); color: var(--v10-tx2); }
+html.v10 #folha .passo-lv.agora .etapa-ic { background: var(--v10-brasa); color: #1d0d05; }
+html.v10 #folha .passo-lv.feito .etapa-ic { background: rgba(255, 179, 71, .14); color: #ffb347; }
+html.v10 #folha .passo-txt { display: block; color: var(--v10-tx2); font-size: 14px; line-height: 1.5; }
+html.v10 #folha .passo-txt small { display: block; margin-top: 6px; font-size: 12px; color: var(--v10-mut); word-break: break-all; }
+html.v10 #folha .passo-corpo { display: grid; gap: 10px; margin-top: 10px; }
+html.v10 #folha .passo-corpo .link { justify-self: center; }
+html.v10 #folha .passo-trava { color: var(--v10-mut); font-size: 13px; margin: 6px 0 0; }
+html.v10 #folha .etapas-fech button { background: var(--v10-bloco); border: 1px solid var(--v10-linha); border-radius: 18px; }
+html.v10 #folha .etapas-fech li.aqui button { border-color: rgba(255, 122, 53, .55); }
+html.v10 #folha .etapa-agora { color: var(--v10-tx2); }
+html.v10 #folha .etapa-agora b { color: var(--v10-tx); }

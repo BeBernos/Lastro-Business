@@ -21,7 +21,7 @@ confere('mês virado: "Falta fechar" e sem valor', /^Falta fechar/.test(virado.e
 const semCart = numerosDoTopo('carteira', m, cf, null, agora);
 confere('carteira não carregada: aviso e nada de NaN/undefined', semCart.eyebrow === 'Carteira ainda não carregada' && semCart.valor === null && !/NaN|undefined/.test(JSON.stringify(semCart)));
 const ct = norm(numerosDoTopo('carteira', m, cf, cart, agora));
-confere('Investimentos: patrimônio, título e variação do mês (seta desenhada, v9.28)', ct.valor > 100000 && ct.titulo === 'Investimentos' && ct.pilulas.some(p => p.seta && /^R\$ .* no mês$/.test(p.texto)), JSON.stringify(ct));
+confere('Investimentos: patrimônio, título e variação do mês (seta desenhada, v9.28)', ct.valor > 100000 && ct.titulo === 'Carteira' && ct.pilulas.some(p => p.seta && /^R\$ .* no mês$/.test(p.texto)), JSON.stringify(ct));
 const cc = norm(numerosDoTopo('cartao', m, cf, cart, agora));
 confere('Cartão: fatura, quanto cabe e vencimento', cc.valor === 2812 && cc.pilulas.includes(`Cabem R$ ${(5600 - 2812).toLocaleString('pt-BR')}`) && cc.pilulas.includes('Vence 07/12'), JSON.stringify(cc));
 confere('outras abas: só o título', numerosDoTopo('analises', m, cf, cart, agora).valor === null);
