@@ -123,3 +123,26 @@ export function valoresB3(cart, b3 = {}, hoje = '') {
   }
   return { valores, datas };
 }
+
+// v10.0.1 (o Bruno, 19/11: "isso não pode acontecer de novo" — os Tesouros de novembro ficaram sem ligação e o total do
+// Itaú não fechava). A cada atualização: investimento NOVO no Itaú (id que a ligação nunca viu) liga sozinho ao ativo da
+// carteira de nome parecido que ainda não tem ligação (nunca a um já ligado: somaria duas vezes). O que sobra vira aviso:
+// ativo com valor sem nenhum investimento ligado (fora `foraDoItau`, os que o Bruno disse que estão em outro lugar, e a
+// cripto, que é da Binance) e investimento ligado que o Itaú parou de mostrar.
+export function revisarLigacoes(investimentos, ligacoes = {}, ativos = [], foraDoItau = []) {
+  const lig = { ...ligacoes };
+  const ligados = new Set(Object.values(lig).filter(Boolean));
+  const ligadosAgora = [];
+  for (const i of investimentos) {
+    if (i.id in lig) continue;
+    const livres = ativos.filter(a => !ligados.has(a.chave) && a.chave !== 'cripto');
+    const chave = sugerirLigacao(i.nome, livres);
+    lig[i.id] = chave || '';
+    if (chave) { ligados.add(chave); ligadosAgora.push({ chave, nome: i.nome }); }
+  }
+  const fora = new Set(['cripto', ...foraDoItau]);
+  const semLigacao = ativos.filter(a => (a.valor || 0) > 0 && !ligados.has(a.chave) && !fora.has(a.chave)).map(a => a.chave);
+  const ids = new Set(investimentos.map(i => i.id));
+  const sumiram = Object.entries(lig).filter(([id, k]) => k && !ids.has(id) && ativos.some(a => a.chave === k && (a.valor || 0) > 0)).map(([, k]) => k);
+  return { ligacoes: lig, ligadosAgora, semLigacao, sumiram: [...new Set(sumiram)] };
+}
