@@ -68,10 +68,10 @@ confere('topo do cartão: "acima do limite" em vez de "cabem"', topoC.pilulas.so
 
 // 6. Itaú e Binance embaixo do total da carteira
 const f = valorPorFonte(cart);
-confere('Itaú e Binance pelas marcações das atualizações', f?.length === 2 && f[0].nome === 'Itaú' && f[0].valor > 0 && f[1].nome === 'Binance', JSON.stringify(f));
+confere('Itaú e Binance pelas marcações das atualizações (e o resto, v10.0.1)', f?.length === 3 && f[2].nome === 'Outros' && f[0].nome === 'Itaú' && f[0].valor > 0 && f[1].nome === 'Binance', JSON.stringify(f));
 confere('sem marcação: nada', valorPorFonte({ historico_mensal: { '2026-11': { ativos: {} } } }) === null);
 const topoInv = numerosDoTopo('carteira', { c }, cf, cart, new Date('2026-11-18T12:00:00-03:00'));
-confere('o topo da Carteira leva as fontes', topoInv.fontes?.length === 2);
+confere('o topo da Carteira leva as fontes', topoInv.fontes?.length === 3);
 
 console.log(`v9.30 anotações do Bruno: ${ok} ok, ${falhas} falhas`);
 process.exitCode = falhas ? 1 : 0;
@@ -105,3 +105,29 @@ const semProj = TELAS_CV.carteira({ c: {} }, cfD, { hoje: '2026-11-18' }, { cart
 c2('sem o campo do Claude: a seção não aparece', !semProj.includes('Projeção de cada ativo'));
 console.log(`v10.0 áudio do Bruno: ${ok2} ok, ${falhas2} falhas`);
 if (falhas2) process.exitCode = 1;
+
+// v10.0.1: Itaú + Binance + o resto fecham com o total (o Bruno: "os dados não batem")
+{
+  const cartF = { historico_mensal: { '2026-11': { ativos: { renda_fixa: { active_fix_all: 14113.59, tesouro_prefixado_2029: 8897.28, tesouro_ipca_2032: 4981.96 }, fiis: { hglg11: 8559 }, cripto: 1221.93 },
+    fontes_app: { itau: ['active_fix_all', 'hglg11'], binance: ['cripto'] } } } };
+  const f2 = valorPorFonte(cartF);
+  const soma = f2.reduce((s, x) => s + x.valor, 0);
+  const okF = f2.map(x => x.nome).join() === 'Itaú,Binance,Tesouro Direto' && f2[2].valor === 13879.24 && Math.abs(soma - 37773.76) < 0.005;
+  console.log(okF ? 'PASSA' : 'FALHA', 'fontes: o Tesouro sem ligação entra à parte e a soma fecha com o total', JSON.stringify(f2));
+  if (!okF) process.exitCode = 1;
+}
+
+// v10.0.1: ligação automática do Itaú (ativo novo liga sozinho; o resto vira aviso)
+{
+  const { revisarLigacoes } = await import(R + 'pluggy.js');
+  const inv = [{ id: 'a', nome: 'ITAU ACTIVE FIX ALL' }, { id: 't1', nome: 'Tesouro Prefixado 2029' }, { id: 't2', nome: 'Tesouro IPCA+ 2032' }, { id: 't3', nome: 'Tesouro Prefixado 2031' }];
+  const ativos = [{ chave: 'active_fix_all', nome: 'Active Fix All', valor: 14113 }, { chave: 'tesouro_prefixado_2029', nome: 'Tesouro Prefixado 2029', valor: 8897 }, { chave: 'tesouro_ipca_2032', nome: 'Tesouro IPCA+ 2032', valor: 4981 },
+    { chave: 'cripto', nome: 'Cripto', valor: 1221 }, { chave: 'cdb_inter', nome: 'CDB Inter', valor: 500 }, { chave: 'optimus_rf', nome: 'Optimus RF', valor: 3000 }];
+  const r = revisarLigacoes(inv, { a: 'active_fix_all', velho: 'optimus_rf' }, ativos);
+  const t = (nome, cond, extra = '') => { console.log(cond ? 'PASSA' : 'FALHA', nome, cond ? '' : extra); if (!cond) process.exitCode = 1; };
+  t('Itaú: os Tesouros novos ligam sozinhos ao ativo certo', r.ligacoes.t1 === 'tesouro_prefixado_2029' && r.ligacoes.t2 === 'tesouro_ipca_2032', JSON.stringify(r.ligacoes));
+  t('Itaú: nunca liga dois investimentos ao mesmo ativo (o 2031 fica sem par)', r.ligacoes.t3 === '', JSON.stringify(r.ligacoes));
+  t('Itaú: a cripto (Binance) não vira aviso; o CDB sem par vira', r.semLigacao.join() === 'cdb_inter', JSON.stringify(r.semLigacao));
+  t('Itaú: investimento ligado que sumiu do banco vira aviso', r.sumiram.join() === 'optimus_rf');
+  t('Itaú: "está em outro lugar" tira do aviso', revisarLigacoes(inv, r.ligacoes, ativos, ['cdb_inter']).semLigacao.length === 0);
+}

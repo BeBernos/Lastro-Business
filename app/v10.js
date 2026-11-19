@@ -53,7 +53,10 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
     let s = { estado: null, fiel: null };
     try { s = saudeCarteira(alocacaoVsAlvo(cart), reserva(cart)); } catch { /* carteira sem estratégia */ }
     const tom = { Saudável: 'bom', Atenção: 'atencao', 'Fora do plano': 'ruim' }[s.estado];
-    return { ...base, titulo: 'Carteira', sub: `posição de ${p.data.slice(8, 10)}/${p.data.slice(5, 7)}`, eyebrow: 'Patrimônio investido', valor: p.total,
+    // v10.0.1: a data dos valores (as atualizações automáticas), não a última data oficial do Claude — "posição de 13/11"
+    // com valores de 19/11 confundia
+    const dv = [p.data, ...Object.values(p.h?.ativos_atualizado_em || {})].filter(d => /^\d{4}-\d{2}-\d{2}/.test(d || '')).sort().pop() || p.data;
+    return { ...base, titulo: 'Carteira', sub: `valores de ${dv.slice(8, 10)}/${dv.slice(5, 7)}`, eyebrow: 'Patrimônio investido', valor: p.total,
       fontes: valorPorFonte(cart), // v9.30: Itaú e Binance logo embaixo do total
       pilulas: [...(s.estado ? [{ texto: s.estado, tom }] : []), { texto: `${brl(Math.abs(mercado))} no mês`, seta: mercado < 0 ? 'cai' : 'sobe' }, ...(s.fiel != null ? [`${s.fiel}% fiel`] : [])] };
   }

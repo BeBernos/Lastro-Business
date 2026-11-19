@@ -6,7 +6,7 @@ import { abrirFolha, aviso, brlTexto, confirmar, dataCurta, esc, fecharFolha } f
 import { acertarCategorias, assinatura, categorizar, conciliar, unificarCategorias } from './conciliar.js';
 import { atualizarValores, listaAtivos, nomeAtivo } from './investimentos.js';
 import { b64, cifrar, decifrar } from './cofre.js';
-import { dataDoSaldo, esperandoBanco, lerItau, sugerirLigacao, valoresB3, valoresDoItau } from './pluggy.js';
+import { dataDoSaldo, esperandoBanco, lerItau, revisarLigacoes, valoresB3, valoresDoItau } from './pluggy.js';
 import { hojeBrasil, registrar } from './lancamentos.js';
 import { lerSaldoBinance } from './binance.js';
 import { pedidoCotacoes, urlCotacoes } from './cotacoes.js';
@@ -178,8 +178,10 @@ export async function mostrarItau(r, cred) {
     try { cred = await credenciaisItau(); r = await lerItau(cred); } catch (e) { folha.querySelector('.meta').textContent = `Não funcionou: ${e.message}.`; return; }
   }
   const ativos = estado.cart.dados ? listaAtivos(estado.cart.dados) : [];
-  const lig = { ...(cred?.ligacoes || {}) };
-  for (const i of r.investimentos) if (!(i.id in lig)) lig[i.id] = sugerirLigacao(i.nome, ativos) || '';
+  // v10.0.1: palpite só para ativo ainda sem ligação (ligar dois investimentos ao mesmo ativo somaria os dois)
+  const rev = revisarLigacoes(r.investimentos, cred?.ligacoes || {}, ativos, cred?.foraDoItau || []);
+  const lig = rev.ligacoes;
+  const semLig = ativos.filter(a => rev.semLigacao.includes(a.chave) || (cred?.foraDoItau || []).includes(a.chave));
   const conexao = r.conexoes?.[0];
   const quando = conexao?.atualizadoEm ? `Dados do banco de ${dataCurta(conexao.atualizadoEm.slice(0, 10))}` : '';
   const sandbox = r.conexoes?.some(c => c.sandbox);
@@ -196,6 +198,9 @@ export async function mostrarItau(r, cred) {
         <div class="itau-nome"><span>${esc(i.nome)}</span><b>${valor(i)}</b></div>
         ${ativos.length ? `<select class="campo" data-inv="${esc(i.id)}" aria-label="Ativo da carteira para ${esc(i.nome)}">${opcoes(lig[i.id])}</select>` : ''}
       </div>`).join('')}</div>` : '<p class="meta">A Pluggy não trouxe investimentos desta conexão.</p>'}
+    ${semLig.length ? `<h3 class="sub-titulo">Na carteira, sem investimento do Itaú</h3>
+    <p class="meta">Ligue cada um acima ou marque os que estão em outro lugar (outro banco, corretora) — esses saem do aviso e do total do Itaú.</p>
+    <ul class="linhas">${semLig.map(a => `<li><label style="display:flex;gap:10px;align-items:center;width:100%"><input type="checkbox" data-fora="${esc(a.chave)}"${(cred?.foraDoItau || []).includes(a.chave) ? ' checked' : ''}><span>${esc(a.nome)}<small>está em outro lugar</small></span><b>${esc(brlTexto(a.valor))}</b></label></li>`).join('')}</ul>` : ''}
     ${ativos.length && r.investimentos.length ? '<button type="button" class="btn prim" id="itSalvar">Salvar e atualizar a carteira</button>' : ''}
     <details class="dobra"><summary>Contas e cartões</summary><ul class="linhas">${r.contas.map(c => `<li><span>${esc(c.nome)}<small>${c.tipo === 'cartao' ? 'cartão' : 'conta'}</small></span><b>${esc(brlTexto(c.saldo))}</b></li>`).join('') || '<li><span>Nenhuma</span></li>'}</ul></details>
     <button type="button" class="link" id="itConfig">Trocar as chaves</button>`);
@@ -204,7 +209,8 @@ export async function mostrarItau(r, cred) {
     const btn = e.currentTarget;
     folha.querySelectorAll('[data-inv]').forEach(s => { lig[s.dataset.inv] = s.value; });
     btn.disabled = true; btn.textContent = 'Atualizando…';
-    await guardarItau({ ...cred, ligacoes: lig });
+    const foraDoItau = [...folha.querySelectorAll('[data-fora]')].filter(x => x.checked).map(x => x.dataset.fora);
+    await guardarItau({ ...cred, ligacoes: lig, foraDoItau });
     fecharFolha();
     const n = await atualizarItau({ forcar: true, r });
     if (n === 0) aviso('Ligações salvas. Os valores da carteira já estavam iguais aos do Itaú.', { tom: 'ok' });
@@ -237,6 +243,13 @@ export async function atualizarItau({ forcar = false, r = null } = {}) {
     const cred = await credenciaisItau();
     if (!cred || !Object.values(cred.ligacoes || {}).some(Boolean)) return null;
     r ||= await lerItau(cred);
+    // v10.0.1: investimento novo no Itaú liga sozinho; ativo sem ligação (ou ligação que sumiu) vira aviso
+    const rev = revisarLigacoes(r.investimentos, cred.ligacoes, listaAtivos(estado.cart.dados), cred.foraDoItau || []);
+    if (rev.ligadosAgora.length) { cred.ligacoes = rev.ligacoes; await guardarItau({ ...cred }); }
+    estado.ligacoesItau = rev;
+    const faltam = [...rev.semLigacao, ...rev.sumiram];
+    if (faltam.length) setTimeout(() => aviso({ titulo: `Itaú: ${faltam.length === 1 ? `${nomeAtivo(faltam[0])} sem ligação` : `${faltam.length} ativos sem ligação`}`, detalhe: 'O valor dele não é atualizado sozinho nem entra no total do Itaú.' }, { acao: { rotulo: 'Ligar', fn: () => mostrarItau() }, duracao: 12000 }), 6000);
+    if (rev.ligadosAgora.length) setTimeout(() => aviso({ titulo: 'Itaú: ligado sozinho', detalhe: rev.ligadosAgora.map(x => nomeAtivo(x.chave)).join(', ') }, { tom: 'ok', duracao: 7000 }), 2500);
     const ativos = new Set(listaAtivos(estado.cart.dados).map(a => a.chave));
     // automático × manual: ativo com aporte/resgate ou valor digitado mais novo que o saldo do banco espera o próximo dia
     const conexaoEm = r.conexoes?.[0]?.atualizadoEm;
