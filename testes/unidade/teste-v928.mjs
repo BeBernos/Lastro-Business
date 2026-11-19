@@ -21,8 +21,9 @@ const blocos = { 'cartao/fatura': [{ titulo: 'Projeção de fechamento', html: '
   { html: '<details class="dobra" data-chave="bloco:x"><summary><div><h2>Se a fatura fechar</h2><p class="cartao-sub">Toque para abrir</p></div></summary> <section class="cartao"><h2>Se a fatura fechar</h2><p>conteúdo</p></section></details>' },
   { explicacao: true, titulo: 'Como ler', corpo: '<p>explica</p>' }], 'cartao/gastos': [] };
 const t = tudoV10('cartao', [['', 'cartao/fatura', [], []], ['Por categoria', 'cartao/gastos', [], []]], k => blocos[k] || [], new Set(), []);
-confere('índice: grupo com o nome da sub-aba e contagem', /<h2>Fatura<small>2<\/small><\/h2>/.test(t), t.slice(0, 300));
-confere('uma linha por bloco, com ícone pelo tipo e o resumo', (t.match(/class="tudo-item"/g) || []).length === 3 && t.includes('4 jeitos de olhar'));
+// v10.1: o índice virou assuntos (F + G) — um quadradinho por assunto com blocos, os blocos já abertos
+confere('assuntos com contagem e um quadradinho cada', /<h2>Fatura<small>1<\/small><\/h2>/.test(t) && /<h2>Fechamento<small>1<\/small><\/h2>/.test(t) && (t.match(/class="assunto-cv"/g) || []).length === 2, t.slice(0, 300));
+confere('um bloco aberto por bloco do painel, com o resumo', (t.match(/class="tudo-bloco"/g) || []).length === 2 && t.includes('4 jeitos de olhar'));
 confere('bloco recolhido perde a dobra de dentro e o "Toque para abrir"', !/Toque para abrir/.test(t) && !/<details class="dobra"/.test(t), t);
 confere('grupo vazio some; as explicações vão para "Entenda"', !t.includes('Gastos') && /<h2>Entenda<small>1<\/small>/.test(t));
 

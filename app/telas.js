@@ -2045,7 +2045,7 @@ export function htmlAba(aba, m, dados, opcoes = {}) {
   if (opcoes.v10 && LEITURAS_V10[aba]) {
     const lugar = aba !== 'carteira' ? doLugar : k => { const l = doLugar(k); return k === 'carteira/visao' ? [...l.filter(ehRoteiro), ...l.filter(b => !ehRoteiro(b))] : l; };
     const args = [m, dados, ctx, { ...opcoes, carteira: temCarteira ? opcoes.carteira : null }];
-    if (opcoes.tudo) return `<div class="tudo-topo-cv"><button type="button" class="link-cv" data-tudo="">‹ Voltar</button><h2>Tudo do painel</h2><p>Tudo o que o painel do Claude mostra sobre este assunto. Toque para abrir.</p></div>${tudoV10(aba, LEITURAS_V10[aba], lugar, opcoes.abertos, args)}`;
+    if (opcoes.tudo) return `<div class="tudo-topo-cv"><button type="button" class="link-cv" data-tudo="">‹ Voltar</button><h2>Tudo do painel</h2><p>Tudo o que o painel do Claude mostra, por assunto. Toque num assunto para ir até ele.</p></div>${tudoV10(aba, LEITURAS_V10[aba], lugar, opcoes.abertos, args)}`;
     return leituraV10(LEITURAS_V10[aba], lugar, opcoes.abertos, VAZIO_V10[aba], args);
   }
   const daqui = doLugar(chave);
@@ -2138,29 +2138,109 @@ function itemTudo(html, titulo) {
   const varias = (html.match(/<details[^>]*class="[^"]*\bdobra\b/g) || []).length > 1;
   return { titulo: t, sub: resumo.length > 90 ? `${resumo.slice(0, 88)}…` : resumo, tipo, html: html.replace(varias ? /<details(?![^>]*\sopen)([^>]*class="[^"]*comp-grupo[^"]*")/g : /<details(?![^>]*\sopen)([^>]*class="[^"]*(?:dobra|comp-grupo)[^"]*")/g, '<details open$1').replace(/<details(?=[^>]*class="[^"]*\bdobra\b)/g, varias ? '<details data-varias' : '<details data-unica') };
 }
+// v10.1 (19/11, o Bruno escolheu no quadro a junção dos modelos F e G): os assuntos no topo, cada um com o número que o
+// resume (tocar rola até ele), e embaixo os blocos do painel já abertos, agrupados por assunto — sem lista de títulos.
+// Assunto = [nome, títulos que caem nele, o número dele]; o bloco vai para o primeiro assunto cujo padrão casa com o
+// título e, sem nenhum, para o primeiro da lista (o que o Claude criar de novo aparece sempre). Aba sem assuntos: um por
+// sub-aba. O número: função (m, dados, ctx, opcoes) → { num, sub } ou numTudo(título do bloco, valor no texto dele, legenda)
+// — "{R}" é um valor em R$; um segundo grupo entra na legenda. Sem achar, o primeiro valor dos blocos do assunto.
+const RS_TUDO = '[−-]?\\s?R\\$\\s?[−-]?\\s?\\d[\\d.]*(?:,\\d+)?';
+const VALOR_TUDO = new RegExp(`${RS_TUDO}|[−+-]?\\d+(?:,\\d+)?\\s?%|\\d+\\s?\\/\\s?100`);
+const numTudo = (de, valor, sub) => ({ de, valor: valor ? new RegExp(valor.replace('{R}', `(${RS_TUDO})`), 'i') : VALOR_TUDO, sub });
+export const ASSUNTOS_TUDO = {
+  carteira: [
+    ['Desempenho', /score|ganhos e perdas|retorno|evolução de cada|^evolução$|variação|^mês a mês|renda fixa|raio-x|resumo do mês|^leitura/i, numTudo(/score/i, '', 'score da carteira')],
+    ['Renda', /dividend|renda passiva|quem paga|yield|imposto/i, numTudo(/dividendos projetados/i, '', 'dividendos do mês')],
+    ['Estratégia', /estratégia|alocação|exclui reserva|em dólar|alvo/i, (m, dados, ctx, o) => {
+      const { fiel } = saudeCarteira(alocacaoVsAlvo(o.carteira), reserva(o.carteira));
+      return fiel == null ? null : { num: `${fiel}%`, sub: 'fiel ao alvo' };
+    }],
+    ['Liquidez', /sacar|disponível|liquidez|resgat/i, numTudo(/disponível/i, 'D\\+0\\)\\s*{R}', 'cai na conta hoje')],
+    ['Futuro', /projeç|projetad|patrimônio hoje|ano a ano|aposentadoria/i, numTudo(/patrimônio projetado/i, ' a {R} em ([\\w/]+)', 'em')],
+    ['Plano', /roteiro|o que fazer|simulador de aporte|atenção|aportes? do mês|consumo/i, numTudo(/roteiro/i, '(\\d+ a fazer)', 'no roteiro')],
+  ],
+  cartao: [
+    ['Fatura', /compõe|fatura do ciclo|composição/i, numTudo(/fatura do ciclo/i, '', 'até agora')],
+    ['Quanto cabe', /posso gastar|orçamento|limite/i, (m, dados) => {
+      const limite = dados.regras?.limiteSaudavelItau || 0, itau = m.c?.itau || 0;
+      if (!limite) return null;
+      return itau > limite ? { num: `+${curtoTudo(brl(itau - limite))}`, sub: 'acima do limite' } : { num: curtoTudo(brl(limite - itau)), sub: 'ainda cabe no limite' };
+    }],
+    ['Fechamento', /fechamento|cenário/i, numTudo(/projeção de fechamento/i, 'ritmo atual {R}', 'no ritmo atual')],
+    ['Categorias', /categoria|cortar|gasto livre/i, numTudo(/categorias do mês/i, '(\\d+) categorias', 'categorias no mês')],
+    ['Recorrentes', /recorrente|assinatura|parcela/i, numTudo(/recorrentes/i, '', 'por mês')],
+    ['Histórico', /fatura por mês|histórico|mês anterior/i, numTudo(/fatura por mês/i, 'média: {R}', 'média por fatura')],
+  ],
+  mes: [
+    ['Saldo', /saldo|resgate necessário/i, numTudo(/saldo em conta/i, '', 'na conta hoje')],
+    ['Resultado', /receitas ×|composição das despesas|resultado do mês/i, numTudo(/resultado do mês/i, 'resultado projetado {R}', 'projetado no mês')],
+    ['Agenda', /agenda do mês|salvar alterações|outros itens/i, (m, dados) => {
+      const a = proximasContas(m, dados).filter(x => x.valor < 0).reduce((s, x) => s - x.valor, 0);
+      return { num: curtoTudo(brl(a)), sub: 'a pagar até o fim do mês' };
+    }],
+    ['Contas', /entradas|saídas/i, numTudo(/entradas/i, '', 'entram no mês')],
+    ['Investir', /investiment|dividend|aporte/i, numTudo(/investimentos/i, 'já feito {R}', 'investido no mês')],
+    ['12 meses', /cada mês vai fechar|valores já conhecidos|13º|agendado|próximos meses|12 meses/i, m => {
+      const meses = m.p12?.meses?.length ? resumoMeses(m.p12.meses) : [];
+      return meses.length ? { num: curtoTudo(brl(meses.reduce((s, x) => s + x.sobra, 0) / meses.length)), sub: 'sobra média por mês' } : null;
+    }],
+  ],
+};
+// curto para caber no quadradinho: R$ sem centavos, "mil" de 10 mil para cima; o resto sem espaços sobrando
+export const curtoTudo = v => {
+  if (!/R\$/.test(v)) return v.replace(/\s+/g, v.includes('/') ? '' : ' ').trim();
+  const n = Number(v.replace(/[^\d,]/g, '').replace(',', '.')), s = /[−-]/.test(v) ? '−' : '';
+  return `${s}R$ ${n >= 10000 ? `${Math.round(n / 1000).toLocaleString('pt-BR')} mil` : Math.floor(n).toLocaleString('pt-BR')}`;
+};
+export function numeroTudo(itens, regra, args = []) {
+  try {
+    if (typeof regra === 'function') { const r = regra(...args); if (r?.num) return r; }
+    else if (regra) {
+      const it = itens.find(x => regra.de.test(x.titulo));
+      const v = it && textoLimpo(it.html).match(regra.valor);
+      if (v) return { num: curtoTudo(v[1] || v[0]), sub: v[2] ? `${regra.sub} ${v[2]}` : regra.sub };
+    }
+  } catch { /* sem o dado: o genérico abaixo */ }
+  for (const it of itens) {
+    const v = textoLimpo(it.html).match(VALOR_TUDO)?.[0];
+    if (v) return { num: curtoTudo(v), sub: it.titulo };
+  }
+  return { num: String(itens.length), sub: itens.length === 1 ? 'bloco' : 'blocos' };
+}
 export function tudoV10(aba, grupos, doLugar, abertos, args = []) {
   const parte = (f, padrao) => (typeof f === 'function' ? f(...args) : f || padrao?.(...args) || []);
   const nomes = Object.fromEntries((SUBABAS[aba] || []).map(([id, nome]) => [`${aba}/${id}`, nome]));
   const lugares = grupos.map(g => doLugar(g[1]));
-  const linha = (it, chave) => `<details class="tudo-item" data-chave="${esc(chave)}"${abertos?.has(chave) ? ' open' : ''}>
-      <summary><span class="ic-tile">${svg(IC_TUDO[it.tipo])}</span><span class="li-txt"><b>${esc(it.titulo)}</b>${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span>${svg('<path d="m9 6 6 6-6 6"/>', 'tudo-seta')}</summary>
-      <div class="tudo-corpo">${it.html}</div>
-    </details>`;
-  // peças do app: uma linha por cartão (contas do mês = entradas, saídas, investimentos…), sem os botões de lançar
+  // peças do app: um bloco por cartão (contas do mês = entradas, saídas, investimentos…), sem os botões de lançar
   const doApp = l => l.filter(Boolean).flatMap(cartoesSoltos).filter(h => !/class="cartao contas-acoes"|class="acoes-rapidas"/.test(h)).map(h => itemTudo(h));
-  const blocos = grupos.map(([, chave, antes, depois], i) => {
+  const todos = grupos.flatMap(([, chave, antes, depois], i) => {
     const itens = [
       ...doApp(parte(antes, ANTES[chave])),
       ...lugares[i].filter(b => !b.explicacao && !REPETE_TELA_V10.test(b.html || '')).map(b => itemTudo(b.html, b.titulo)),
       ...doApp(parte(depois, DEPOIS[chave])),
     ].filter(it => textoLimpo(it.html).length > 2);
-    juntarTudo(itens);
-    if (!itens.length) return '';
-    return `${secaoCv(nomes[chave] || 'Outros', { id: `v10-${chave.replace('/', '-')}`, contagem: itens.length })}<div class="tudo-lista">${itens.map((it, j) => linha(it, `tudo:${chave}:${j}`)).join('')}</div>`;
-  }).filter(Boolean);
+    // a âncora antiga (v10-aba-sub) vai no primeiro bloco do grupo: os links "Ver todas" das telas continuam rolando até ele
+    return juntarTudo(itens).map((it, j) => ({ ...it, ancora: j ? '' : `v10-${chave.replace('/', '-')}`, nomeGrupo: nomes[chave] || 'Outros' }));
+  });
+  const defs = ASSUNTOS_TUDO[aba];
+  const assuntos = defs
+    ? defs.map(([nome, , regra]) => ({ nome, regra, itens: [] }))
+    : [...new Set(todos.map(it => it.nomeGrupo))].map(nome => ({ nome, itens: [] }));
+  for (const it of todos) {
+    const i = defs ? Math.max(0, defs.findIndex(([, re]) => re.test(it.titulo))) : assuntos.findIndex(a => a.nome === it.nomeGrupo);
+    assuntos[i].itens.push(it);
+  }
+  const cheios = assuntos.map((a, i) => ({ ...a, id: `tudo-${aba}-${i}` })).filter(a => a.itens.length);
+  const bloco = it => `${it.ancora ? `<span id="${it.ancora}"></span>` : ''}<section class="tudo-bloco"><h3>${esc(it.titulo)}</h3>${it.sub ? `<p class="tudo-sub">${esc(it.sub)}</p>` : ''}<div class="tudo-corpo">${it.html}</div></section>`;
+  const topo = cheios.length > 1 ? `<div class="assuntos-cv">${cheios.map(a => {
+    const { num, sub } = numeroTudo(a.itens, a.regra, args);
+    return `<button type="button" class="assunto-cv" data-tudo="${esc(aba)}" data-tudo-secao="${a.id}"><span>${esc(a.nome)}</span><b${/^−/.test(num) ? ' class="cai"' : ''}>${esc(num)}</b><small>${esc(sub)}</small></button>`;
+  }).join('')}</div>` : '';
+  const partes = cheios.map(a => `${secaoCv(a.nome, { id: `v10-${a.id}`, contagem: a.itens.length })}${a.itens.map(bloco).join('')}`);
+  // explicações fixas ("Como ler isso"): no fim, recolhidas — é o único lugar onde o texto fica atrás de um toque
   const exp = lugares.flat().filter(b => b.explicacao);
-  if (exp.length) blocos.push(`${secaoCv('Entenda', { contagem: exp.length })}<div class="tudo-lista">${exp.map((b, j) => linha({ titulo: b.titulo, sub: '', tipo: 'aviso', html: `<div class="pn-p">${b.corpo}</div>` }, `tudo:entenda:${aba}:${j}`)).join('')}</div>`);
-  return blocos.join('') || '<p class="cv-nota">Nada do painel sobre este assunto.</p>';
+  if (exp.length) partes.push(`${secaoCv('Entenda', { contagem: exp.length })}<div class="tudo-lista">${exp.map((b, j) => `<details class="tudo-item" data-chave="tudo:entenda:${aba}:${j}"${abertos?.has(`tudo:entenda:${aba}:${j}`) ? ' open' : ''}><summary><span class="ic-tile">${svg(IC_TUDO.aviso)}</span><span class="li-txt"><b>${esc(b.titulo)}</b></span>${svg('<path d="m9 6 6 6-6 6"/>', 'tudo-seta')}</summary><div class="tudo-corpo"><div class="pn-p">${b.corpo}</div></div></details>`).join('')}</div>`);
+  return topo + partes.join('') || '<p class="cv-nota">Nada do painel sobre este assunto.</p>';
 }
 
 // v9.29: o que vai para "Tudo do painel" — um grupo por sub-aba de antes. As peças do app que as telas novas já mostram

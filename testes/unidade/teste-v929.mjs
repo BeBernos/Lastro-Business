@@ -25,7 +25,7 @@ const blocos = {
 };
 const app = () => ['<section class="cartao contas-acoes"><h2>Contas do mês</h2><button>+ Entrada</button></section><section class="cartao"><div class="cartao-topo"><h2>Entradas</h2><b>+R$ 10</b></div><p>x</p></section><section class="cartao"><div class="cartao-topo"><h2>Saídas</h2><b>−R$ 5</b></div><p>y</p></section>'];
 const t = tudoV10('mes', [['Contas do mês', 'mes/contas', app, []], ['Mercado', 'analises/mercado', [], []]], k => blocos[k] || [], new Set(), []);
-const titulos = [...t.matchAll(/<summary>[\s\S]*?<b>([^<]*)<\/b>/g)].map(x => x[1]);
+const titulos = [...t.matchAll(/class="tudo-bloco"><h3>([^<]*)<\/h3>/g)].map(x => x[1]); // v10.1: blocos abertos
 confere('Tudo: contas do mês viram uma linha por cartão, sem os botões de lançar', titulos.includes('Entradas') && titulos.includes('Saídas') && !t.includes('+ Entrada'), titulos.join());
 confere('Tudo: o mercado por ativo (já no carrossel das Análises) sai', !t.includes('mercado-acao') && !titulos.includes('Por ativo'), titulos.join());
 confere('Tudo: aberto, o aviso não repete o título da linha', !/class="pn-h">Resumo/.test(t) && t.includes('texto do aviso'));

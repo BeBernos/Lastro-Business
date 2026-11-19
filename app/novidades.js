@@ -2,6 +2,10 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '10.1.0': [
+    ['Tudo do painel por assunto', 'No topo, os assuntos de cada tela com o número que resume cada um (na Carteira: desempenho, renda, estratégia, liquidez, futuro e plano). Toque num deles para ir até lá. Embaixo, os blocos do Claude já abertos, sem a lista de títulos para tocar um a um. Nada sumiu.', 'melhoria'],
+    ['Listas com barra', 'Listas de valores do painel (resgates por mês, por exemplo) mostram uma barra do tamanho de cada valor: dá para comparar de relance.', 'melhoria'],
+  ],
   '10.0.1': [
     ['Itaú, Binance e o resto fecham com o total', 'Embaixo do total da Carteira, o que não está ligado ao Itaú nem à Binance aparece à parte (os Tesouros de novembro estavam de fora).', 'correcao'],
     ['Ativo novo liga sozinho ao Itaú', 'Comprou um investimento novo? Na atualização do Itaú ele é ligado sozinho pelo nome. O que não tiver par vira aviso com "Ligar", e dá para marcar "está em outro lugar".', 'nova'],
