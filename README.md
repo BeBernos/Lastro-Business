@@ -17,7 +17,7 @@ It was built for a real family and has been used every day since October 2026: t
 SMS in two taps, the rest of the family follows everything on their own phones, and once a month the AI closes the books, rebalances
 the plan and writes the analyses.
 
-**At a glance:** v9.29 (69 releases in the changelog) · used daily since Oct 2026 · ~14k lines, 0 dependencies · AES-256-GCM end to end · ≈260 regression + 62 end-to-end checks
+**At a glance:** v10.0 (70 releases in the changelog) · used daily since Oct 2026 · ~14k lines, 0 dependencies · AES-256-GCM end to end · ≈260 regression + 62 end-to-end checks
 
 > The live demo runs with a **fictitious family** (Marina, Rafael, Theo and Mia the cat) generated on the fly, with dates
 > that always move with today's calendar. Nothing leaves your browser.
@@ -93,7 +93,7 @@ connector) in [SECURITY.md](SECURITY.md).
 - **Accessibility and motion care**: contrast ≥ 4.5:1 in both themes, `prefers-reduced-motion`, screen-reader labels.
 - **Offline-first PWA**: service worker cache, share target (receive files and SMS text), app shortcuts.
 
-<!-- desktop screenshot removed in 9.29.1: the new "Carvão" interface is phone-first; a wide-screen layout comes later -->
+<p align="center"><img src="docs/img/desktop.png" alt="Desktop layout" width="90%"><br><i>The same app on a desktop: a side bar with "Lançar" and one centred reading column.</i></p>
 
 ## Tech stack
 

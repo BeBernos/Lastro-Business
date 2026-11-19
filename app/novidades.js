@@ -2,6 +2,20 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '10.0.0': [
+    ['Lastro 10: o Carvão é a interface', 'A interface nova agora é a do app para os dois celulares, sem precisar ligar nada. Se precisar, dá para voltar à anterior por um tempo em Configurações.', 'nova'],
+    ['Roteiro da carteira mais claro', 'Os passos que faltam agrupados pelo dia (com quanto falta para ele), cada um com o valor e o ✓ de feito; os já feitos numa linha só.', 'melhoria'],
+    ['Projeção de cada ativo', 'Na Carteira, além do total, a projeção de cada investimento com a taxa e a premissa. O Claude passa a calcular no próximo fechamento da carteira.', 'nova'],
+    ['Tudo do painel mais enxuto', 'Assuntos iguais numa linha só (consumo de patrimônio e aportes; eficiência e custo médio da renda fixa; variação e termômetro). Bloco que vier sem dados diz isso, em vez de abrir em branco.', 'melhoria'],
+    ['No computador também', 'Na tela larga, a barra vira uma coluna à esquerda com o Lançar, e as telas ficam numa coluna de leitura no centro.', 'nova'],
+    ['Próximas faturas com a parcela certa', 'Cada fatura futura mostra o número da parcela daquele mês (antes repetia o de agora).', 'correcao'],
+    ['Mudar o valor de uma parcela', 'Numa compra parcelada: "Mudar o valor de uma parcela" — só esta, esta e as próximas ou só as próximas. O total não precisa ser redigitado.', 'nova'],
+    ['Data das compras parceladas', 'No parcelamento do cartão, o campo "Data da compra" (com o ano). Se a data não bater com o número da parcela, o app avisa.', 'nova'],
+    ['Passou do limite do cartão', 'No Hoje, quando a fatura passa do limite, o bloco mostra quanto passou (em vez de "cabe R$ 0"). O topo do Cartão também.', 'melhoria'],
+    ['Valores exatos', 'Os valores das telas novas aparecem com os centavos.', 'melhoria'],
+    ['Itaú e Binance na Carteira', 'Embaixo do total investido, quanto está no Itaú e na Binance (aparece depois da próxima atualização automática).', 'nova'],
+    ['Ver todos os ativos', 'Todos os cartões acesos, um tom por tipo de investimento. A planilha da fatura agora vem das compras mais novas para as mais antigas.', 'melhoria'],
+  ],
   '9.29.1': [
     ['Sem verde no aviso de salvo', 'Na interface nova, o ✓ do aviso "Salvo" agora é âmbar, como o resto do app.', 'correcao'],
   ],

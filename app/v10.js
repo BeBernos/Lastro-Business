@@ -1,12 +1,11 @@
 // v9.18 — repaginação, etapa 1 (docs/superpowers/specs/2026-11-15-repaginacao-360-design.md): a casca "Carvão".
 // Funções puras: os destinos da barra, os números do topo de cada tela e o HTML do topo e da barra. A chave fica no
 // aparelho ('lastro-v10'); desligada, o app é o de antes. As telas por dentro mudam nas etapas 2–5.
-import { brl, brl0, esc } from './graficos.js';
+import { brl, esc } from './graficos.js';
 import { posicao, reserva } from './carteira.js';
 import { alocacaoVsAlvo } from './estrategia.js';
-import { resultadoDoMes } from './investimentos.js';
+import { resultadoDoMes, valorPorFonte } from './investimentos.js';
 import { contexto } from './resumo.js';
-import { DEMO } from './modo.js';
 
 const CHAVE = 'lastro-v10';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -22,11 +21,10 @@ export const DESTINOS = [
 ];
 const MAIS = '<circle cx="5.5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18.5" cy="12" r="1.4"/>';
 
-// v9.29.1: na demo pública a interface nova já vem ligada no celular (as fotos da vitrine são dela; tela larga ainda
-// não tem desenho no Carvão); desligar grava '0'
-const celular = () => { try { return !matchMedia('(min-width: 960px)').matches; } catch { return true; } };
+// v10.0 (etapa 8, aprovada pelo Bruno em 18/11/2026): o Carvão é o padrão — no celular e no computador, na família e na
+// demo. Só '0' (a chave desligada em Configurações) volta à interface anterior, que fica por pouco tempo.
 export function v10Ligada() {
-  try { const v = localStorage.getItem(CHAVE); return v === '1' || (DEMO && v === null && celular()); } catch { return DEMO && celular(); }
+  try { return localStorage.getItem(CHAVE) !== '0'; } catch { return true; }
 }
 export function ligarV10(on) {
   try { localStorage.setItem(CHAVE, on ? '1' : '0'); } catch { /* fica só nesta abertura */ }
@@ -46,7 +44,7 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
   if (aba === 'inicio') {
     if (ctx.mesPassou) return { ...base, eyebrow: `Falta fechar ${MESES[ctx.mes - 1]}` };
     const porDia = c.diasRest > 0 ? c.saldo / c.diasRest : c.saldo;
-    return { ...base, eyebrow: 'Dá para gastar até o fim do mês', valor: c.saldo, pilulas: [`Hoje ${brl0(porDia)}`, `Semana ${brl0(porDia * Math.min(7, Math.max(1, c.diasRest)))}`] };
+    return { ...base, eyebrow: 'Dá para gastar até o fim do mês', valor: c.saldo, pilulas: [`Hoje ${brl(porDia)}`, `Semana ${brl(porDia * Math.min(7, Math.max(1, c.diasRest)))}`] };
   }
   if (aba === 'carteira') {
     if (!cart) return { ...base, eyebrow: 'Carteira ainda não carregada' };
@@ -56,14 +54,15 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
     try { s = saudeCarteira(alocacaoVsAlvo(cart), reserva(cart)); } catch { /* carteira sem estratégia */ }
     const tom = { Saudável: 'bom', Atenção: 'atencao', 'Fora do plano': 'ruim' }[s.estado];
     return { ...base, titulo: 'Carteira', sub: `posição de ${p.data.slice(8, 10)}/${p.data.slice(5, 7)}`, eyebrow: 'Patrimônio investido', valor: p.total,
-      pilulas: [...(s.estado ? [{ texto: s.estado, tom }] : []), { texto: `${brl0(Math.abs(mercado))} no mês`, seta: mercado < 0 ? 'cai' : 'sobe' }, ...(s.fiel != null ? [`${s.fiel}% fiel`] : [])] };
+      fontes: valorPorFonte(cart), // v9.30: Itaú e Binance logo embaixo do total
+      pilulas: [...(s.estado ? [{ texto: s.estado, tom }] : []), { texto: `${brl(Math.abs(mercado))} no mês`, seta: mercado < 0 ? 'cai' : 'sobe' }, ...(s.fiel != null ? [`${s.fiel}% fiel`] : [])] };
   }
   if (aba === 'cartao') {
     const limite = dados.regras?.limiteSaudavelItau || 0;
     const dia = dados.calendario?.faturaCartao;
     const prox = ctx.mes === 12 ? 1 : ctx.mes + 1;
     return { ...base, titulo: 'Cartão', eyebrow: `Fatura de ${MESES[ctx.mes - 1]} até agora`, valor: c.itau,
-      pilulas: [`Cabem ${brl0(Math.max(0, limite - c.itau))}`, ...(dia ? [`Vence ${pad(dia)}/${pad(prox)}`] : [])] };
+      pilulas: [limite && c.itau > limite ? { texto: `${brl(c.itau - limite)} acima do limite`, tom: 'ruim' } : `Cabem ${brl(Math.max(0, limite - c.itau))}`, ...(dia ? [`Vence ${pad(dia)}/${pad(prox)}`] : [])] };
   }
   if (aba === 'mes' && Array.isArray(m?.tl?.porDia) && m.tl.porDia.length && Number.isFinite(c.caixa)) {
     // v9.25: o Caixa também responde no topo — o saldo de hoje, o pior ponto daqui em diante e como o mês fecha
@@ -71,7 +70,7 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
     const min = (futuro.length ? futuro : m.tl.porDia).reduce((a, p) => (p.saldo < a.saldo ? p : a));
     const fim = m.tl.porDia[m.tl.porDia.length - 1];
     return { ...base, titulo: 'Caixa', eyebrow: 'Saldo da conta hoje', valor: c.caixa,
-      pilulas: [`${min.saldo < 0 ? 'Pior momento' : 'Mínimo'} ${brl0(min.saldo)} · dia ${min.dia}`, `Fecha com ${brl0(fim.saldo)}`] };
+      pilulas: [`${min.saldo < 0 ? 'Pior momento' : 'Mínimo'} ${brl(min.saldo)} · dia ${min.dia}`, `Fecha com ${brl(fim.saldo)}`] };
   }
   if (aba === 'analises' && typeof m?.sc?.total === 'number') {
     // v9.26: as Análises respondem no topo com a nota de saúde do mês (um número que não é dinheiro)
@@ -116,10 +115,11 @@ export function htmlTopoCarvao(info, { esconder = false } = {}) {
     </div>
     ${info.eyebrow ? `<p class="topo-eyebrow">${esc(info.eyebrow)}</p>` : ''}
     ${numero}
+    ${info.fontes?.length ? `<p class="topo-fontes">${info.fontes.map(f => `<span>${esc(f.nome)} <b class="num">${esc(brl(f.valor))}</b></span>`).join('')}</p>` : ''}
     ${info.pilulas.length ? `<div class="topo-pilulas">${info.pilulas.map(pilula).join('')}</div>` : ''}
   </header>
   <!-- v9.21: fora do header (o overflow dele escondia o cabeçalho fixo) -->
-  <div class="topo-mini" aria-hidden="true"><span>${esc(info.eyebrow || info.titulo)}</span>${info.valor != null ? `<b class="num">${esc(brl0(info.valor))}</b>` : info.numeroTexto ? `<b class="num">${esc(info.numeroTexto)}${esc(info.numeroSufixo || '')}</b>` : ''}</div>`;
+  <div class="topo-mini" aria-hidden="true"><span>${esc(info.eyebrow || info.titulo)}</span>${info.valor != null ? `<b class="num">${esc(brl(info.valor))}</b>` : info.numeroTexto ? `<b class="num">${esc(info.numeroTexto)}${esc(info.numeroSufixo || '')}</b>` : ''}</div>`;
 }
 
 // Mais abre o menu de hoje (#appMenu); o ＋ (#appLancar) só no celular de quem publica
@@ -142,24 +142,30 @@ const ICONES_HOJE = {
   banco: '<path d="M4 10l8-5 8 5M6 10v7M10 10v7M14 10v7M18 10v7M4 19h16"/>',
   sobe: '<path d="M4 16l5-5 4 3 7-7M15 7h5v5"/>',
 };
-const TOM_ICONE = { ruim: '<path d="M12 7v6m0 3.5v.01"/>', atencao: '<path d="M12 7v6m0 3.5v.01"/>', bom: '<path d="M6.5 12.5l3.5 3.5 7.5-8"/>', info: '<path d="M12 11v6m0-9.5v.01"/>' };
+// v10.0 (revisão): ícones com o círculo, como nas Análises (o "!" solto parecia um caractere)
+const TOM_ICONE = { ruim: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5m0 3v.01"/>', atencao: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5m0 3v.01"/>', bom: '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5m0-8.5v.01"/>' };
 
+// v9.30: valores exatos, com os centavos menores (o Bruno: "falta mostrar o valor exato")
+const exato = v => { const t = brl(v), i = t.lastIndexOf(','); return i < 0 ? esc(t) : `${esc(t.slice(0, i))}<small class="cent">${esc(t.slice(i))}</small>`; };
 export function htmlHojeV10({ c = {}, limite = 0, venceDia = null, mesProx = null, investido = null, faixas = [], github = false }) {
   const cabe = Math.max(0, limite - (c.itau || 0));
+  const passou = limite > 0 && (c.itau || 0) > limite;
   const pctCabe = limite > 0 ? Math.min(100, Math.round((cabe / limite) * 100)) : 0;
   const bloco = (attr, icone, rotulo, valor, rodape) => `<button type="button" class="bloco-v10" ${attr}>
       <span class="bloco-cab">${ic(icone)}${esc(rotulo)}</span><b class="num">${valor}</b>${rodape}</button>`;
   const invest = investido
-    ? bloco('data-aba="carteira"', ICONES_HOJE.sobe, 'Investido', esc(brl0(investido.total)), `<small class="${investido.mercado < 0 ? 'cai' : 'sobe'}">${ic(SETAS[investido.mercado < 0 ? 'cai' : 'sobe'])}${esc(brl0(Math.abs(investido.mercado)))} no mês</small>`)
+    ? bloco('data-aba="carteira"', ICONES_HOJE.sobe, 'Investido', exato(investido.total), `<small class="${investido.mercado < 0 ? 'cai' : 'sobe'}">${ic(SETAS[investido.mercado < 0 ? 'cai' : 'sobe'])}${esc(brl(Math.abs(investido.mercado)))} no mês</small>`)
     : `<div class="bloco-v10 vazio"><span class="bloco-cab">${ic(ICONES_HOJE.sobe)}Investido</span><small>Carteira ainda não carregada</small></div>`;
   const faixa = f => `<div class="faixa-v10 tom-${f.tom}">
       <button type="button" class="faixa-texto" ${f.attr || `data-ir-aba="${esc(f.ir || 'inicio')}"`}>${ic(TOM_ICONE[f.tom] || TOM_ICONE.info)}<span>${esc(f.texto)}</span></button>
       ${f.acao && github ? `<button type="button" class="faixa-acao-v10" ${f.acao.attr}>${esc(f.acao.rotulo)}</button>` : ''}</div>`;
   return `<div class="hoje-v10">
     <div class="blocos-v10">
-      ${bloco('data-ir-aba="mes/geral"', ICONES_HOJE.banco, 'No banco', esc(brl0(c.caixa || 0)), '<small>saldo de hoje</small>')}
-      ${bloco('data-aba="cartao"', ICONES_HOJE.cartao, 'Fatura', esc(brl0(c.itau || 0)), venceDia ? `<small>vence ${pad(venceDia)}/${pad(mesProx)}</small>` : '')}
-      ${bloco('data-aba="cartao"', ICONES_HOJE.folga, 'Cabe no cartão', esc(brl0(cabe)), `<i class="barra-v10"><i style="width:${pctCabe}%"></i></i>`)}
+      ${bloco('data-ir-aba="mes/geral"', ICONES_HOJE.banco, 'No banco', exato(c.caixa || 0), '<small>saldo de hoje</small>')}
+      ${bloco('data-aba="cartao"', ICONES_HOJE.cartao, 'Fatura', exato(c.itau || 0), venceDia ? `<small>vence ${pad(venceDia)}/${pad(mesProx)}</small>` : '')}
+      ${passou
+        ? bloco('data-aba="cartao"', ICONES_HOJE.folga, 'Passou do limite', `<span class="cai">+${exato(c.itau - limite)}</span>`, `<small class="cai">fatura ${esc(brl(c.itau))} · limite ${esc(brl(limite))}</small><i class="barra-v10 cheia"><i style="width:100%"></i></i>`)
+        : bloco('data-aba="cartao"', ICONES_HOJE.folga, 'Cabe no cartão', exato(cabe), `<i class="barra-v10"><i style="width:${pctCabe}%"></i></i>`)}
       ${invest}
     </div>
     ${faixas.length ? `<div class="faixas-v10">${faixas.map(faixa).join('')}</div>` : ''}
@@ -176,12 +182,12 @@ export function htmlComposicaoV10({ c = {}, limite = 0 }) {
   const partes = [['p1', 'Parcelas', c.parcelas || 0], ['p2', 'Fixos', c.agendado || 0], ['p3', 'Gastos do mês', c.gastoLivre || 0]];
   const acima = limite && itau > limite;
   // v9.28: "Ainda cabe" saiu da legenda (o topo já diz "Cabem R$ X"); só o estouro aparece aqui
-  const fim = acima ? `<li class="cai"><i class="estouro"></i>Acima do limite<b>${esc(brl0(itau - limite))}</b></li>` : '';
+  const fim = acima ? `<li class="cai"><i class="estouro"></i>Acima do limite<b>${esc(brl(itau - limite))}</b></li>` : '';
   const proj = c.itauProjetado, estoura = limite && proj > limite;
-  const ritmo = limite && Number.isFinite(proj) ? `<p class="ritmo-v10${estoura ? ' cai' : ''}">No ritmo atual fecha em ${esc(brl0(proj))}${estoura && c.diaEstouro && !c.limiteJaRompido ? ` — passa do limite por volta do dia ${c.diaEstouro}` : ''}${!acima && c.diasRest > 0 && c.tetoPorDia > 0 ? `<small>Cabem ${esc(brl(c.tetoPorDia))} por dia até o fim do mês</small>` : ''}</p>` : '';
+  const ritmo = limite && Number.isFinite(proj) ? `<p class="ritmo-v10${estoura ? ' cai' : ''}">No ritmo atual fecha em ${esc(brl(proj))}${estoura && c.diaEstouro && !c.limiteJaRompido ? ` — passa do limite por volta do dia ${c.diaEstouro}` : ''}${!acima && c.diasRest > 0 && c.tetoPorDia > 0 ? `<small>Cabem ${esc(brl(c.tetoPorDia))} por dia até o fim do mês</small>` : ''}</p>` : '';
   return `<section class="comp-v10">
     <div class="comp-barra-v10" role="img" aria-label="Composição da fatura">${partes.map(([k, , v]) => `<i class="${k}" style="width:${pct(v)}%"></i>`).join('')}${livre > 0 ? `<i class="livre" style="width:${pct(livre)}%"></i>` : ''}${acima ? `<b class="marca-v10" style="left:${pct(limite)}%"></b>` : ''}</div>
-    <ul class="comp-legenda-v10">${partes.map(([k, n, v]) => `<li><i class="${k}"></i>${n}<b>${esc(brl0(v))}</b></li>`).join('')}${fim}</ul>
+    <ul class="comp-legenda-v10">${partes.map(([k, n, v]) => `<li><i class="${k}"></i>${n}<b>${esc(brl(v))}</b></li>`).join('')}${fim}</ul>
     ${ritmo}
   </section>`;
 }

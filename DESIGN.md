@@ -125,10 +125,10 @@ components:
 
 # Design System: Lastro — "Carvão"
 
-Interface nova do app (v9.18 → v9.29, nov/2026), ligada em **Configurações › Interface nova** (`localStorage lastro-v10`)
-enquanto a família avalia; vira a padrão na etapa 8. Código: `app/v10.css` (tudo sob `html.v10`), `app/v10.js`
+A interface do app desde a **v10.0** (18/11/2026; construída da v9.18 à v9.30), no celular e no computador. Código: `app/v10.css` (tudo sob `html.v10`), `app/v10.js`
 (topo, barra, Hoje, abertura), `app/carvao.js` (componentes puros) e `TELAS_CV` em `app/telas.js`. A interface anterior
-("Brasa", v8 — `app/v8.css`) continua só para quem desliga a chave e sai junto com a chave.
+("Brasa", v8 — `app/v8.css`) só aparece com a chave desligada (`localStorage lastro-v10 = '0'`) e sai de vez quando a
+bateria de testes for reescrita para o Carvão.
 
 ## Overview
 
@@ -205,6 +205,12 @@ não encolhe — isso fazia a página pular).
 
 Ritmo: seções a 24 px umas das outras; blocos a 10 px; linhas de 11 px de altura interna separadas por filete;
 carrossel saindo da margem (`margin: 0 -16px`) com encaixe por cartão (`scroll-snap`) e 10 px entre cartões.
+
+**Computador (≥ 960 px):** a barra vira uma coluna fixa à esquerda (232 px, raio 24) com a marca "Lastro", o **Lançar**
+(o ＋ em brasa, com nome) e os quatro destinos em linhas de 48 px; topo e conteúdo ficam numa **coluna de leitura de 880 px**
+no centro (o topo vira um bloco de raio 28 com contorno de brasa); gráficos até 640 px de largura (crescem junto com o
+texto); folhas viram um painel à direita. Nada de colunas de jornal: no Carvão título e bloco são irmãos e não podem se
+separar.
 
 Ordem de cada tela: topo (a resposta) → cartões que pedem ação → listas curtas (3–5 itens + "Ver todos") → ações →
 "Tudo do painel" no fim. Âncoras das sub-abas antigas (`#v10-aba-sub`) continuam valendo para links e busca.

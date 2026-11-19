@@ -5,10 +5,10 @@
 import { conferirAlvos, derivarTarget, mudancasEstrategia } from './ficha.js';
 export const CAMPOS_PARCIAIS = {
   // v9.10: meta de alocação e análise de mercado também (o PLANO não conseguia corrigi-las fora do fechamento)
-  carteira: { plano_aportes: 'lista', meta_dolarizacao: 'objeto', estrategia: 'objeto', analises: 'lista', metas: 'lista', fichas_ativos: 'objeto', plano_acao: 'objeto', target_allocation: 'objeto', analise_mercado: 'objeto' },
+  carteira: { plano_aportes: 'lista', meta_dolarizacao: 'objeto', estrategia: 'objeto', analises: 'lista', metas: 'lista', fichas_ativos: 'objeto', plano_acao: 'objeto', projecao_ativos: 'objeto', target_allocation: 'objeto', analise_mercado: 'objeto' },
   caixa: { analises: 'lista', orcamentos: 'lista', capacidadeAporte: 'objeto', valoresConhecidos: 'lista' },
 };
-export const NOME_CAMPO = { fichas_ativos: 'fichas dos ativos', plano_aportes: 'plano de aportes', meta_dolarizacao: 'meta de dólar', estrategia: 'estratégia', analises: 'análises', metas: 'metas', orcamentos: 'orçamentos', capacidadeAporte: 'capacidade de aporte', valoresConhecidos: 'valores conhecidos', plano_acao: 'plano de ação', target_allocation: 'meta de alocação', analise_mercado: 'análise de mercado' };
+export const NOME_CAMPO = { projecao_ativos: 'projeção de cada ativo', fichas_ativos: 'fichas dos ativos', plano_aportes: 'plano de aportes', meta_dolarizacao: 'meta de dólar', estrategia: 'estratégia', analises: 'análises', metas: 'metas', orcamentos: 'orçamentos', capacidadeAporte: 'capacidade de aporte', valoresConhecidos: 'valores conhecidos', plano_acao: 'plano de ação', target_allocation: 'meta de alocação', analise_mercado: 'análise de mercado' };
 
 export function lerParcial(texto) {
   if (!/^\s*\{/.test(texto)) return null;

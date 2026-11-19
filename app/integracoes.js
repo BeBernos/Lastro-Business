@@ -112,6 +112,7 @@ export async function atualizarCriptoBinance({ forcar = false } = {}) {
       const h = r.cart.historico_mensal[posicao(r.cart).mes];
       manterDataOficial(cart, r.cart);
       h.cripto_detalhe_usd = { ...v.moedas, cotacao_usd_brl: Math.round(v.usdtbrl * 10000) / 10000 };
+      h.fontes_app = { ...(h.fontes_app || {}), binance: ['cripto'] }; // v9.30: Carteira mostra o total da Binance
       return { cf: registrarVariacao(cf, 'Binance', r), cart: r.cart };
     }, `Binance: cripto ${variacaoTexto(previa)}`);
     return true;
@@ -262,6 +263,8 @@ export async function atualizarItau({ forcar = false, r = null } = {}) {
       const h = x.cart.historico_mensal[posicao(x.cart).mes];
       manterDataOficial(cart, x.cart);
       for (const i of x.itens) if (datas[i.chave]) h.ativos_atualizado_em[i.chave] = datas[i.chave]; // data do saldo, não hoje
+      // v9.30: o que está no Itaú (os ativos ligados à Pluggy) — a Carteira mostra o total do Itaú embaixo do patrimônio
+      h.fontes_app = { ...(h.fontes_app || {}), itau: [...new Set(Object.values(cred.ligacoes || {}).filter(k => k && ativos.has(k)))] };
       n = x.itens.length;
       return { cf: registrarVariacao(cf, 'Itaú', x), cart: x.cart };
     }, `Itaú: ${previa.itens.length === 1 ? `${previa.itens[0].nome} ` : ''}${variacaoTexto(previa)}${nota}`);
