@@ -54,7 +54,7 @@ export function extratoDoMes(dados) {
       const loja = String(p.item || '').replace(/\s*—\s*parcela.*$/i, '');
       // v9.6: categoria gravada ou, sem ela, o palpite pelo nome da loja (o Bruno pode trocar no editor)
       const cat = p.cat || adivinharCategoria(loja.replace(/\s*\(compra.*$/, ''));
-      itens.push({ chave: `parcela|${p.item}`, tipo: 'cartao', data: dataDaCompra(p.item, dados.periodo), descricao: loja, detalhe: `parcela ${p.atual || ''}`.trim(), categoria: cat ? nomeCategoria(cat) : '', valor: -v, abrir: { parcelamento: ip } });
+      itens.push({ chave: `parcela|${p.item}`, tipo: 'cartao', data: p.dataCompra || dataDaCompra(p.item, dados.periodo), descricao: loja, detalhe: `parcela ${p.atual || ''}`.trim(), categoria: cat ? nomeCategoria(cat) : '', valor: -v, abrir: { parcelamento: ip } });
     }
     for (const [ia, s] of (cartao.assinaturas || []).entries()) {
       if (app.some(r => r.recorrente && r.descricao === s.nome) || s.foraDoMes === dados.periodo) continue; // fora só deste mês: não está nesta fatura
@@ -172,7 +172,8 @@ export function planilhaFatura(dados) {
   const [a, m] = dados.periodo.split('-').map(Number);
   const nomeGrupo = Object.fromEntries(GRUPOS_FATURA);
   const linha = i => [i.data || '', i.descricao, i.categoria || '', -i.valor, nomeGrupo[i.chave.split('|')[0]] || '', i.detalhe || ''];
-  const porData = (x, y) => (x.data || '9999').localeCompare(y.data || '9999') || x.descricao.localeCompare(y.descricao);
+  // v9.30 (pedido do Bruno): das mais novas para as mais antigas; sem data no fim
+  const porData = (x, y) => (y.data || '0000').localeCompare(x.data || '0000') || x.descricao.localeCompare(y.descricao);
   const comp = composicaoFatura(dados);
   const itens = comp.grupos.flatMap(g => g.itens).sort(porData);
   const proximas = extratoDoMes(dados).filter(i => i.tipo === 'cartao' && /próxima fatura/.test(i.detalhe)).sort(porData);

@@ -18,7 +18,7 @@ Ele foi feito para uma família de verdade e é usado todo dia desde outubro de 
 do cartão a partir do SMS do banco em dois toques, o resto da família acompanha tudo no próprio celular e, uma vez por
 mês, a IA fecha o mês, revisa o plano e escreve as análises.
 
-**Em números:** v9.29 (69 versões no histórico) · uso diário desde out/2026 · ~14 mil linhas, 0 dependências · AES-256-GCM de ponta a ponta · ≈260 checagens de regressão + 62 de ponta a ponta
+**Em números:** v10.0 (70 versões no histórico) · uso diário desde out/2026 · ~14 mil linhas, 0 dependências · AES-256-GCM de ponta a ponta · ≈260 checagens de regressão + 62 de ponta a ponta
 
 > A demonstração usa uma **família fictícia** (Marina, Rafael, Theo e a gata Mia), gerada na hora, com as datas sempre
 > andando junto com o calendário. Nada sai do seu navegador.
@@ -97,7 +97,7 @@ em [SECURITY.md](SECURITY.md).
   leitor de tela.
 - **PWA que funciona sem internet**: cache no service worker, recebe arquivos e texto de SMS pelo Compartilhar, atalhos no ícone.
 
-<!-- foto do computador saiu na 9.29.1: a interface nova "Carvão" é feita para o celular; o desenho para tela larga vem depois -->
+<p align="center"><img src="docs/img/desktop.png" alt="Layout no computador" width="90%"><br><i>O mesmo app no computador: barra lateral com o "Lançar" e uma coluna de leitura no centro.</i></p>
 
 ## Tecnologias
 

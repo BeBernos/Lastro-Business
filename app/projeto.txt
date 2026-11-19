@@ -79,7 +79,7 @@ Se perceber que o outro lado precisa de atualização, diga em uma linha qual mo
 `valoresConhecidos`, `capacidadeAporte`, `orcamentos`, `var-itau.compras`, `origem`, `editadoApp`, `cat`, `nota` e `foraDoMes` nas assinaturas, `cat` nos parcelamentos, `parcelamentosExternos` (Pix/débito parcelado pelo app: uma despesa por mês, no `dia`, de
 `primeiraParcela` a `ultimaParcela`; a 1ª já está nas despesas do mês do lançamento), `recorrenteApp` nas `despesasFixas`
 (Pix/débito recorrente: repete todo mês), `ativo` nos aportes
-(`ajustesCaixa`) e resgates. Na carteira: `atualizacoesApp`, `fluxos` com `idCaixa`, `meta_dolarizacao`, `plano_aportes`, `metas`, `fichas_ativos`.
+(`ajustesCaixa`) e resgates. Na carteira: `atualizacoesApp`, `fluxos` com `idCaixa`, `fontes_app` (no mês da posição), `meta_dolarizacao`, `plano_aportes`, `metas`, `fichas_ativos`, `projecao_ativos`.
 Os ids `cashflow-data` e `carteira-data` e o formato dos dois JSONs são o contrato com o app.
 
 **Edições do app que valem para os meses seguintes (v9.5).** Ao gerar o mês novo: conta com `valorBase` foi mudada
@@ -154,3 +154,12 @@ dinheiro cair na conta, "D+6"), `cotizacao_resgate`, `horario_limite`, `cotizaca
 `atualizado_em`. Campo sem fonte fica de fora (não inventar). Resposta pequena: `{"lastro_parcial": "carteira",
 "fichas_ativos": {"<chave>": {…}}}`. O Lastro usa a ficha para dizer quando cada resgate cai na conta. Mantenha
 `fichas_ativos` na carteira sempre.
+
+**Projeção de cada ativo (`projecao_ativos`, desde a v10.0).** No fechamento da carteira (e na resposta pequena do PLANO,
+se a estratégia mudar), além da projeção do total, projete **cada ativo com valor**: `{"atualizado_em": "AAAA-MM-DD",
+"horizonte_anos": 5, "ativos": [{"ativo": "<chave>", "nome": "…", "taxa_anual": 11.2, "premissa": "Prefixado contratado a
+11,2% a.a., levado até o vencimento (jan/2029), sem aportes novos", "anos": [{"ano": 2027, "valor": 0}, …]}]}`. A
+taxa é a de cada ativo (título: a contratada, bruta ou líquida — diga qual; fundo: CDI × % do CDI de 12 meses; FII: preço
+estável + dividendos reinvestidos pelo yield atual; ETF/ações/cripto/ouro: a premissa de longo prazo da carteira, dita
+na `premissa`). Sem aportes novos (o total já mostra o plano). Mesmo horizonte do total; ativo que vence antes para no
+vencimento. Grave pelo conector (`gravar`, carteira, campo `projecao_ativos`) ou na resposta pequena.

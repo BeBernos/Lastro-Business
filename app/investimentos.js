@@ -361,3 +361,15 @@ export function planoDoMes(cart, mes) {
   });
   return { itens, planejado: centavos(itens.reduce((s, i) => s + i.planejado, 0)), feito: centavos(itens.reduce((s, i) => s + Math.min(i.feito, i.planejado), 0)) };
 }
+
+// v9.30 (pedido do Bruno): quanto está no Itaú e na Binance. As atualizações automáticas marcam em `fontes_app`
+// (no mês da posição) quais ativos vieram de cada lugar; vale a marcação mais nova. Sem marcação: nada (null).
+export function valorPorFonte(cart) {
+  const meses = Object.keys(cart?.historico_mensal || {}).sort().reverse();
+  const fontes = meses.map(k => cart.historico_mensal[k]?.fontes_app).find(f => f && (f.itau?.length || f.binance?.length));
+  if (!fontes) return null;
+  const valor = Object.fromEntries(listaAtivos(cart).map(a => [a.chave, a.valor || 0]));
+  const soma = l => centavos((l || []).reduce((s, k) => s + (valor[k] || 0), 0));
+  const out = [['Itaú', soma(fontes.itau)], ['Binance', soma(fontes.binance)]].filter(([, v]) => v > 0).map(([nome, v]) => ({ nome, valor: v }));
+  return out.length ? out : null;
+}

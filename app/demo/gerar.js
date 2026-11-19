@@ -148,7 +148,8 @@ function gerarCarteira(hoje, p) {
       dividendos_detalhe: { xpml11: 43.2, visc11: 38.4 }, patrimonio_total: c2(soma(a)) };
   }
   historico_mensal[periodo] = { status: 'em_andamento', atualizado_em: hoje, patrimonio_parcial: c2(soma(ativos)), dividendos: 0, aportes: 0, resgates: 0, resultado_mercado: null,
-    fluxos: [], composicao: composicao(ativos), ativos, ativos_atualizado_em: {}, nota: 'Mês aberto pelo app.' };
+    fluxos: [], composicao: composicao(ativos), ativos, ativos_atualizado_em: {}, nota: 'Mês aberto pelo app.',
+    fontes_app: { itau: ['tesouro_selic', 'tesouro_ipca_2035', 'xpml11', 'visc11', 'ivvb11', 'bova11'], binance: ['cripto'] } }; // v9.30: onde cada ativo está
   return {
     meta_arquivo: { versao: hoje, nota: 'Carteira de demonstração (dados fictícios).' },
     perfil: { idade: 36, horizonte_aposentadoria_anos: 24, objetivo: 'Viagem ao Japão em 2 anos, troca de carro e independência financeira aos 60.', reserva_emergencia: { alvo: 42000, veiculo: 'Tesouro Selic', regra: 'Seis meses de custo da casa.', ativos_que_compoem: ['tesouro_selic'] } },
@@ -177,6 +178,14 @@ function gerarCarteira(hoje, p) {
     analise_mercado: { nota: 'Análise por ativo.', data_geral: hoje, ativos: [
       { dado: 'direto', d7: null, bench7: null, data_ref: hoje, urgencia: 'baixa', n: 'XPML11', ativo: 'xpml11', classe: 'FII · Shoppings', badge: 'b-green', dm: 3.1, bench: 'IFIX', benchm: 1.2, expl: 'Vacância baixa e dividendo estável.', acao: 'Manter.' },
       { dado: 'direto', d7: null, bench7: null, data_ref: hoje, urgencia: 'baixa', n: 'IVVB11', ativo: 'ivvb11', classe: 'ETF · S&P 500 em reais', badge: 'b-green', dm: 2.4, bench: 'S&P 500', benchm: 2.1, expl: 'Segue o índice americano mais o dólar: é o caminho da dolarização.', acao: 'Aportar pelo plano.' }] },
+    // v10.0: a projeção de cada ativo (no Lastro de verdade, o Claude calcula no fechamento)
+    projecao_ativos: { atualizado_em: hoje, horizonte_anos: 5, ativos: [
+      ['tesouro_selic', 'Tesouro Selic', 42000, 10.5, 'Selic média de 10,5% a.a. nos próximos anos, sem aportes'],
+      ['tesouro_ipca_2035', 'Tesouro IPCA+ 2035', 31250, 10.8, 'IPCA de 4% + taxa contratada de 6,5% a.a., sem aportes'],
+      ['ivvb11', 'IVVB11', 28430, 9, 'Premissa de longo prazo da carteira para bolsa americana em reais: 9% a.a.'],
+      ['xpml11', 'XPML11', 16020, 8.5, 'Cota estável + dividendos reinvestidos pelo yield atual (8,5% a.a.)'],
+      ['cripto', 'Cripto', p.cripto, 12, 'Premissa de longo prazo da carteira para cripto: 12% a.a., com muita oscilação'],
+    ].map(([ativo, nome, v0, taxa, premissa]) => ({ ativo, nome, taxa_anual: taxa, premissa, anos: [1, 2, 3, 4, 5].map(n => ({ ano: Number(periodo.slice(0, 4)) + n, valor: c2(v0 * (1 + taxa / 100) ** n) })) })) },
     plano_acao: { atualizado_em: hoje, concluidos: 1, total: 3, passos: [
       { n: 1, titulo: 'Conferir os dividendos do mês', status: 'CONCLUIDO', quando: `${periodo}-05`, valor: 85.2, valor_ref: 'xpml11' },
       { n: 2, titulo: 'Aportar no Tesouro IPCA+ 2035 (meta do Japão)', status: 'pendente', quando: `${periodo}-21`, valor: 1200, valor_ref: 'tesouro_ipca_2035' },

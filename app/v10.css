@@ -611,3 +611,85 @@ html.v10 #folha .etapa-agora b { color: var(--v10-tx); }
 
 /* v9.29.1: o "Salvo" do aviso de baixo tinha o ✓ verde da v8 — no Carvão é âmbar (sem verde) */
 html.v10 .aviso.ok > .ic { color: var(--v10-sobe); }
+
+/* v9.30 — o que o Bruno anotou no app (16–18/11) */
+/* valores exatos: os centavos menores, como no número do topo */
+html.v10 .bloco-v10 b .cent { display: inline; margin: 0; font-size: .62em; font-weight: 650; letter-spacing: 0; color: inherit; opacity: .8; }
+html.v10 .bloco-v10 b .cai { color: var(--v10-cai); }
+html.v10 .barra-v10.cheia > i { background: var(--v10-cai); }
+/* Carteira: Itaú e Binance logo embaixo do total */
+html.v10 .topo-fontes { position: relative; display: flex; flex-wrap: wrap; gap: 4px 16px; margin: -4px 0 12px; font-size: 13px; color: var(--v10-tx2); }
+html.v10 .topo-fontes b { font: 650 13.5px var(--display); color: var(--v10-tx); margin-left: 3px; }
+/* "Ver todos" dos ativos: todos os cartões acesos, um tom quente por classe (nunca verde) */
+html.v10 .cartao-cv.aceso { color: #fff; border-color: transparent; }
+html.v10 .cartao-cv.aceso::before { opacity: 1; }
+html.v10 .cartao-cv.aceso::after { opacity: .14; }
+html.v10 .cartao-cv.aceso .cv-nome, html.v10 .cartao-cv.aceso .cv-rodape, html.v10 .cartao-cv.aceso .var-cv { color: rgba(255, 255, 255, .88); }
+html.v10 .cartao-cv.classe-renda_fixa::before { background: linear-gradient(140deg, #e2533a, #c2362f 55%, #8f2433); }
+html.v10 .cartao-cv.classe-fiis::before { background: linear-gradient(140deg, #f07a2e, #c4521f 55%, #8a3517); }
+html.v10 .cartao-cv.classe-etfs::before { background: linear-gradient(140deg, #c8434f, #9c2b3d 55%, #5e1830); }
+html.v10 .cartao-cv.classe-ouro::before { background: linear-gradient(140deg, #d99a3a, #a8692a 55%, #6b4219); }
+html.v10 .cartao-cv.classe-dolar::before { background: linear-gradient(140deg, #c97a4a, #94502e 55%, #5c2f1a); }
+html.v10 .cartao-cv.classe-cripto::before { background: linear-gradient(140deg, #b04a6e, #84304f 55%, #4d1a2f); }
+html.v10 .cartao-cv.classe-outro::before { background: linear-gradient(140deg, #a8563a, #7a3a28 55%, #4a2219); }
+
+/* ===== v10.0 — o Carvão no computador (≥ 960 px). Barra lateral fixa com a marca e o "Lançar"; uma coluna de leitura
+   larga e centrada (topo e conteúdo juntos), sem as colunas da v5.1 — as seções do Carvão são título + bloco irmãos e
+   não podem ser partidas entre colunas. O celular não muda (tudo aqui dentro da media query). ===== */
+@media (min-width: 960px) {
+  html.v10 { --lateral: 232px; }
+  html.v10 .resumo { padding: 24px 32px 56px calc(var(--lateral) + 48px); }
+  html.v10 .app-conteudo.v10 { max-width: 880px; margin: 0 auto; }
+  html.v10 .app-aba { display: block; columns: auto; }
+  html.v10 .topo-carvao { border-radius: 28px; padding: 22px 28px 52px; border: 1px solid rgba(255, 122, 53, .35); }
+  html.v10.demo .topo-carvao { padding-top: 34px; }
+  html.v10 .folha-v10 { border-radius: 28px; padding: 16px 28px 40px; }
+  html.v10 .folha-v10::before { display: none; }
+  html.v10 .topo-mini { left: calc(var(--lateral) + 32px); right: 32px; border: 1px solid rgba(255, 122, 53, .45); border-top: 0; border-radius: 0 0 18px 18px; }
+  html.v10 .carrossel-cv { margin: 0 -28px 4px; padding: 2px 28px 10px; scroll-padding-inline: 28px; }
+  /* os gráficos crescem com a largura (o texto junto): na tela larga, ficam do tamanho de leitura */
+  html.v10 .grafico-cv { max-width: 640px; margin-inline: auto; }
+  /* barra lateral */
+  html.v10 .abas.v10-nav, html.v10 .resumo.abas-fora .abas.v10-nav { left: 16px; top: 16px; bottom: 16px; right: auto; width: var(--lateral); height: auto; max-width: none;
+    transform: none; flex-direction: column; align-items: stretch; gap: 4px; padding: 18px 12px; border-radius: 24px; box-shadow: none; opacity: 1; pointer-events: auto; }
+  html.v10 .abas.v10-nav::before { order: -1; color: var(--v10-tx); }
+  html.v10 .v10-nav .v10-aba { order: 1; width: auto; height: 48px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 14px; border-radius: 14px; }
+  html.v10 .v10-nav .v10-aba span { font-size: 15px; }
+  html.v10 .v10-nav .v10-aba svg { width: 21px; height: 21px; }
+  html.v10 .v10-mais { order: 0; width: auto; height: 48px; margin: 0 0 12px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; font: 700 15px var(--sans); }
+  html.v10 .v10-mais::after { content: "Lançar"; }
+  html.v10 .v10-mais svg { width: 20px; height: 20px; }
+  /* folhas: painel à direita, cantos redondos */
+  html.v10 #folha { border-radius: 24px; border: 1px solid rgba(255, 122, 53, .35); }
+  html.v10 .abertura-toque { max-width: none; }
+}
+@media (min-width: 960px) and (hover: hover) {
+  html.v10 .v10-nav .v10-aba:not(.on):hover { background: rgba(255, 236, 214, .05); color: var(--v10-tx); }
+  html.v10 .cartao-cv:hover, html.v10 .bloco-v10:hover { border-color: rgba(255, 122, 53, .4); }
+  html.v10 .li-corpo:hover .li-txt b { color: #ffa463; }
+}
+
+/* v10.0 (áudio do Bruno, 18/11): o roteiro da carteira — por dia, com o valor e o "Feito"; os feitos numa linha que abre */
+html.v10 .roteiro-cv .cv-barra { margin: 4px 0 6px; }
+html.v10 .passo-dia-cv { margin: 16px 0 2px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #ffa463; }
+html.v10 .passo-dia-cv.cai { color: var(--v10-cai); }
+html.v10 .passo-n-cv { flex: none; width: 32px; height: 32px; border-radius: 11px; display: grid; place-items: center; font: 700 13px var(--display); color: #ffb347; background: var(--v10-fundo2); }
+html.v10 .passo-n-cv.feito { color: var(--v10-mut); }
+html.v10 .passo-nota-cv { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-top: 3px; line-height: 1.45; }
+html.v10 .roteiro-cv .li-txt .link-cv { display: inline-block; margin-top: 4px; font-size: 12.5px; color: var(--v10-mut); }
+html.v10 .feitos-cv { margin-top: 14px; border-top: 1px solid var(--v10-linha); }
+html.v10 .feitos-cv > summary { padding: 12px 0 4px; font-size: 13.5px; font-weight: 600; color: var(--v10-tx2); cursor: pointer; list-style: none; }
+html.v10 .feitos-cv > summary::-webkit-details-marker { display: none; }
+html.v10 .feitos-cv > summary::after { content: " ›"; color: var(--v10-mut); }
+html.v10 .feitos-cv[open] > summary::after { content: " ⌄"; }
+html.v10 .junto-cv { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--v10-linha); }
+html.v10 .junto-titulo { margin: 0 0 8px; font: 650 14.5px var(--display); color: var(--v10-tx); }
+
+/* v10.0 — revisão final de design (impeccable, 7/10 → ajustes) */
+html.v10 .topo-assinatura { top: auto; bottom: -44px; right: -36px; } /* a marca d'água saía atrás do ⋯ */
+html.v10 .topo-mini { background: #120e0b; } /* opaco: o conteúdo aparecia por trás */
+html.v10 #folha h2 { text-align: left; font: 700 22px/1.2 var(--display); letter-spacing: -.01em; text-transform: none; color: var(--v10-tx); margin: 0 0 14px; }
+@media (min-width: 960px) {
+  html.v10 .grafico-cv { max-width: 460px; }
+  html.v10 .carrossel-cv { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent); }
+}

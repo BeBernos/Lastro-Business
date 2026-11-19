@@ -833,6 +833,41 @@ export function excluirCompra(dados, { indice, descricao, valor }, hoje) {
   return registrar(d, hoje, `Compra no cartão excluída: ${r.descricao} ${r.valor < 0 ? `−${brl(-r.valor)}` : brl(r.valor)}${n > 1 ? ` (parcela 1/${n})` : ''} em ${r.cat}, ${ddmm(r.data)}.`);
 }
 
+// v9.30 (pedido do Bruno): numa compra parcelada lançada pelo app, mudar o valor de UMA parcela sem mexer no total.
+// alcance: 'mes' = só a parcela desta fatura; 'todos' = esta e as próximas; 'proximos' = só as próximas (o parcelamento).
+// Compra que caiu na fatura seguinte só tem o parcelamento: lá a parcela muda para todas ('todos').
+export function editarParcelaCompra(dados, { indice, descricao, valor, novo, alcance = 'todos' }, hoje) {
+  const d = structuredClone(dados);
+  validar(d, hoje, { cartao: true, proximoMes: true });
+  const it = cartaoDo(d);
+  const r = it.lancamentosApp?.[indice];
+  if (!r || r.descricao !== descricao || !mesmoValor(r.valor, valor)) throw new Error('Essa compra não está mais no painel — busque a atualização.');
+  const n = Number(String(r.parcelas || '').match(/^1\/(\d+)/)?.[1]) || 1;
+  if (n < 2) throw new Error('Essa compra não é parcelada.');
+  conferirValor(novo);
+  const v = centavos(novo);
+  if (r.proximaFatura && alcance !== 'todos') throw new Error('Essa compra cai na próxima fatura: lá a parcela muda para todas — escolha "Esta e as próximas parcelas".');
+  const prefixo = `${r.descricao} (compra ${ddmm(r.data)}, ${n}x)`;
+  const p = (it.parcelamentos || []).find(x => String(x.item).startsWith(prefixo) && x.atual === `1/${n}`);
+  if (!p && (alcance !== 'mes' || r.proximaFatura)) throw new Error('As próximas parcelas dessa compra não estão mais no painel — busque a atualização.');
+  const futura = () => Number((String(p?.item || '').match(/R\$\s?([\d.]+,\d{2})/) || [])[1]?.replace(/\./g, '').replace(',', '.')) || r.valor;
+  const antes = r.valor, antesFut = futura();
+  if (alcance !== 'proximos' && !r.proximaFatura) {
+    const c = it.categorias.find(x => mesmaCategoria(x.cat, r.cat, listaDe(d)));
+    if (!c) throw new Error(`A fatura não tem mais a categoria ${r.cat} — busque a atualização.`);
+    c.valor = centavos(c.valor + v - r.valor);
+    const pg = (it.pontuaisGrandes || []).find(x => mesmoValor(x.valor, r.valor) && String(x.descricao).startsWith(`${r.descricao} ${n}x`));
+    if (pg) pg.valor = v;
+    r.valor = v;
+    refazerTotais(it, d.periodo);
+  }
+  if (alcance !== 'mes' && p) p.item = String(p.item).replace(/parcela R\$\s?[\d.,]+/, `parcela ${brl(v).replace(' ', '')}`);
+  if (r.proximaFatura) r.valor = v;
+  r.parcelas = `1/${n} de ${brl(centavos(r.valor + (n - 1) * futura()))}`;
+  const quando = { mes: 'só esta parcela', todos: 'esta e as próximas', proximos: 'só as próximas' }[alcance] || alcance;
+  return registrar(d, hoje, `Parcela de ${r.descricao} (${n}x, ${ddmm(r.data)}): ${brl(alcance === 'proximos' ? antesFut : antes)} → ${brl(v)} (${quando}).`);
+}
+
 // ---------- v7.9: valores já conhecidos dos próximos meses (contrato com o agente: `valoresConhecidos`) ----------
 // Ex.: a conta de energia de novembro já chegou. O app só guarda; a projeção de 12 meses do painel usa o valor quando o
 // agente gera o painel lendo este campo (`valoresConhecidosLidos: true`), e ao abrir o mês o agente o aplica e tira daqui.
@@ -870,7 +905,7 @@ function achaParcelamento(d, indice, itemAntes) {
   if (!p || (itemAntes && p.item !== itemAntes)) throw new Error('Esse parcelamento não está mais no painel — busque a atualização.');
   return { it, p };
 }
-export function editarParcelamento(dados, { indice, itemAntes, loja, valor, atual, total, cat }, hoje) {
+export function editarParcelamento(dados, { indice, itemAntes, loja, valor, atual, total, cat, dataCompra }, hoje) {
   const d = structuredClone(dados);
   validar(d, hoje, { cartao: true });
   const { p } = achaParcelamento(d, indice, itemAntes);
@@ -880,7 +915,15 @@ export function editarParcelamento(dados, { indice, itemAntes, loja, valor, atua
   const n = Math.round(Number(atual)), t = Math.round(Number(total));
   if (!(t >= 1 && t <= 99 && n >= 1 && n <= t)) throw new Error('A parcela de agora vai de 1 até o total de parcelas.');
   const antes = `${p.item} (${p.atual})`;
-  p.item = `${nome} — parcela ${brlParcela(centavos(valor))}`;
+  // v9.30 (pedido do Bruno): a data da compra — fica no campo (com o ano) e no texto, no jeito do agente "(compra dd/mm, Nx)"
+  let nomeFinal = nome;
+  if (dataCompra) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataCompra) || Number.isNaN(Date.parse(dataCompra))) throw new Error('Confira a data da compra (dia/mês/ano).');
+    if (dataCompra > hoje) throw new Error('A data da compra não pode ser depois de hoje.');
+    p.dataCompra = dataCompra;
+    nomeFinal = `${nome.replace(/\s*\(compra[^)]*\)/i, '').trim()} (compra ${ddmm(dataCompra)}, ${t}x)`;
+  }
+  p.item = `${nomeFinal} — parcela ${brlParcela(centavos(valor))}`;
   p.atual = `${n}/${t}`;
   p.ultimaParcela = somaMeses(d.periodo, t - n);
   p.saiDaFaturaA_partir_de = somaMeses(d.periodo, t - n + 1);

@@ -4,7 +4,7 @@ import { aplicarDados, extrairDados, lerArquivo, mesBonito, resumo } from './pai
 import { aplicarCarteira, ehCarteira, ehDadosCarteira, extrairCarteira, lerArquivoCarteira, posicao, resumoCarteira } from './carteira.js';
 import { contexto, lerMotor, proximasContas } from './resumo.js';
 import { ABAS, CARTOES_INICIO, htmlAba, htmlNav, htmlSubabas, htmlTopo, mesesDoSeletor, ordemInicio, resumoSemanaHtml, seletorMes, situacoesMais, SUBABAS, subPadrao, telaDoMes, variacaoAtivos } from './telas.js';
-import { extratoDoMes, filtrarExtrato, TIPOS } from './extrato.js';
+import { dataDaCompra, extratoDoMes, filtrarExtrato, TIPOS } from './extrato.js';
 import { gerarXlsx, TIPO_XLSX } from './xlsx.js';
 import { agendaClaude, aportePlanejado, definirOrcamentos, excluirMeta, pacoteIR, registrarAssinaturas, revisarAssinaturas, salvarMeta, sugestaoOrcamento } from './indicadores.js';
 import { icTom, ligarDicas } from './graficos.js';
@@ -14,7 +14,7 @@ import { creditoResgate, linhasFicha, prazoResgate, textoFichas } from './liquid
 import { cdiAnualDe, simularTroca } from './rendafixa.js';
 import { traduzirFragmento } from './traduzir.js';
 import { estimar, pedidoCotacoes, urlCotacoes } from './cotacoes.js';
-import { editarMesFechado, excluirEntradaFutura, excluirExterno, acertarComBanco, acharItem, alternarPago, caixaHoje, comprasApp, excluirCompra, categoriasCartao, categoriasConta, editarAssinatura, editarCompraFatura, editarParcelamento, excluirCompraFatura, excluirParcelamento, excluirCategoria, hojeBrasil, historicoApp, lancarCartao, LISTAS_CAIXA, lancarPix, lerValor, marcarPago, parcelasItau, pareceLancado, removerAssinatura, salvarCategoria, sinalDe, validar } from './lancamentos.js';
+import { editarMesFechado, excluirEntradaFutura, excluirExterno, acertarComBanco, acharItem, alternarPago, caixaHoje, comprasApp, excluirCompra, editarParcelaCompra, categoriasCartao, categoriasConta, editarAssinatura, editarCompraFatura, editarParcelamento, excluirCompraFatura, excluirParcelamento, excluirCategoria, hojeBrasil, historicoApp, lancarCartao, LISTAS_CAIXA, lancarPix, lerValor, marcarPago, parcelasItau, pareceLancado, removerAssinatura, salvarCategoria, sinalDe, validar } from './lancamentos.js';
 import { copiarPatrimonio, listaAtivos, sincronizar } from './investimentos.js';
 import { chaveLoja, lerSms, marcaSms, separarSms } from './sms.js';
 import { acharCategoria, adivinharCategoria, categoriasAtivas, CORES, definirCategorias, GRUPOS, ICONES as ICONES_CAT, iconeCategoria, iconeDe, listaDoPainel, nomeCategoria, norm } from './categorias.js';
@@ -27,13 +27,13 @@ import { alternarPausa, derivarTarget, gatilhos, mudancasEstrategia, textoItem }
 import { NOVIDADES } from './novidades.js';
 import { htmlAberturaV10, htmlNavV10, htmlTopoCarvao, ligarV10, numerosDoTopo, v10Ligada } from './v10.js';
 import { ligarCarrosseis } from './carvao.js';
-import { $, esc, brlTexto, dataCurta, dataHora, icone, aviso, mascarar, fecharAvisoCarregando, valoresEscondidos, trocarEsconder, confirmar, ALCANCES_EDITAR, escolherAlcance, abrirFolha, fecharFolha, configurarFolha } from './ui.js';
+import { $, esc, brlTexto, dataCurta, dataHora, icone, aviso, mascarar, fecharAvisoCarregando, valoresEscondidos, trocarEsconder, confirmar, ALCANCES_EDITAR, ALCANCES_PARCELA, escolherAlcance, abrirFolha, fecharFolha, configurarFolha } from './ui.js';
 import { enviarArquivo, exportarPlanilhaFatura, enviarArquivos, conectorLigado, pedidoPeloConector, mesSeguinte, etapaAberta, marcarEtapa, abrirLevarClaude, svgCadeado, abrirLancamentos, configurarClaude } from './claude.js';
 import { abrirDiscar, abasLancar, ligarAbasLancar, botaoCategoria, abrirConta, mesCurto, abrirValorFuturo, abrirNovaConta, abrirInvestir, abrirValores, configurarLancar } from './lancar.js';
 import { conciliarAgora, depoisDoAviso, atualizarCriptoBinance, atualizarItau, configurarIntegracoes } from './integracoes.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao } from './v8.js';
 
-const VERSAO_APP = '9.29.1';
+const VERSAO_APP = '10.0.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 document.documentElement.classList.toggle('v10', v10Ligada()); // v9.18: a repaginação (Carvão), atrás da chave em Configurações
 const REMOTO = 'data/painel.enc';
@@ -1589,7 +1589,7 @@ async function configHtml() {
     <button type="button" class="link voltar-menu" data-acao="menu">‹ Menu</button>
     <h2>Configurações</h2>
     <p class="grupo">Neste celular</p>
-    ${itemChave('v10', 'novidade', 'Interface nova (em teste)', 'A repaginação, aos poucos — dá para voltar', v10Ligada())}
+    ${itemChave('v10', 'novidade', 'Interface Carvão', 'A interface do Lastro desde a v10 — desligue só se precisar da anterior por um tempo', v10Ligada())}
     ${suportaAvisos() && !DEMO ? itemChave('avisos', 'avisos', 'Avisos de atualização', 'Notifica quando sai painel novo', !!estado.avisos) : ''}
     ${itemChave('lembretes', 'sino', 'Lembretes de contas', 'Na véspera e no dia de cada conta', !!estado.lembretes)}
     ${itemMenu('protecao', 'cadeado', 'Proteção do app', estado.salvo?.modo === 'senha' ? 'Senha da família a cada abertura' : 'Digital a cada abertura · trancar agora')}
@@ -3572,12 +3572,14 @@ function abrirCompra(indice) {
     <p class="meta">${esc([dataCurta(r.data), nomeCategoria(r.cat), n > 1 ? `${n}x de ${brlTexto(r.valor)} (total ${brlTexto(total)})` : brlTexto(Math.abs(r.valor)), r.valor < 0 ? 'estorno' : '', r.recorrente ? 'cobrança recorrente' : '', r.proximaFatura ? 'fatura seguinte' : '', r.origem === 'sms' ? 'lançada pelo SMS' : ''].filter(Boolean).join(' · '))}</p>
     ${r.nota ? `<p class="meta">Obs.: ${esc(r.nota)}</p>` : ''}
     ${r.valor < 0 ? '' : '<button type="button" class="btn prim" id="cEditar">Editar</button>'}
+    ${n > 1 && r.valor > 0 ? '<button type="button" class="btn" id="cParcela">Mudar o valor de uma parcela</button>' : ''}
     <button type="button" class="btn perigo" id="cExcluir">Excluir esta compra</button>
     <p class="erro" id="cErro"></p>`);
   folha.querySelector('#cEditar')?.addEventListener('click', () => abrirLancar('cartao', {
     editar: alvo, origem: r.origem, valor: virgula(total.toFixed(2)), desc: r.descricao, cat: r.cat, data: r.data, parcelas: n,
     recorrente: !!r.recorrente, proxima: !!r.proximaFatura, pontual: undefined, nota: r.nota || '',
   }));
+  folha.querySelector('#cParcela')?.addEventListener('click', () => abrirParcelaCompra(r, alvo, n));
   folha.querySelector('#cExcluir').onclick = async e => {
     const botao = e.currentTarget;
     if (!(await confirmar({ titulo: `Excluir ${r.descricao}?`, texto: `${brlTexto(Math.abs(r.valor))} sai da fatura de ${MESES_LONGOS[Number(estado.dados.periodo.slice(5)) - 1]}. Dá para desfazer depois.`, sim: 'Excluir', perigo: true, manter: true }))) return abrirCompra(indice);
@@ -3588,6 +3590,31 @@ function abrirCompra(indice) {
       if (folha.querySelector('#cErro')?.isConnected) folha.querySelector('#cErro').textContent = err.message;
       else aviso(err.message, { erro: true, fixo: true });
     }
+  };
+}
+
+// v9.30 (pedido do Bruno): o valor de UMA parcela (o banco às vezes cobra centavos diferentes) — o total não é digitado;
+// pergunta de quando vale (só esta, esta e as próximas, só as próximas), como toda edição de algo que se repete
+function abrirParcelaCompra(r, alvo, n) {
+  const folha = abrirFolha(`
+    <h2>Valor da parcela</h2>
+    <p class="meta">${esc(r.descricao)} · ${n}x · hoje ${esc(brlTexto(r.valor))} por parcela${r.proximaFatura ? ' · cai na próxima fatura' : ''}.</p>
+    <form id="formLanc">
+      <label for="lValor">Valor da parcela (R$)</label>
+      <input class="campo" id="lValor" inputmode="decimal" autocomplete="off" value="${esc(virgula(Number(r.valor).toFixed(2)))}" required>
+      <p class="erro" id="lErro"></p>
+      <button class="btn prim" id="lOk">Continuar</button>
+    </form>`);
+  folha.querySelector('#formLanc').onsubmit = async e => {
+    e.preventDefault();
+    const v = lerValor(folha.querySelector('#lValor').value);
+    if (!(v > 0)) { folha.querySelector('#lErro').textContent = 'Digite o valor da parcela, por exemplo 85,30.'; return; }
+    const alcance = r.proximaFatura ? 'todos' : await escolherAlcance({
+      titulo: `Mudar a parcela de ${r.descricao} de quando?`, texto: `${brlTexto(r.valor)} → ${brlTexto(v)}`, rotulos: ALCANCES_PARCELA,
+      detalhes: { mes: 'Só a parcela desta fatura; as próximas continuam como estavam.', todos: 'Esta fatura e as próximas.', proximos: 'Esta fatura fica como está; muda das próximas em diante.' },
+    });
+    if (!alcance) return abrirParcelaCompra(r, alvo, n);
+    try { await aplicarLancamento(x => editarParcelaCompra(x, { ...alvo, novo: v, alcance }, hojeBrasil()), `Parcela de ${r.descricao}: ${brlTexto(v)}`); } catch (err) { aviso(err.message, { erro: true, fixo: true }); }
   };
 }
 
@@ -4209,7 +4236,7 @@ function abrirParcelamento(i, rascunho = null) {
   const valorP = Number((String(p.item).match(/R\$\s*([\d.]+,\d{2})/) || [])[1]?.replace(/\./g, '').replace(',', '.')) || 0;
   const [nP, tP] = String(p.atual || '1/1').split('/').map(Number);
   // v9.6: categoria (rascunho = o que estava digitado antes de abrir o seletor de categorias)
-  const r = rascunho || { loja: lojaP, valor: valorP, n: nP, t: tP, cat: p.cat || adivinharCategoria(lojaP.replace(/\s*\(compra.*$/, '')) || '' };
+  const r = rascunho || { loja: lojaP, valor: valorP, n: nP, t: tP, cat: p.cat || adivinharCategoria(lojaP.replace(/\s*\(compra.*$/, '')) || '', data: p.dataCompra || dataDaCompra(p.item, estado.dados.periodo) };
   const { loja, valor, n, t } = r;
   const folha = abrirFolha(`
     <h2>Parcelamento no cartão</h2>
@@ -4224,6 +4251,9 @@ function abrirParcelamento(i, rascunho = null) {
         <div><label for="pTotal">De quantas</label><input class="campo" id="pTotal" type="number" inputmode="numeric" min="1" value="${t || 1}" required></div>
       </div>
       <p class="nota" id="pFim"></p>
+      <label for="pData">Data da compra (1ª parcela)</label>
+      <input class="campo" id="pData" type="date" value="${esc(r.data || '')}" max="${esc(hojeBrasil())}">
+      <p class="nota" id="pConf"></p>
       <label for="lCatBtn">Categoria</label>
       <button type="button" class="campo campo-cat" id="lCatBtn">${r.cat ? `${iconeCategoria(r.cat)}<span>${esc(nomeCategoria(r.cat))}</span>` : '<span class="ph">Escolha a categoria</span>'}</button>
       <p class="erro" id="lErro"></p>
@@ -4235,15 +4265,22 @@ function abrirParcelamento(i, rascunho = null) {
     const a = Number($p('#pAtual').value), tt = Number($p('#pTotal').value);
     $p('#pFim').textContent = a >= 1 && tt >= a ? (tt === a ? 'Esta é a última parcela.' : `Faltam ${tt - a} depois desta: a última cai na fatura de ${mesCurto(somarMeses(estado.dados.periodo, tt - a))}.`) : '';
   };
-  $p('#pAtual').oninput = fim; $p('#pTotal').oninput = fim; fim();
-  const estadoP = () => ({ loja: $p('#pLoja').value, valor: lerValor($p('#lValor').value) || valor, n: Number($p('#pAtual').value) || n, t: Number($p('#pTotal').value) || t, cat: r.cat });
+  // v9.30: a data diz em que parcela a fatura deste mês deveria estar — avisa se não bate (deixa salvar)
+  const conf = () => {
+    const dt = $p('#pData').value, a = Number($p('#pAtual').value), tt = Number($p('#pTotal').value);
+    const [ay, am] = estado.dados.periodo.split('-').map(Number);
+    const esperado = dt ? (ay * 12 + am) - (Number(dt.slice(0, 4)) * 12 + Number(dt.slice(5, 7))) + 1 : null;
+    $p('#pConf').textContent = esperado && Math.abs(esperado - a) > 1 ? `Pela data, a fatura deste mês seria a parcela ${esperado}${tt ? `/${tt}` : ''}, não ${a}. Confira — dá para salvar assim mesmo.` : '';
+  };
+  $p('#pAtual').oninput = () => { fim(); conf(); }; $p('#pTotal').oninput = () => { fim(); conf(); }; $p('#pData').oninput = conf; fim(); conf();
+  const estadoP = () => ({ loja: $p('#pLoja').value, valor: lerValor($p('#lValor').value) || valor, n: Number($p('#pAtual').value) || n, t: Number($p('#pTotal').value) || t, cat: r.cat, data: $p('#pData').value });
   $p('#lCatBtn').onclick = () => {
     const f = estadoP();
     abrirCategorias({ tipo: 'cartao', atual: f.cat, aoEscolher: c => abrirParcelamento(i, { ...f, cat: c }), aoVoltar: () => abrirParcelamento(i, f) });
   };
   ligarFormLanc(folha, () => {
     const v = lerValor($p('#lValor').value);
-    return [x => editarParcelamento(x, { indice: i, itemAntes: p.item, loja: $p('#pLoja').value, valor: v, atual: $p('#pAtual').value, total: $p('#pTotal').value, cat: r.cat }, hojeBrasil()), `Parcelamento: ${$p('#pLoja').value.trim()} ${brlTexto(v)}`];
+    return [x => editarParcelamento(x, { indice: i, itemAntes: p.item, loja: $p('#pLoja').value, valor: v, atual: $p('#pAtual').value, total: $p('#pTotal').value, cat: r.cat, dataCompra: $p('#pData').value || undefined }, hojeBrasil()), `Parcelamento: ${$p('#pLoja').value.trim()} ${brlTexto(v)}`];
   });
   $p('#pExcluir').onclick = async () => {
     if (!(await confirmar({ titulo: `Tirar ${lojaP}?`, texto: 'Sai das próximas faturas. A desta fatura não muda. Dá para desfazer.', sim: 'Tirar', perigo: true, manter: true }))) return abrirParcelamento(i);

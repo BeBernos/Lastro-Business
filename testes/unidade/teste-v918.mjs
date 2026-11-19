@@ -14,7 +14,7 @@ const m = { c: { saldo: 2282.56, diasRest: 16, itau: 2812, caixa: 2127 } };
 
 confere('quatro destinos na ordem de prioridade (v9.27)', DESTINOS.map(d => d.id).join() === 'hoje,caixa,cartao,invest');
 const h = norm(numerosDoTopo('inicio', m, cf, cart, agora));
-confere('Hoje: dá para gastar, hoje e semana', h.valor === 2282.56 && h.pilulas.includes('Hoje R$ 143') && h.pilulas.includes('Semana R$ 999'), JSON.stringify(h));
+confere('Hoje: dá para gastar, hoje e semana', h.valor === 2282.56 && h.pilulas.includes('Hoje R$ 142,66') && h.pilulas.includes('Semana R$ 998,62'), JSON.stringify(h));
 confere('Hoje: saudação pela hora e mês', /^Boa noite/.test(h.titulo) && /nov/.test(h.sub) && /16 dias/.test(h.sub), JSON.stringify(h));
 const virado = numerosDoTopo('inicio', m, cf, cart, new Date('2026-12-02T10:00:00-03:00'));
 confere('mês virado: "Falta fechar" e sem valor', /^Falta fechar/.test(virado.eyebrow) && virado.valor === null, JSON.stringify(virado));
@@ -23,7 +23,7 @@ confere('carteira não carregada: aviso e nada de NaN/undefined', semCart.eyebro
 const ct = norm(numerosDoTopo('carteira', m, cf, cart, agora));
 confere('Investimentos: patrimônio, título e variação do mês (seta desenhada, v9.28)', ct.valor > 100000 && ct.titulo === 'Carteira' && ct.pilulas.some(p => p.seta && /^R\$ .* no mês$/.test(p.texto)), JSON.stringify(ct));
 const cc = norm(numerosDoTopo('cartao', m, cf, cart, agora));
-confere('Cartão: fatura, quanto cabe e vencimento', cc.valor === 2812 && cc.pilulas.includes(`Cabem R$ ${(5600 - 2812).toLocaleString('pt-BR')}`) && cc.pilulas.includes('Vence 07/12'), JSON.stringify(cc));
+confere('Cartão: fatura, quanto cabe e vencimento', cc.valor === 2812 && cc.pilulas.includes('Cabem R$ 2.788,00') && cc.pilulas.includes('Vence 07/12'), JSON.stringify(cc));
 confere('outras abas: só o título', numerosDoTopo('analises', m, cf, cart, agora).valor === null);
 
 confere('barra do Rafael sem ＋; o Mais (⋯) está no topo', !/appLancar/.test(htmlNavV10('inicio', { lancar: false })) && /id="appMenu"/.test(htmlTopoCarvao({ titulo: 'x', pilulas: [] })) && !/id="appMenu"/.test(htmlNavV10('inicio', { lancar: false })));
@@ -34,7 +34,7 @@ confere('topo: número com centavos menores', /class="cent"/.test(topo) && /topo
 confere('olho ligado: o número sai sem centavos', !/class="cent"/.test(htmlTopoCarvao(h, { esconder: true })));
 confere('topo sem valor não mostra R$', !/R\$/.test(htmlTopoCarvao(semCart).replace(/<[^>]+>/g, '')));
 
-{ const { DEMO } = await import('../../app/modo.js'); confere('chave desligada por padrão (na demo, ligada)', v10Ligada() === DEMO); }
+confere('v10.0: o Carvão ligado por padrão', v10Ligada() === true);
 ligarV10(true); confere('ligar a chave', v10Ligada() === true && mem['lastro-v10'] === '1');
 ligarV10(false); confere('desligar a chave', v10Ligada() === false);
 
