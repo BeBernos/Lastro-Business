@@ -268,10 +268,20 @@ Sobem de baixo, fundo `#15110e`, raio 28, linha de brasa a 45% no topo, título 
 bloco `#1d1814`, raio 16; o valor do lançamento em 40 px Bricolage laranja. Passos ("Levar para o Claude") são blocos
 de raio 20; o de agora com contorno de brasa e número em círculo cheio.
 
+### Hoje (v10.2, `app/hoje.js`)
+Um resumo do app inteiro, pensado como um consultor: **leitura do dia** (frase grande em Bricolage 24 px, a segunda metade
+em brasa clara), **três cartões coloridos que deslizam** (Caixa em brasa, Cartão em vinho, Carteira em âmbar — os únicos
+cartões da tela, 292 px, raio 26, curva / barra do limite com o ritmo hachurado / colunas de 13 meses), a **faixa da
+carteira** (no alvo, dólar, renda passiva, separados por filete), a **agenda** (pílulas de dia; tocar abre os itens
+embaixo), **para fazer** (até 3, com o progresso do plano) e **para onde vai** (a conta em 12 meses, duas séries com
+legenda, e a frase do que isso pede). **A Regra Sem Moldura:** fora os três cartões, nada no Hoje vai num bloco — o Bruno
+acha "extremamente feio" um cartão por assunto; separação é espaço (36 px), título e filete.
+
 ### Tudo do painel
-Índice no fim de cada tela: um bloco por assunto, uma linha por bloco do painel (ícone pelo tipo, título, resumo, seta
-que gira). Aberto, o bloco entra liso na largura toda: números em grade de duas colunas sem caixinhas, avisos como linhas
-com ícone, tabelas como listas, gráficos sem grade, escolhas em pílula de brasa. Não repete o que a tela já mostra.
+No topo, os assuntos da tela em quadradinhos com o número que resume cada um (tocar rola até ele); embaixo, cada bloco do
+painel já aberto, agrupado por assunto (`ASSUNTOS_TUDO`): números em grade de duas colunas sem caixinhas, avisos como
+linhas com ícone, listas de valores com barra (rótulo · barra · valor), gráficos sem grade, escolhas em pílula de brasa.
+Só o "Entenda" fica recolhido. Não repete o que a tela já mostra.
 
 ### Abertura
 A tela inteira é o botão da digital: o pássaro no anel em brasa, a saudação e só a marca da digital num círculo de 58

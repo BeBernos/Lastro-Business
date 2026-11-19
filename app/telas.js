@@ -5,6 +5,7 @@
 import { anel, barrasH, brl, brl0, colunas, compacto, empilhada, esc, icTom, linhaSaldo, linhas, medidor, minilinha, svgIcone } from './graficos.js';
 import { contexto, proximasContas } from './resumo.js';
 import { faixasDoHoje, htmlComposicaoV10, htmlHojeV10, saudeCarteira } from './v10.js';
+import { htmlHoje, resumoHoje } from './hoje.js';
 import { acoesCv, areaCv, barrasAlvoCv, blocoCv, carrosselCv, CHECK, colunasCv, cartaoCv, codigoAtivo, diaCv, linhaCv, linkCv, listaCv, numerosCv, secaoCv, tudoDoPainelCv, variacaoCv } from './carvao.js';
 import { blocosDoPainel } from './traduzir.js';
 import { mesBonito } from './painel.js';
@@ -1871,6 +1872,8 @@ function hojeV10(m, dados, cart, ctx, opcoes) {
   if (ehDomingo(opcoes.hoje) && !ctx.mesPassou) extras.push({ tom: 'info', texto: 'Resumo da semana', attr: 'data-semana' });
   let linhas = [];
   try { linhas = linhasDoHoje(m, dados, cart, ctx, opcoes); } catch { /* sem linhas */ }
+  // v10.2: o Hoje novo (hoje.js, modelo 13 do quadro); se faltar algum dado e ele quebrar, o Hoje de antes
+  try { return htmlHoje(resumoHoje(m, dados, cart, ctx, { linhas, extras, hoje: opcoes.hoje || hojeBrasil(), github: !!opcoes.github })); } catch (e) { console.warn('Hoje novo indisponível:', e); }
   let investido = null;
   try { if (cart) investido = { total: posicao(cart).total, mercado: Number(resultadoDoMes(cart)?.mercado) || 0 }; } catch { /* carteira incompleta */ }
   return htmlHojeV10({ c: m.c, limite: dados.regras?.limiteSaudavelItau || 0, venceDia: dados.calendario?.faturaCartao, mesProx: ctx.mes === 12 ? 1 : ctx.mes + 1, investido, faixas: faixasDoHoje(linhas, extras), github: !!opcoes.github }) + hojeListasCv(m, dados, ctx, opcoes);
