@@ -2,6 +2,11 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '11.3.0': [
+    ['Meia-noite: o Plano', 'Na interface em teste, a quarta aba é o Plano: os 5 números do consultor (poupança, patrimônio, reserva em meses, cartão e gasto livre), para onde vai a sobra do mês e os potes das metas.', 'nova'],
+    ['A sobra confere com o caixa', 'O Plano soma os aportes que faltam e avisa se eles deixam a conta negativa no mês que vem — e sugere quanto adiar.', 'nova'],
+    ['Decisões numa linha do tempo', 'Os passos do plano em Agora, Esta semana e Depois, com o Feito em cada um, e o que o Claude notou (estratégia, conta parada, orçamento, vencimento da fatura, come-cotas). A nota de saúde saiu.', 'melhoria'],
+  ],
   '11.2.0': [
     ['Meia-noite: o Patrimônio', 'Na interface em teste, a Carteira virou Patrimônio. No topo, um mapa: cada tipo de investimento do tamanho do que vale, dizendo se está acima ou abaixo do alvo — toque num para ver os ativos dele.', 'nova'],
     ['O que mudou no mês', 'Um gráfico em degraus mostra de onde veio a diferença: resgates, aportes e o mercado. Assim dá para ver se uma queda foi resgate ou prejuízo.', 'nova'],

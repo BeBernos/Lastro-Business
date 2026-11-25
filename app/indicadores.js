@@ -8,7 +8,7 @@
 
 import { mesmaCategoria, nomeCategoria, norm } from './categorias.js';
 import { dolarizacao, listaAtivos, nomeAtivo, planoDoMes } from './investimentos.js';
-import { posicao } from './carteira.js';
+import { posicao, reserva } from './carteira.js';
 
 const centavos = v => Math.round(v * 100) / 100;
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -320,4 +320,40 @@ export function comeCotas(hoje, cart) {
   const ultimo = new Date(Date.UTC(a, mes, 0));
   while ([0, 6].includes(ultimo.getUTCDay())) ultimo.setUTCDate(ultimo.getUTCDate() - 1);
   return d <= ultimo.getUTCDate() ? { data: ultimo.toISOString().slice(0, 10), fundos } : null;
+}
+
+// ---------- v11.3: o Plano — o ritmo do gasto livre, a revisão do mês e a sobra com destino ----------
+// O gasto livre (cartão sem o já comprometido) contra a linha que fecha no limite saudável: { gasto, ideal, dif, livre, dia }.
+export function ritmoLivre(c, limite, ctx) {
+  if (!limite || !(c?.gastoLivre > 0)) return null;
+  const livre = Math.max(0, limite - (c.comprometido || 0)), dia = Math.min(ctx.dias, c.itauDia || ctx.diaHoje);
+  const ideal = centavos((livre * dia) / ctx.dias);
+  return { gasto: c.gastoLivre, ideal, dif: centavos(c.gastoLivre - ideal), livre: centavos(livre), dia };
+}
+// Os 5 números do consultor, para a revisão do mês: poupança, patrimônio líquido, reserva em meses das contas fixas,
+// uso do limite do cartão e o ritmo do gasto livre. tom: bom | atencao | ruim.
+export function revisaoDoMes(m, dados, cart, ctx) {
+  const c = m?.c || {}, limite = dados?.regras?.limiteSaudavelItau || 0, out = [];
+  if (c.receitas > 0) { const p = (c.saldoProj ?? c.saldo ?? 0) / c.receitas; out.push({ id: 'poup', rotulo: 'Poupança', pct: p, sub: 'do que entrou', tom: p >= 0.2 ? 'bom' : p >= 0 ? 'atencao' : 'ruim' }); }
+  if (Number.isFinite(c.patTotal)) out.push({ id: 'pl', rotulo: 'Patrimônio', valor: c.patTotal, sub: 'líquido (investido + conta − fatura)', tom: 'bom' });
+  const r = cart ? reserva(cart) : null;
+  if (r && c.fixas > 0) { const meses = r.atual / c.fixas; out.push({ id: 'res', rotulo: 'Reserva', meses, sub: 'das contas fixas', atual: r.atual, alvo: r.alvo, tom: meses >= 3 ? 'bom' : 'atencao' }); }
+  if (limite) { const p = (c.itau || 0) / limite; out.push({ id: 'cart', rotulo: 'Cartão', pct: p, sub: 'do limite', tom: p > 1 ? 'ruim' : p > 0.8 ? 'atencao' : 'bom' }); }
+  const rt = ritmoLivre(c, limite, ctx);
+  if (rt) out.push({ id: 'ritmo', rotulo: 'Gasto livre', dif: rt.dif, sub: 'contra o ritmo', tom: rt.dif > 0 ? 'atencao' : 'bom', ...rt });
+  return out;
+}
+// A sobra com destino: os aportes pendentes do plano e, se eles passam do pior dia do mês que vem, a sugestão de adiar
+// parte do aporte que pode esperar (o de data mais tarde; empate, o maior) em milhares, deixando ~R$ 1 mil de folga.
+export function sobraComDestino(m, dados, cart, ctx) {
+  const l = livreDeVerdade(m, dados, cart, ctx);
+  const destinos = (cart?.plano_acao?.passos || []).filter(p => !/conclu|decidid|cancel/i.test(p.status || '') && Number(p.valor) > 0 && !/resgat|vend/i.test(p.titulo || ''))
+    .map(p => ({ n: p.n, titulo: p.titulo, valor: Number(p.valor), quando: String(p.quando || '').slice(0, 10) }));
+  let divisao = null;
+  if (l.planoPassa) {
+    const tira = Math.ceil((l.planoPassa + 1000) / 1000) * 1000;
+    const passo = destinos.filter(d => d.valor > tira).sort((a, b) => b.quando.localeCompare(a.quando) || b.valor - a.valor)[0];
+    if (passo) divisao = { passo, agora: centavos(passo.valor - tira), depois: tira, piso: centavos(l.piso - (l.aportes - tira)) };
+  }
+  return { destinos, total: l.aportes, piso: l.piso, mesProx: l.mesProx, planoPassa: l.planoPassa, divisao };
 }

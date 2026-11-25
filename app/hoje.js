@@ -6,7 +6,7 @@ import { brl, brl0, esc } from './graficos.js';
 import { posicao, reserva } from './carteira.js';
 import { resultadoDoMes } from './investimentos.js';
 import { alocacaoVsAlvo } from './estrategia.js';
-import { rendaPassiva } from './indicadores.js';
+import { rendaPassiva, ritmoLivre } from './indicadores.js';
 import { tickerDividendo } from './lancamentos.js';
 import { saudeCarteira } from './v10.js';
 
@@ -238,9 +238,9 @@ export function htmlHojeV11({ r, l, c = {}, limite = 0, ctx, github = false }) {
   if (tres.length) p.push(`<section class="hj11-sec"><div class="tit-hoje"><h2>Hoje</h2><span>${tres.length} ${tres.length === 1 ? 'coisa' : 'coisas'}</span></div>
     ${tres.map(f => `<div class="fz-linha tom-${f.tom}">${f.passo != null && github ? `<button type="button" class="fz-check" data-passo="${esc(f.passo)}" aria-label="Marcar como feito"></button>` : '<i class="fz-ponto"></i>'}<button type="button" class="fz-txt" ${f.attr || ''}><b>${esc(f.titulo)}</b>${f.sub ? `<small>${esc(f.sub)}</small>` : ''}</button></div>`).join('')}</section>`);
   // o ritmo do gasto livre (cartão + Pix sem as contas fixas) contra a linha que fecha no limite
-  const livreLimite = Math.max(0, limite - (c.comprometido || 0)), dia = Math.min(ctx.dias, c.itauDia || ctx.diaHoje), gasto = c.gastoLivre || 0;
-  if (limite && gasto > 0 && !ctx.mesPassou) {
-    const ideal = (livreLimite * dia) / ctx.dias, dif = gasto - ideal, teto = Math.max(livreLimite, gasto) * 1.08 || 1;
+  const rt = ctx.mesPassou ? null : ritmoLivre(c, limite, ctx);
+  if (rt) {
+    const { livre: livreLimite, dia, gasto, ideal, dif } = rt, teto = Math.max(livreLimite, gasto) * 1.08 || 1;
     const X = d => 10 + ((d - 1) / Math.max(1, ctx.dias - 1)) * 330, Y = v => 112 - (v / teto) * 96;
     p.push(`<section class="hj11-sec"><div class="tit-hoje"><h2>Ritmo do gasto livre</h2><button type="button" class="link-cv" data-detalhe="det-ritmo">Por quê?</button></div>
       <svg viewBox="0 0 350 132" class="hj11-ritmo" role="img" aria-label="Gasto livre ${esc(brl0(gasto))} até o dia ${dia}; o ritmo que fecha no limite seria ${esc(brl0(ideal))}">

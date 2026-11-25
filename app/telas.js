@@ -18,7 +18,7 @@ import { alertasPlano, alocacaoVsAlvo, rendimentoRendaFixa } from './estrategia.
 import { gatilhos, INDICADORES, pausa, textoItem } from './ficha.js';
 import { prazoResgate } from './liquidez.js';
 import { escada } from './rendafixa.js';
-import { agendaClaude, aportePlanejado, comeCotas, descasamento, dolarMesAMes, livreDeVerdade, mesCurto, orcamentoDoMes, progressoMetas, rendaPassiva, resumoMeses } from './indicadores.js';
+import { agendaClaude, aportePlanejado, comeCotas, descasamento, dolarMesAMes, livreDeVerdade, mesCurto, orcamentoDoMes, progressoMetas, rendaPassiva, resumoMeses, revisaoDoMes, sobraComDestino } from './indicadores.js';
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const MES3 = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -2020,7 +2020,7 @@ export function htmlAba(aba, m, dados, opcoes = {}) {
   const ctx = contexto(dados, opcoes.agora || new Date());
   if (aba === 'inicio' || !SUBABAS[aba]) return abaInicioHub(m, dados, ctx, opcoes);
   // v9.26: a interface nova desenha cada tela do zero; a leitura de antes (com os blocos do painel) só em "Tudo do painel"
-  if (opcoes.v10 && TELAS_CV[aba] && !opcoes.tudo) return ((opcoes.v11 && { mes: mesCv, carteira: patrimonioCv }[aba]) || TELAS_CV[aba])(m, dados, ctx, opcoes); // v11.1–2: Mês e Patrimônio da Meia-noite
+  if (opcoes.v10 && TELAS_CV[aba] && !opcoes.tudo) return ((opcoes.v11 && { mes: mesCv, carteira: patrimonioCv, analises: planoCv }[aba]) || TELAS_CV[aba])(m, dados, ctx, opcoes); // v11.1–2: Mês e Patrimônio da Meia-noite
   let blocos = [];
   try {
     if (opcoes.doc) blocos = blocosDoPainel(opcoes.doc, { trocas: trocasDeGraficos(m, dados, ctx), abertos: opcoes.abertos, diaHoje: ctx.mesPassou ? 0 : ctx.diaHoje, pular: PULAR_DO_CAIXA });
@@ -2684,13 +2684,100 @@ function patrimonioCv(m, dados, ctx, o) {
   return partes.join('');
 }
 
+// ---------- v11.3 (Repaginação 360, Meia-noite): o Plano — o lugar das Análises e do "Tudo do painel" ----------
+// A revisão do mês (os 5 números do consultor), a sobra com destino (com a conferência do mês que vem), os potes (metas,
+// reserva, dólar), a linha do tempo das decisões (passos do plano com Feito) e "O Claude notou". Depois, o que as Análises
+// tinham (análises do Claude, alertas, mercado, conferir, meses fechados e o Tudo do painel); a nota de saúde sai.
+function planoCv(m, dados, ctx, o) {
+  const cart = o.carteira, gh = !!o.github, hoje = o.hoje || hojeBrasil(), partes = [], modelos = [];
+  const ddmmIso = iso => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+  // 1. a revisão do mês
+  let rev = [];
+  try { rev = revisaoDoMes(m, dados, cart, ctx); } catch { /* sem motor */ }
+  if (rev.length) {
+    const fmt = x => (x.pct != null ? pct1v(x.pct * 100) : x.meses != null ? `${String(Math.round(x.meses * 10) / 10).replace('.', ',')} meses` : x.dif != null ? `${x.dif > 0 ? '+' : '−'}${brl0(Math.abs(x.dif))}` : brl0(x.valor));
+    const exp = {
+      poup: x => [[['Sobra projetada do mês', esc(brl(m.c.saldoProj ?? m.c.saldo))], ['Entrou no mês', esc(brl(m.c.receitas))]], 'Taxa de poupança: quanto do que entrou sobra. Consultores olham a média do ano — meses com 13º e PPR puxam para cima.'],
+      pl: x => [[['Patrimônio líquido', esc(brl(x.valor))], ['Investido', esc(brl(m.c.patInvest ?? 0))]], 'Tudo o que vocês têm (investido e conta) menos o que devem (a fatura). Vale olhar a direção a cada fechamento.'],
+      res: x => [[['Guardado', esc(brl(x.atual))], ['Meta', esc(brl(x.alvo))], ['Contas fixas por mês', esc(brl(m.c.fixas))]], 'O comum é de 3 a 6 meses do essencial. Fica em liquidez diária para não precisar de cheque especial.'],
+      cart: x => [[['Fatura até agora', esc(brl(m.c.itau))], ['Limite saudável', esc(brl(dados.regras?.limiteSaudavelItau || 0))]], 'Acima de 80% o mês aperta; acima de 100% a fatura come a sobra do mês que vem.'],
+      ritmo: x => [[['Gasto livre até o dia ' + x.dia, esc(brl(x.gasto))], ['O ritmo que fecha no limite', esc(brl(x.ideal))]], x.dif > 0 ? `Está ${brl0(x.dif)} acima do ritmo: o que passar disso sai da sobra.` : 'Dentro do ritmo.'],
+    };
+    partes.push(secaoCv('Como estamos', { link: '<span class="cv-nota">revisão do mês</span>' }), `<div class="sinais11">${rev.map(x => {
+      const [ls, nota] = exp[x.id](x);
+      modelos.push(detalheCv(`det-rev-${x.id}`, `${x.rotulo}: ${fmt(x)}`, `${linhasDet(ls)}<p class="cv-texto">${esc(nota)}</p>`));
+      return `<button type="button" class="sinal11 tom-${x.tom}" data-detalhe="det-rev-${x.id}"><span><i></i>${esc(x.rotulo)}</span><b class="num">${esc(fmt(x))}</b><small>${esc(x.sub)}</small></button>`;
+    }).join('')}</div>`);
+  }
+  // 2. a sobra com destino: os aportes do plano e se eles cabem no pior dia do mês que vem
+  let sd = null;
+  try { sd = cart ? sobraComDestino(m, dados, cart, ctx) : null; } catch { /* sem plano */ }
+  if (sd?.destinos.length) {
+    const depois = sd.piso != null ? sd.piso - sd.total : null;
+    partes.push(secaoCv('Para onde vai a sobra', { link: `<span class="cv-nota">${esc(brl(sd.total))} do plano</span>` }), blocoCv(`${listaCv(sd.destinos.map(d => linhaCv({ titulo: d.titulo, sub: d.quando ? (d.quando < hoje ? `era ${ddmmIso(d.quando)}` : `até ${ddmmIso(d.quando)}`) : '', valor: esc(brl(d.valor)) })))}
+      ${depois != null ? `<p class="sobra11 ${depois < 0 ? 'cai' : ''}"><span>Pior dia de ${esc(sd.mesProx.toLowerCase())} depois dos aportes</span><b class="num">${esc(brl(depois))}</b></p>` : ''}
+      ${sd.divisao ? `<p class="sugestao11"><b>Sugestão do Claude:</b> ${esc(sd.divisao.passo.titulo)} com ${esc(brl0(sd.divisao.agora))} agora e ${esc(brl0(sd.divisao.depois))} no mês que vem. O pior dia de ${esc(sd.mesProx.toLowerCase())} fica em ${esc(brl0(sd.divisao.piso))}.</p>` : depois != null && depois >= 0 ? '<p class="cv-nota">Cabe: os aportes não deixam a conta negativa no mês que vem.</p>' : ''}`));
+  }
+  // 3. os potes: as metas, a reserva e o dólar
+  const potes = [];
+  let metas = [];
+  try { metas = cart ? progressoMetas(cart, hoje) : []; } catch { /* sem metas */ }
+  const r = cart ? reserva(cart) : null;
+  if (r?.alvo) potes.push({ nome: 'Reserva', valor: brl(r.atual), pct: r.atual / r.alvo, sub: r.atual >= r.alvo ? 'completa' : `faltam ${brl0(r.alvo - r.atual)}` });
+  let aloc = null;
+  try { aloc = cart ? alocacaoVsAlvo(cart) : null; } catch { /* sem estratégia */ }
+  const dl = aloc?.linhas.find(l => l.classe === 'dolar');
+  if (dl?.alvo) potes.push({ nome: 'Dólar', valor: pct1v(dl.pct), pct: dl.pct / dl.alvo, sub: `alvo ${pct1v(dl.alvo)}${cart.meta_dolarizacao?.prazo ? ` até ${mesCurto(cart.meta_dolarizacao.prazo)}` : ''}` });
+  metas.forEach(mt => potes.push({ nome: mt.nome, valor: brl(mt.atual), pct: mt.pct, sub: mt.concluida ? 'meta alcançada' : mt.porMes ? `${brl0(mt.porMes)}/mês até ${mesCurto(mt.prazo)}` : `faltam ${brl0(mt.falta)}`, attr: gh ? `data-meta="${esc(mt.id)}"` : '' }));
+  if (potes.length || gh) partes.push(secaoCv('Potes', { contagem: potes.length || null, link: gh ? linkCv('Nova meta', 'data-meta="nova"') : '' }), `<div class="potes11">${potes.map(p => `<${p.attr ? 'button type="button"' : 'div'} class="pote11" ${p.attr || ''}><span>${esc(p.nome)}</span><b class="num">${esc(p.valor)}</b><i class="tr11"><i style="width:${Math.max(3, Math.min(100, Math.round(p.pct * 100)))}%"></i></i><small>${esc(p.sub)}</small></${p.attr ? 'button' : 'div'}>`).join('')}${gh ? '<button type="button" class="pote11 novo" data-meta="nova">+ Novo pote<small>apê, viagem: quanto e até quando</small></button>' : ''}</div>`);
+  // 4. a linha do tempo das decisões: os passos do plano, na ordem do tempo, com Feito
+  const passos = cart?.plano_acao?.passos || [];
+  const pend = passos.filter(p => !/conclu|decidid|cancel/i.test(p.status || '')).sort((a, b) => String(a.quando || '9').localeCompare(String(b.quando || '9')));
+  const lim = new Date(Date.parse(`${hoje}T12:00:00Z`) + 7 * 864e5).toISOString().slice(0, 10);
+  const grupo = (titulo, lista, urg) => (lista.length ? `<p class="gr11">${titulo}</p><div class="passos11">${lista.map(p => {
+    const q = String(p.quando || '').slice(0, 10);
+    return `<div class="passo11 ${urg ? 'urg' : ''}"><span><b>${esc(p.titulo)}</b><small>${[q ? (q < hoje ? `era ${ddmmIso(q)}` : ddmmIso(q)) : '', p.valor ? brl(Number(p.valor)) : ''].filter(Boolean).map(esc).join(' · ')}</small></span>${gh && p.n != null ? `<button type="button" class="li-acao principal" data-passo="${esc(p.n)}">Feito</button>` : ''}</div>`;
+  }).join('')}</div>` : '');
+  const fechar = gh && (ctx.mesPassou || ctx.diaHoje >= ctx.dias - 5) ? [{ titulo: `Fechar ${MESES[ctx.mes - 1]} com o Claude`, quando: '', n: null }] : [];
+  const feitos = passos.filter(p => /conclu/i.test(p.status || '')).length, totalP = passos.filter(p => !/cancel/i.test(p.status || '')).length;
+  if (pend.length || fechar.length) {
+    partes.push(secaoCv('Decisões', { link: totalP ? `<span class="cv-nota">${feitos} de ${totalP} feitos</span>` : '' }), `<i class="prog11"><i style="width:${totalP ? Math.round((feitos / totalP) * 100) : 0}%"></i></i>`,
+      grupo('Agora', pend.filter(p => String(p.quando || '').slice(0, 10) && String(p.quando).slice(0, 10) < hoje), true),
+      grupo('Esta semana', pend.filter(p => { const q = String(p.quando || '').slice(0, 10); return q >= hoje && q <= lim; }), false),
+      grupo('Depois', [...pend.filter(p => { const q = String(p.quando || '').slice(0, 10); return !q || q > lim; })], false),
+      fechar.length ? `<div class="passos11"><div class="passo11"><span><b>${esc(fechar[0].titulo)}</b><small>o mês acaba em ${ctx.dias - ctx.diaHoje} dias</small></span><button type="button" class="li-acao principal" data-levar-claude>Levar</button></div></div>` : '');
+  }
+  // 5. o Claude notou: o que pede decisão, com o número na frente (estratégia, caixa, orçamento, bancário, contador)
+  const notas = [];
+  if (aloc) {
+    const fora = [...aloc.linhas].filter(l => l.atual > 0 || l.alvo > 0).sort((a, b) => Math.abs(b.pct - b.alvo) - Math.abs(a.pct - a.alvo));
+    const acima = fora.find(l => l.pct - l.alvo > 2), abaixo = fora.find(l => l.alvo - l.pct > 2);
+    if (acima) notas.push([`+${String(Math.round((acima.pct - acima.alvo) * 10) / 10).replace('.', ',')} pts`, `${acima.nome} acima do alvo`, `${pct1v(acima.pct)} contra ${pct1v(acima.alvo)}: o dinheiro novo vai para o que falta, sem vender nada.`]);
+    if (abaixo) notas.push([`−${String(Math.round((abaixo.alvo - abaixo.pct) * 10) / 10).replace('.', ',')} pts`, `${abaixo.nome} abaixo do alvo`, `${pct1v(abaixo.pct)} hoje; faltam ${brl0(abaixo.falta)} para ${pct1v(abaixo.alvo)}.`]);
+  }
+  const pisos = (m.p12?.meses || []).flatMap(x => (x.porDia || []).map(p => p.saldo)).filter(Number.isFinite);
+  if (pisos.length) { const pis = Math.min(...pisos); if (pis >= 5000) notas.push([brl0(pis), 'Dinheiro parado na conta', 'É o menor saldo do próximo ano: parte pode render em vez de ficar na conta.']); }
+  let orc = [];
+  try { orc = orcamentoDoMes(dados, ctx).filter(x => x.pct >= 1); } catch { /* sem orçamento */ }
+  if (orc.length) notas.push([String(orc.length), `${orc.length === 1 ? 'Categoria passou' : 'Categorias passaram'} do orçamento`, `a que mais passou: ${orc[0].nome} (${brl0(orc[0].gasto)} de ${brl0(orc[0].limite)}).`]);
+  let dsc = null;
+  try { dsc = ctx.mesPassou ? null : descasamento(m, dados); } catch { /* sem agenda */ }
+  if (dsc?.sugestao) notas.push([`dia ${dsc.venc}`, 'A fatura vence antes do dinheiro entrar', `Bancário: mudar o vencimento para o dia ${dsc.sugestao} tira a conta do negativo (e do cheque especial) todo mês.`]);
+  const cc = cart ? comeCotas(hoje, cart) : null;
+  if (cc) notas.push([ddmmIso(cc.data), 'Come-cotas nos fundos de renda fixa', 'Contador: no último dia útil de maio e novembro esses fundos adiantam o IR. O líquido cai um pouco; é imposto, não perda.']);
+  if (notas.length) partes.push(secaoCv('O Claude notou', { contagem: notas.length }), `<div class="notou11">${notas.map(([n, t, s]) => `<div><b class="num">${esc(n)}</b><span><b>${esc(t)}</b><small>${esc(s)}</small></span></div>`).join('')}</div>`);
+  // 6. o que as Análises tinham (sem a nota de saúde): análises do Claude, alertas, mercado, conferir, meses fechados, Tudo do painel
+  partes.push(analisesCv(m, dados, ctx, o), ...modelos);
+  return partes.join('');
+}
+
 function analisesCv(m, dados, ctx, o) {
   const cart = o.carteira;
   const partes = ['<span id="v10-analises-saude"></span>'], modelos = [];
   // saúde do mês: a nota está no topo; aqui, de onde ela vem — cada critério na sua escala (cheio = pontos máximos)
   const sc = m.sc;
   const crit = sc && typeof sc.total === 'number' ? sc.crit || [] : [];
-  if (crit.length) {
+  if (crit.length && !o.v11) { // v11.3: a nota de saúde sai (aprovado pelo Bruno em 25/11) — no Plano entram os 5 números
     const cheios = crit.filter(k => (k.v || 0) >= 0.999), faltam = crit.filter(k => (k.v || 0) < 0.999);
     partes.push(secaoCv('De onde vem a nota', { contagem: crit.length }), blocoCv(`${barrasAlvoCv(faltam.map(k => ({
       rotulo: k.n, valor: `${Math.round((k.v || 0) * k.p)}/${k.p}`, atual: (k.v || 0) * k.p, alvo: k.p, tom: k.v >= 0.8 ? '' : k.v >= 0.4 ? 'atencao' : 'ruim', nota: k.v >= 0.8 ? '' : k.d || '',

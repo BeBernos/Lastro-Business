@@ -89,6 +89,15 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date(), { v11 = f
     return { ...base, titulo: v11 ? 'Mês' : 'Caixa', eyebrow: v11 ? 'Na conta hoje' : 'Saldo da conta hoje', valor: v11 && !ctx.mesPassou && hojeTl ? hojeTl.saldo : c.caixa,
       pilulas: [`${min.saldo < 0 ? 'Pior momento' : 'Mínimo'} ${brl(min.saldo)} · dia ${min.dia}`, `Fecha com ${brl(fim.saldo)}`] };
   }
+  if (aba === 'analises' && v11) {
+    // v11.3: o Plano responde no topo com os passos feitos do plano; a nota de saúde saiu
+    const ps = cart?.plano_acao?.passos || [], hj = `${ctx.ano}-${pad(ctx.mes)}-${pad(Math.max(1, ctx.diaHoje))}`;
+    const total = ps.filter(p => !/cancel/i.test(p.status || '')).length, feitos = ps.filter(p => /conclu/i.test(p.status || '')).length;
+    const pend = ps.filter(p => !/conclu|decidid|cancel/i.test(p.status || '')), atras = pend.filter(p => String(p.quando || '').slice(0, 10) && String(p.quando).slice(0, 10) < hj).length;
+    const prox = pend.map(p => String(p.quando || '').slice(0, 10)).filter(q => q >= hj).sort()[0];
+    return { ...base, titulo: 'Plano', eyebrow: total ? 'Passos do plano feitos' : 'Plano', valor: null, numeroTexto: total ? String(feitos) : '', numeroSufixo: total ? ` de ${total}` : '',
+      pilulas: [atras ? { texto: `${atras} ${atras === 1 ? 'atrasado' : 'atrasados'}`, tom: 'ruim' } : '', prox ? `Próximo: ${prox.slice(8, 10)}/${prox.slice(5, 7)}` : ''].filter(Boolean) };
+  }
   if (aba === 'analises' && typeof m?.sc?.total === 'number') {
     // v9.26: as Análises respondem no topo com a nota de saúde do mês (um número que não é dinheiro)
     const n = [...(dados?.analises || []), ...(cart?.analises || [])].filter(a => a && (a.titulo || a.texto)).length;
@@ -142,11 +151,12 @@ export function htmlTopoCarvao(info, { esconder = false } = {}) {
 // Mais abre o menu de hoje (#appMenu); o ＋ (#appLancar) só no celular de quem publica
 // v11.0: na Meia-noite o Caixa já se chama Mês e a Carteira, Patrimônio (o Cartão entra no Mês na v11.1)
 const NOMES_V11 = { mes: 'Mês', carteira: 'Patrimônio' };
+const PLANO_V11 = { id: 'plano', aba: 'analises', nome: 'Plano', icone: '<path d="M10 6h10M10 12h10M10 18h10M4 6l1.2 1.2L7.5 5M4 12l1.2 1.2L7.5 11M4 18l1.2 1.2L7.5 17"/>' };
 export function htmlNavV10(abaAtual, { lancar = false, v11 = false } = {}) {
   const botao = d => `<button type="button" class="aba v10-aba ${d.aba === abaAtual ? 'on' : ''}" data-aba="${d.aba}" aria-current="${d.aba === abaAtual ? 'page' : 'false'}">${ic(d.icone)}<span>${(v11 && NOMES_V11[d.aba]) || d.nome}</span></button>`; // v9.28: o nome à vista
   const [hoje, caixa, cartao, invest] = DESTINOS;
   const meio = lancar ? `<button type="button" class="v10-mais" id="appLancar" aria-label="Lançar" aria-haspopup="dialog">${ic('<path d="M12 5v14M5 12h14"/>')}</button>` : '';
-  return `<nav class="abas v10-nav" aria-label="Seções">${botao(hoje)}${botao(caixa)}${meio}${v11 ? '' : botao(cartao)}${botao(invest)}</nav>`; // v11.1: o Cartão mora no Mês
+  return `<nav class="abas v10-nav" aria-label="Seções">${botao(hoje)}${botao(caixa)}${meio}${v11 ? '' : botao(cartao)}${botao(invest)}${v11 ? botao(PLANO_V11) : ''}</nav>`; // v11.1: o Cartão mora no Mês; v11.3: o Plano (as Análises)
 }
 
 // ---------- v9.19 (etapa 2): o Hoje — quatro blocos e, só quando há o que fazer, até 3 faixas de ação ----------

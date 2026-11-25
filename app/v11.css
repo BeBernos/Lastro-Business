@@ -181,3 +181,39 @@ html.v11 .renda11 { display: flex; align-items: flex-end; gap: 5px; height: 72px
 html.v11 .renda11 i { flex: 1; border-radius: 5px 5px 2px 2px; background: var(--cv-brasa); opacity: .45; } html.v11 .renda11 i.agora { opacity: 1; }
 html.v11 .cc11 { margin: 18px 0 0; padding: 14px 16px; border-radius: 18px; border-top: 0; background: var(--cv-bloco); border: 1px solid var(--v10-linha); }
 html.v11 .cc11 .ic { color: var(--cv-brasa-tx); }
+
+/* v11.3 — o Plano (telas.js › planoCv): revisão do mês, sobra com destino, potes, decisões em linha do tempo, O Claude notou */
+html.v11 .sinais11 { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 4px; scrollbar-width: none; }
+html.v11 .sinais11::-webkit-scrollbar { display: none; }
+@media (min-width: 960px) { html.v11 .sinais11 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0; padding: 0; } }
+html.v11 .sinal11 { all: unset; box-sizing: border-box; cursor: pointer; flex: none; min-width: 112px; padding: 12px 14px; border-radius: 18px; background: var(--cv-bloco); border: 1px solid var(--v10-linha); }
+html.v11 .sinal11:focus-visible { outline: 2px solid var(--cv-brasa-tx); outline-offset: 2px; }
+html.v11 .sinal11 span { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--cv-mut); }
+html.v11 .sinal11 span i { width: 7px; height: 7px; border-radius: 50%; background: var(--cv-sobe); }
+html.v11 .sinal11.tom-atencao span i { background: var(--cv-coral); } html.v11 .sinal11.tom-ruim span i { background: var(--cv-cai); }
+html.v11 .sinal11 b { display: block; margin-top: 5px; font: 800 19px var(--display); color: var(--cv-tx); letter-spacing: -.02em; }
+html.v11 .sinal11 small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.35; color: var(--cv-mut); }
+html.v11 .sobra11 { display: flex; justify-content: space-between; gap: 12px; margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--v10-linha); font-size: 14px; color: var(--cv-tx2); }
+html.v11 .sobra11 b { color: var(--cv-sobe); } html.v11 .sobra11.cai b { color: var(--cv-cai); }
+html.v11 .sugestao11 { margin: 12px 0 0; padding: 12px 14px; border-radius: 16px; background: rgba(124, 156, 255, .1); border: 1px solid rgba(124, 156, 255, .28); font-size: 13.5px; line-height: 1.5; color: var(--cv-tx2); }
+html.v11 .sugestao11 b { color: var(--cv-brasa-tx); }
+html.v11 .potes11 { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 4px; scrollbar-width: none; }
+html.v11 .potes11::-webkit-scrollbar { display: none; }
+html.v11 .pote11 { all: unset; box-sizing: border-box; flex: none; width: 168px; padding: 14px; border-radius: 22px; background: var(--cv-bloco); border: 1px solid var(--v10-linha); }
+html.v11 button.pote11 { cursor: pointer; } html.v11 .pote11:focus-visible { outline: 2px solid var(--cv-brasa-tx); outline-offset: 2px; }
+html.v11 .pote11 span { font-size: 12.5px; color: var(--cv-mut); } html.v11 .pote11 b { display: block; margin: 4px 0 10px; font: 800 19px var(--display); color: var(--cv-tx); }
+html.v11 .pote11 small { display: block; margin-top: 8px; font-size: 12px; color: var(--cv-mut); }
+html.v11 .pote11.novo { display: grid; place-content: center; text-align: center; border-style: dashed; color: var(--cv-brasa-tx); font-weight: 700; font-size: 13.5px; }
+html.v11 .prog11 { display: block; height: 5px; margin: 0 4px 4px; border-radius: 9px; background: var(--v10-linha); }
+html.v11 .prog11 > i { display: block; height: 100%; border-radius: 9px; background: linear-gradient(90deg, var(--cv-brasa), var(--cv-sobe)); }
+html.v11 .gr11 { margin: 18px 4px 4px; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--cv-mut); }
+html.v11 .passos11 { position: relative; margin: 0 4px; padding-left: 24px; }
+html.v11 .passos11::before { content: ''; position: absolute; left: 7px; top: 14px; bottom: 14px; width: 2px; background: var(--v10-linha); }
+html.v11 .passo11 { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+html.v11 .passo11::before { content: ''; position: absolute; left: -22px; top: 50%; margin-top: -6px; width: 12px; height: 12px; border-radius: 50%; background: var(--cv-chao); border: 2px solid var(--cv-mut); }
+html.v11 .passo11.urg::before { border-color: var(--cv-cai); background: var(--cv-cai); }
+html.v11 .passo11 span { flex: 1; min-width: 0; } html.v11 .passo11 b { display: block; font-size: 14.5px; font-weight: 600; color: var(--cv-tx); line-height: 1.35; }
+html.v11 .passo11 small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--cv-mut); } html.v11 .passo11.urg small { color: var(--cv-cai); }
+html.v11 .notou11 > div { display: flex; gap: 14px; padding: 13px 4px; border-bottom: 1px solid var(--v10-linha); }
+html.v11 .notou11 > div > b { flex: none; width: 84px; font: 800 16px var(--display); color: var(--cv-coral); letter-spacing: -.02em; }
+html.v11 .notou11 span b { display: block; font-size: 14.5px; color: var(--cv-tx); } html.v11 .notou11 small { display: block; margin-top: 3px; font-size: 13px; line-height: 1.45; color: var(--cv-tx2); }
