@@ -272,3 +272,25 @@ export function agendaClaude(cf, cart, hoje) {
     linha('plano', 'Plano', uPlano, fechar || motivos.length > 0, motivos.join('; ') || (fechar ? 'é o fechamento do mês' : '')),
   ];
 }
+
+// ---------- v11.0 (Repaginação 360): o "Livre de verdade" ----------
+// O número de cima do Hoje na Meia-noite, no lugar do "dá para gastar" (que somava a sobra que já tem dono). Como o
+// "seguro para gastar" dos bancos digitais: o que dá para gastar no cartão até o limite saudável e, no caixa, o pior dia
+// daqui até o fim do mês que vem menos os aportes do plano que ainda não saíram. m: motor (c, tl, p12); ctx: contexto().
+export function livreDeVerdade(m, dados, cart, ctx) {
+  const c = m?.c || {}, limite = dados?.regras?.limiteSaudavelItau || 0;
+  const passos = (cart?.plano_acao?.passos || []).filter(p => !/conclu|decidid|cancel/i.test(p.status || '') && Number(p.valor) > 0);
+  // shortcut: o sentido do passo vem do título (resgate e venda entram no caixa); trocar por um campo de tipo se o plano ganhar um
+  const aportes = centavos(passos.filter(p => !/resgat|vend/i.test(p.titulo || '')).reduce((s, p) => s + Number(p.valor), 0));
+  const porDia = m?.tl?.porDia || [];
+  const daqui = porDia.filter(p => p.dia >= (ctx?.diaHoje || 1));
+  const prox = m?.p12?.meses?.[0];
+  // o pior dia do mês que vem (os aportes saem até o fim deste mês, depois que o salário entra); sem projeção, o deste mês
+  const pisos = (prox?.porDia?.length ? prox.porDia : ctx?.mesPassou ? [] : daqui).map(p => p.saldo).filter(Number.isFinite);
+  const piso = pisos.length ? Math.min(...pisos) : null;
+  const caixa = piso == null ? null : centavos(piso - aportes);
+  const cartao = limite ? { cabe: centavos(Math.max(0, limite - (c.itau || 0))), passou: centavos(Math.max(0, (c.itau || 0) - limite)), porDia: centavos(c.tetoPorDia || 0) } : null;
+  // o número: o que cabe no cartão (o gasto do dia a dia passa por ele); sem limite cadastrado, o que sobra no caixa
+  const valor = cartao ? cartao.cabe : Math.max(0, caixa ?? 0);
+  return { valor, cartao, aportes, piso, caixa, mesProx: prox?.label || '', planoPassa: caixa != null && caixa < 0 ? centavos(-caixa) : 0 };
+}

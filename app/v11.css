@@ -1,0 +1,98 @@
+/* v11.0 — Repaginação 360: a paleta Meia-noite (azul-noite, azul de ação, coral de atenção), escolhida pelo Bruno em
+   25/11/2026. Fica sobre o Carvão (html.v10) e só troca as variáveis --cv-* de v10.css, mais as poucas cores que lá
+   eram fixas. Atrás da chave em Configurações (html.v11). Sem verde: subiu = azul claro, caiu = coral. */
+html.v11 {
+  --cv-ambar: #7C9CFF;     /* dado: barras, linhas, colunas */
+  --cv-brasa-tx: #9DB4FF;  /* links */
+  --cv-tinta: #0A1030;     /* texto sobre a cor de ação */
+  --cv-brasa: #7C9CFF;     /* ação e foco */
+  --cv-sobe: #8FB4FF;
+  --cv-cai: #FF7A6E;
+  --cv-coral: #FF8A6B;     /* atenção (no Carvão era a brasa, que aqui virou o azul de ação) */
+  --cv-chao: #090D18;
+  --cv-bloco: #111829;
+  --cv-campo: #151D33;
+  --cv-topo1: #121a36;
+  --cv-topo2: #0c1226;
+  --cv-tx: #EEF2FF;
+  --cv-tx2: #B7C0DD;
+  --cv-mut: #8C96B6;
+  --cv-rotulo: #B7C0DD;
+  --cv-card1: #4B63F2;
+  --cv-card2: #3049D6;
+  --cv-card3: #1C2A85;
+  --cv-num2: #DCE5FF;
+  --cv-num3: #B9C8FF;
+  --cv-creme-rgb: 190, 205, 255;
+  --cv-brasa-rgb: 124, 156, 255;
+  --cv-ambar-rgb: 124, 156, 255;
+  --cv-cai-rgb: 255, 122, 110;
+  --cv-card-rgb: 75, 99, 242;
+  --v10-numero: linear-gradient(120deg, #FFFFFF, #DCE5FF);
+  --v10-fundo2: #1A2340;
+  --card-2: #1A2340; --s3: #8197FF;
+  --bom-soft: rgba(143, 180, 255, .1);
+  --atencao: var(--cv-coral); --atencao-txt: #FF9E85; --atencao-soft: rgba(255, 138, 107, .12);
+}
+html.v11 body { background: radial-gradient(130% 40% at 50% 0%, #152150 0%, #090D18 62%) fixed; }
+
+/* o que era fixo no v10.css */
+html.v11 .folha-v10::before, html.v11 #folha .alca { background: #2A3558; }
+html.v11 #folha { background: #121A2E; }
+html.v11 #folha #lValor, html.v11 #formLanc #lValor { color: #9DB4FF; }
+html.v11 #formLanc #lValor::placeholder { color: #3A4670; }
+html.v11 #trava { background: radial-gradient(120% 70% at 50% 0%, #1c2a52 0%, var(--v10-chao) 60%); }
+html.v11 .cartao-cv.classe-fiis::before { background: linear-gradient(140deg, #4B63F2, #3049D6 55%, #1C2A85); }
+html.v11 .cartao-cv.classe-etfs::before { background: linear-gradient(140deg, #7B66FF, #5440D9 55%, #2B2373); }
+html.v11 .cartao-cv.classe-ouro::before { background: linear-gradient(140deg, #E8945A, #C2663A 55%, #6E3420); }
+html.v11 .cartao-cv.classe-dolar::before { background: linear-gradient(140deg, #5B8CFF, #2F5BD6 55%, #1A3480); }
+html.v11 .cartao-cv.classe-cripto::before { background: linear-gradient(140deg, #FF8A6B, #C8503A 55%, #6E2418); }
+html.v11 .cartao-cv.classe-outro::before { background: linear-gradient(140deg, #8197FF, #5A6CC8 55%, #2D3A78); }
+
+/* atenção em coral (ação continua azul) */
+html.v11 :is(.folha-v10, #folha) .tom-atencao :is(.orc-barra, .bh-trilho) > i,
+html.v11 .barras-cv .tom-atencao .ba-trilho > i { background: var(--cv-coral); }
+html.v11 .ic-tile.tom-atencao, html.v11 .topo-pilulas span.tom-atencao svg { color: var(--cv-coral); }
+
+/* a barra: o + em coral (como no protótipo), o resto no azul */
+html.v11 .v10-mais { background: var(--cv-coral); color: #2a0d05; box-shadow: 0 8px 20px -6px rgba(255, 138, 107, .6); }
+
+/* o Hoje como briefing (hoje.js › htmlHojeV11): o número de cima abre a gaveta do porquê */
+html.v11 .topo-num-btn { all: unset; display: block; cursor: pointer; border-radius: 12px; }
+html.v11 .topo-num-btn:focus-visible { outline: 2px solid var(--cv-brasa-tx); outline-offset: 4px; }
+html.v11 .topo-carvao .topo-num { color: #fff; text-shadow: 0 0 42px rgba(124, 156, 255, .38); -webkit-text-fill-color: currentColor; background: none; }
+html.v11 .hj11 { gap: 30px; }
+html.v11 .hj11-frase { margin: 0; padding: 0 4px; font: 700 21px/1.3 var(--display); letter-spacing: -.02em; color: var(--cv-tx2); }
+html.v11 .hj11-frase b { font-weight: 800; color: var(--cv-tx); }
+html.v11 .hj11-sub { margin: -18px 0 0; padding: 0 4px; font-size: 14px; line-height: 1.55; color: var(--cv-tx2); }
+html.v11 .hj11-sub b { color: var(--cv-tx); } html.v11 .hj11-sub b.sobe { color: var(--cv-sobe); } html.v11 .hj11-sub b.cai { color: var(--cv-cai); }
+html.v11 .hj11-sec .fz-linha:first-of-type { border-top: 1px solid var(--v10-linha); margin-top: 8px; }
+html.v11 .hj11 .fz-linha.tom-atencao .fz-ponto { background: var(--cv-coral); } html.v11 .hj11 .fz-linha.tom-atencao .fz-txt small { color: var(--cv-coral); }
+html.v11 .hj11-ritmo { display: block; width: 100%; height: auto; margin-top: 10px; overflow: visible; }
+html.v11 .hr-ideal { stroke: var(--cv-mut); stroke-width: 2; stroke-dasharray: 5 5; }
+html.v11 .hr-real { stroke: var(--cv-sobe); stroke-width: 3; stroke-linecap: round; } html.v11 .hr-real.acima { stroke: var(--cv-coral); }
+html.v11 .hr-pt { fill: var(--cv-sobe); stroke: var(--cv-chao); stroke-width: 2; } html.v11 .hr-pt.acima { fill: var(--cv-coral); }
+html.v11 .hr-val { font: 800 13px var(--sans); fill: var(--cv-sobe); } html.v11 .hr-val.acima { fill: var(--cv-coral); }
+html.v11 .hr-eixo { font: 500 12px var(--sans); fill: var(--cv-mut); } html.v11 .hr-eixo.hj { fill: var(--cv-tx); font-weight: 700; }
+html.v11 .rumo-leg i.hr-i { background: var(--cv-coral); }
+html.v11 .hj11-prox { display: flex; gap: 8px; overflow-x: auto; margin: 12px -16px 0; padding: 0 16px 4px; scrollbar-width: none; }
+html.v11 .hj11-prox::-webkit-scrollbar { display: none; }
+html.v11 .hj11-dia { all: unset; box-sizing: border-box; cursor: pointer; flex: none; min-width: 96px; padding: 11px 13px; border-radius: 18px; background: var(--cv-bloco); border: 1px solid var(--v10-linha); }
+html.v11 .hj11-dia:focus-visible { outline: 2px solid var(--cv-brasa-tx); outline-offset: 2px; }
+html.v11 .hj11-dia small { display: block; font-size: 12px; color: var(--cv-mut); }
+html.v11 .hj11-dia b { display: block; font: 800 22px/1.1 var(--display); color: var(--cv-tx); }
+html.v11 .hj11-dia em { display: block; margin-top: 6px; font: 800 13.5px var(--display); font-style: normal; color: var(--cv-tx); font-variant-numeric: tabular-nums; }
+html.v11 .hj11-dia em.sobe { color: var(--cv-sobe); } html.v11 .hj11-dia em.cai { color: var(--cv-cai); }
+/* a gaveta do porquê */
+html.v11 .hj11-det { list-style: none; margin: 8px 0 0; padding: 0; }
+html.v11 .hj11-det li { display: flex; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--v10-linha); font-size: 14px; color: var(--cv-tx2); }
+html.v11 .hj11-det b { color: var(--cv-tx); font-variant-numeric: tabular-nums; white-space: nowrap; } html.v11 .hj11-det b.cai { color: var(--cv-cai); } html.v11 .hj11-det b.sobe { color: var(--cv-sobe); }
+html.v11 .hj11-nota { margin: 14px 0 4px; padding: 12px 14px; border-radius: 16px; background: var(--v10-fundo2); font-size: 13.5px; line-height: 1.5; color: var(--cv-tx2); }
+html.v11 .hj11-nota b { color: var(--cv-brasa-tx); }
+
+/* fundos que eram fixos no v10.css: cabeçalho pequeno, barra (no computador, a coluna da esquerda) */
+html.v11 .topo-mini { background: rgba(12, 18, 38, .94); }
+html.v11 .abas.v10-nav { background: rgba(14, 20, 38, .97); box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .7), 0 0 0 10px rgba(9, 13, 24, .55); }
+html.v11 .cartao-cv.brasa .cv-topo { background: rgba(5, 10, 40, .25); }
+/* no computador o gráfico do ritmo não passa de 640 px (DESIGN.md) */
+html.v11 .hj11-ritmo { max-width: 520px; }

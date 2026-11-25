@@ -2,6 +2,11 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '11.0.0': [
+    ['Lastro 11 em teste: a Meia-noite', 'A repaginação nova começou. Em Configurações, ligue "Interface Meia-noite (em teste)" para ver: cores azul-noite e coral, a barra com Hoje, Mês, Cartão e Patrimônio, e o Hoje novo. Quem não ligar continua com o app de sempre.', 'nova'],
+    ['Livre de verdade', 'Na Meia-noite, o número grande do Hoje é o que dá para gastar sem mexer no que já tem destino: o que ainda cabe no cartão. Se os aportes do plano passarem do caixa do mês que vem, ele avisa. Toque no número para ver o porquê.', 'nova'],
+    ['Hoje como briefing', 'Uma frase do dia, até 3 coisas para fazer hoje (a mais urgente primeiro), o ritmo do gasto livre e os próximos dias — cada um abre o detalhe.', 'melhoria'],
+  ],
   '10.2.0': [
     ['Hoje novo', 'O Hoje virou um resumo do app inteiro: a leitura do dia (como o mês fecha e o que pede cuidado), o Caixa, o Cartão e a Carteira em três cartões coloridos que deslizam, a agenda dos próximos dias (toque num dia para ver o que entra e sai), o que fazer e para onde vai a conta no próximo ano.', 'nova'],
     ['Saldo de hoje certo', 'O Hoje mostra o saldo da conta de hoje pela agenda do mês, não o último saldo do banco lançado.', 'correcao'],

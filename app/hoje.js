@@ -216,3 +216,55 @@ export function htmlHoje(r) {
   }
   return `<div class="hoje-cv">${p.join('')}</div>`;
 }
+
+// ---------- v11.0 (Repaginação 360, Meia-noite): o Hoje como briefing ----------
+// O número de cima (o "Livre de verdade", livreDeVerdade em indicadores.js) fica no topo; aqui: uma frase, até 3 coisas
+// para fazer hoje, o ritmo do gasto livre e os próximos dias. Os 5 números do consultor vão para a revisão do mês (Plano,
+// v11.3). Tocar no número de cima, no ritmo ou num dia abre a gaveta com o porquê (data-detalhe + <template>).
+const tpl = (id, titulo, linhas, nota) => `<template id="${id}"><h2 class="detalhe-titulo">${esc(titulo)}</h2><ul class="hj11-det">${linhas.filter(Boolean).map(([n, v, cls = '']) => `<li><span>${esc(n)}</span><b class="${cls}">${esc(v)}</b></li>`).join('')}</ul>${nota ? `<p class="hj11-nota"><b>Claude:</b> ${esc(nota)}</p>` : ''}</template>`;
+export function htmlHojeV11({ r, l, c = {}, limite = 0, ctx, github = false }) {
+  const mesNome = maiuscula(MESES[ctx.mes - 1]);
+  const p = [];
+  // a frase do dia: a sobra já tem dono quando há aportes no plano; o ponto fraco vem da leitura de sempre
+  if (r.leitura) {
+    const t1 = l.aportes && r.caixa?.fecha > 0 ? `${mesNome} fecha com sobra, mas ela já tem dono: os aportes do plano.` : r.leitura.t1;
+    p.push(`<p class="hj11-frase"><b>${esc(t1)}</b> ${esc(r.leitura.t2)}</p>${r.leitura.texto ? `<p class="hj11-sub">${r.leitura.texto}</p>` : ''}`);
+  }
+  // até 3 coisas para hoje; se os aportes do plano passam do caixa do mês que vem, isso entra em segundo
+  const fazer = [...r.fazer];
+  if (l.planoPassa) fazer.splice(1, 0, { titulo: 'Antes de investir: rever os aportes do plano', sub: `com todos, ${l.mesProx.toLowerCase()} fica em −${brl0(l.planoPassa)} no pior dia`, tom: 'atencao', attr: 'data-detalhe="det-plano"' });
+  const peso = f => (f.tom === 'ruim' ? 0 : f.tom === 'atencao' ? 1 : 2); // o mais urgente primeiro (sort estável)
+  const tres = fazer.map((f, i) => ({ f, i })).sort((a, b) => peso(a.f) - peso(b.f) || a.i - b.i).slice(0, 3).map(x => x.f);
+  if (tres.length) p.push(`<section class="hj11-sec"><div class="tit-hoje"><h2>Hoje</h2><span>${tres.length} ${tres.length === 1 ? 'coisa' : 'coisas'}</span></div>
+    ${tres.map(f => `<div class="fz-linha tom-${f.tom}">${f.passo != null && github ? `<button type="button" class="fz-check" data-passo="${esc(f.passo)}" aria-label="Marcar como feito"></button>` : '<i class="fz-ponto"></i>'}<button type="button" class="fz-txt" ${f.attr || ''}><b>${esc(f.titulo)}</b>${f.sub ? `<small>${esc(f.sub)}</small>` : ''}</button></div>`).join('')}</section>`);
+  // o ritmo do gasto livre (cartão + Pix sem as contas fixas) contra a linha que fecha no limite
+  const livreLimite = Math.max(0, limite - (c.comprometido || 0)), dia = Math.min(ctx.dias, c.itauDia || ctx.diaHoje), gasto = c.gastoLivre || 0;
+  if (limite && gasto > 0 && !ctx.mesPassou) {
+    const ideal = (livreLimite * dia) / ctx.dias, dif = gasto - ideal, teto = Math.max(livreLimite, gasto) * 1.08 || 1;
+    const X = d => 10 + ((d - 1) / Math.max(1, ctx.dias - 1)) * 330, Y = v => 112 - (v / teto) * 96;
+    p.push(`<section class="hj11-sec"><div class="tit-hoje"><h2>Ritmo do gasto livre</h2><button type="button" class="link-cv" data-detalhe="det-ritmo">Por quê?</button></div>
+      <svg viewBox="0 0 350 132" class="hj11-ritmo" role="img" aria-label="Gasto livre ${esc(brl0(gasto))} até o dia ${dia}; o ritmo que fecha no limite seria ${esc(brl0(ideal))}">
+        <line x1="${X(1)}" y1="${Y(0)}" x2="${X(ctx.dias)}" y2="${Y(livreLimite).toFixed(1)}" class="hr-ideal"></line>
+        <line x1="${X(1)}" y1="${Y(0)}" x2="${X(dia).toFixed(1)}" y2="${Y(gasto).toFixed(1)}" class="hr-real ${dif > 0 ? 'acima' : ''}"></line>
+        <circle cx="${X(dia).toFixed(1)}" cy="${Y(gasto).toFixed(1)}" r="5" class="hr-pt ${dif > 0 ? 'acima' : ''}"></circle>
+        <text x="${Math.min(X(dia) + 10, 230).toFixed(1)}" y="${(Y(gasto) - 8).toFixed(1)}" class="hr-val ${dif > 0 ? 'acima' : ''}">${esc(brl0(gasto))} (${dif > 0 ? '+' : '−'}${esc(brl0(Math.abs(dif)))})</text>
+        <text x="${X(1)}" y="128" class="hr-eixo">dia 1</text><text x="${X(dia).toFixed(1)}" y="128" text-anchor="middle" class="hr-eixo hj">dia ${dia}</text><text x="${X(ctx.dias)}" y="128" text-anchor="end" class="hr-eixo">dia ${ctx.dias}</text>
+      </svg>
+      <p class="rumo-leg"><span><i class="hr-i"></i>gasto livre (cartão + Pix)</span><span><i class="tr"></i>ritmo que fecha no limite</span></p></section>`);
+    p.push(tpl('det-ritmo', 'Ritmo do gasto livre', [['Gasto livre até o dia ' + dia, brl(gasto), dif > 0 ? 'cai' : ''], ['O ritmo que fecha no limite', brl(ideal)], ['Livre no mês (limite − já comprometido)', brl(livreLimite)], ['Já comprometido (recorrentes e parcelas)', brl(c.comprometido || 0)]],
+      dif > 0 ? `Está ${brl0(dif)} acima do ritmo. Até o fechamento cabem ${brl0(Math.max(0, livreLimite - gasto))}.` : 'Dentro do ritmo: o mês fecha abaixo do limite se continuar assim.'));
+  }
+  // os próximos dias com movimento (o "Hoje" vazio não entra)
+  const dias = r.agenda.filter(d => !d.vazio).slice(0, 4);
+  if (dias.length) p.push(`<section class="hj11-sec"><div class="tit-hoje"><h2>Próximos</h2><button type="button" class="link-cv" data-ir-aba="mes/agenda">O mês inteiro</button></div>
+    <div class="hj11-prox">${dias.map((d, i) => `<button type="button" class="hj11-dia" data-detalhe="det-dia-${i}"><small>${esc(d.sem)}${d.data.slice(5, 7) !== String(ctx.mes).padStart(2, '0') ? ` · ${esc(MES3[Number(d.data.slice(5, 7)) - 1])}` : ''}</small><b>${esc(d.dia)}</b><em class="${d.total > 0 ? 'sobe' : d.total < 0 ? 'cai' : ''}">${esc(sinal(d.total))}</em></button>`).join('')}</div>
+    ${dias.map((d, i) => tpl(`det-dia-${i}`, `${d.titulo} · ${d.quando}`, d.itens.map(it => [it.nome, `${it.valor > 0 ? '+' : '−'}${brl(Math.abs(it.valor))}`, it.valor > 0 ? 'sobe' : '']), d.mais ? `E mais ${d.mais} movimentos pequenos nesse dia.` : '')).join('')}</section>`);
+  // as gavetas do número de cima e do plano
+  p.push(tpl('det-livre', l.cartao?.passou ? 'O cartão passou do limite' : `Livre de verdade: ${brl0(l.valor)}`, [
+    l.cartao && ['Fatura até agora', brl(c.itau || 0)], l.cartao && ['Limite saudável', brl(limite)], l.cartao && ['Por dia até o fechamento', brl(l.cartao.porDia)],
+    l.aportes && ['Aportes do plano ainda por fazer', brl(l.aportes)], l.piso != null && [l.mesProx ? `Pior dia de ${l.mesProx.toLowerCase()}` : 'Pior dia até o fim do mês', brl(l.piso), l.piso < 0 ? 'cai' : ''],
+  ], 'A sobra do mês já tem destino (os aportes do plano). O que dá para gastar sem mexer nisso é o que ainda cabe no cartão.'));
+  if (l.planoPassa) p.push(tpl('det-plano', 'Os aportes do plano e o caixa', [[`Pior dia de ${l.mesProx.toLowerCase()} sem os aportes`, brl(l.piso)], ['Aportes do plano ainda por fazer', `−${brl(l.aportes)}`, 'cai'], ['Pior dia com todos', `−${brl(l.planoPassa)}`, 'cai']],
+    'Estimativa pela projeção do painel, supondo que os aportes ainda não foram lançados. Dividir o maior aporte em dois meses evita o cheque especial.'));
+  return `<div class="hoje-cv hj11">${p.join('')}</div>`;
+}

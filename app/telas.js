@@ -5,7 +5,7 @@
 import { anel, barrasH, brl, brl0, colunas, compacto, empilhada, esc, icTom, linhaSaldo, linhas, medidor, minilinha, svgIcone } from './graficos.js';
 import { contexto, proximasContas } from './resumo.js';
 import { faixasDoHoje, htmlComposicaoV10, htmlHojeV10, saudeCarteira } from './v10.js';
-import { htmlHoje, resumoHoje } from './hoje.js';
+import { htmlHoje, htmlHojeV11, resumoHoje } from './hoje.js';
 import { acoesCv, areaCv, barrasAlvoCv, blocoCv, carrosselCv, CHECK, colunasCv, cartaoCv, codigoAtivo, diaCv, linhaCv, linkCv, listaCv, numerosCv, secaoCv, tudoDoPainelCv, variacaoCv } from './carvao.js';
 import { blocosDoPainel } from './traduzir.js';
 import { mesBonito } from './painel.js';
@@ -18,7 +18,7 @@ import { alertasPlano, alocacaoVsAlvo, rendimentoRendaFixa } from './estrategia.
 import { gatilhos, INDICADORES, pausa, textoItem } from './ficha.js';
 import { prazoResgate } from './liquidez.js';
 import { escada } from './rendafixa.js';
-import { agendaClaude, aportePlanejado, dolarMesAMes, mesCurto, orcamentoDoMes, progressoMetas, rendaPassiva, resumoMeses } from './indicadores.js';
+import { agendaClaude, aportePlanejado, dolarMesAMes, livreDeVerdade, mesCurto, orcamentoDoMes, progressoMetas, rendaPassiva, resumoMeses } from './indicadores.js';
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const MES3 = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -1872,6 +1872,13 @@ function hojeV10(m, dados, cart, ctx, opcoes) {
   if (ehDomingo(opcoes.hoje) && !ctx.mesPassou) extras.push({ tom: 'info', texto: 'Resumo da semana', attr: 'data-semana' });
   let linhas = [];
   try { linhas = linhasDoHoje(m, dados, cart, ctx, opcoes); } catch { /* sem linhas */ }
+  // v11.0: na Meia-noite, o Hoje vira briefing (o número de cima é o "Livre de verdade"); quebrou, cai no da v10.2
+  if (opcoes.v11) {
+    try {
+      const r = resumoHoje(m, dados, cart, ctx, { linhas, extras, hoje: opcoes.hoje || hojeBrasil(), github: !!opcoes.github });
+      return htmlHojeV11({ r, l: livreDeVerdade(m, dados, cart, ctx), c: m.c, limite: dados.regras?.limiteSaudavelItau || 0, ctx, github: !!opcoes.github });
+    } catch (e) { console.warn('Hoje da Meia-noite indisponível:', e); }
+  }
   // v10.2: o Hoje novo (hoje.js, modelo 13 do quadro); se faltar algum dado e ele quebrar, o Hoje de antes
   try { return htmlHoje(resumoHoje(m, dados, cart, ctx, { linhas, extras, hoje: opcoes.hoje || hojeBrasil(), github: !!opcoes.github })); } catch (e) { console.warn('Hoje novo indisponível:', e); }
   let investido = null;

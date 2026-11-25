@@ -160,7 +160,7 @@ export function areaCv(pontos, { altura = 150, hojeX = null, rotulosX = [], fim 
   const larg = (W - L - R) / Math.max(1, pontos.length - 1);
   const toques = pontos.map(p => `<rect x="${n1(X(p.x) - larg / 2)}" y="0" width="${n1(larg)}" height="${H - B}" class="g-toque" data-dica="${esc(p.dica || '')}" data-x="${n1(X(p.x))}" data-y="${n1(Y(p.y))}"/>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" class="grafico grafico-cv arrastavel" role="img" aria-label="${esc(rotulo)}">
-    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb347" stop-opacity=".32"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></linearGradient>
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--cv-ambar)" stop-opacity=".32"/><stop offset="1" style="stop-color:var(--cv-ambar)" stop-opacity="0"/></linearGradient>
       <clipPath id="${id}n"><rect x="0" y="${n1(base)}" width="${W}" height="${H}"/></clipPath></defs>
     <path d="${area}" fill="url(#${id})" class="gcv-area"/>
     <path d="${linha}" pathLength="1" class="gcv-linha"/>

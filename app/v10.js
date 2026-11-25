@@ -6,6 +6,7 @@ import { posicao, reserva } from './carteira.js';
 import { alocacaoVsAlvo } from './estrategia.js';
 import { resultadoDoMes, valorPorFonte } from './investimentos.js';
 import { contexto } from './resumo.js';
+import { livreDeVerdade } from './indicadores.js';
 
 const CHAVE = 'lastro-v10';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -29,6 +30,10 @@ export function v10Ligada() {
 export function ligarV10(on) {
   try { localStorage.setItem(CHAVE, on ? '1' : '0'); } catch { /* fica só nesta abertura */ }
 }
+// v11.0 (Repaginação 360, 25/11/2026): a Meia-noite em construção, sobre o Carvão — desligada até o Bruno ligar em
+// Configurações; vira padrão na v11.4
+export const v11Ligada = () => { try { return v10Ligada() && localStorage.getItem('lastro-v11') === '1'; } catch { return false; } };
+export const ligarV11 = on => { try { localStorage.setItem('lastro-v11', on ? '1' : '0'); } catch { /* fica só nesta abertura */ } };
 
 function saudacao(agora) {
   const h = Number(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hourCycle: 'h23' }));
@@ -36,13 +41,20 @@ function saudacao(agora) {
 }
 
 // { titulo, sub, eyebrow, valor (número ou null), pilulas }
-export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
+export function numerosDoTopo(aba, m, dados, cart, agora = new Date(), { v11 = false } = {}) {
   const ctx = contexto(dados, agora);
   const c = m?.c || {};
   const sub = `${MESES[ctx.mes - 1].slice(0, 3)} · ${c.diasRest ?? ctx.dias - ctx.diaHoje} dias`;
   const base = { titulo: saudacao(agora), sub, eyebrow: '', valor: null, pilulas: [] };
   if (aba === 'inicio') {
     if (ctx.mesPassou) return { ...base, eyebrow: `Falta fechar ${MESES[ctx.mes - 1]}` };
+    // v11.0: o "Livre de verdade" — a sobra do mês já tem dono (os aportes do plano); livre é o que cabe no cartão
+    if (v11 && m?.c) {
+      const l = livreDeVerdade(m, dados, cart, ctx);
+      if (l.cartao) return { ...base, eyebrow: l.cartao.passou ? 'O cartão passou do limite' : 'Livre para gastar até a fatura fechar', valor: l.cartao.passou ? -l.cartao.passou : l.valor, detalhe: 'det-livre',
+        pilulas: [...(l.cartao.passou ? [] : [`${brl(l.cartao.porDia)} por dia`]), l.planoPassa ? { texto: `O plano passa ${brl(l.planoPassa)} do caixa de ${l.mesProx.toLowerCase()}`, tom: 'ruim' } : 'O resto do mês já tem destino'] };
+      return { ...base, eyebrow: 'Livre para gastar', valor: l.valor, detalhe: 'det-livre', pilulas: l.aportes ? ['Já sem os aportes do plano'] : [] };
+    }
     const porDia = c.diasRest > 0 ? c.saldo / c.diasRest : c.saldo;
     return { ...base, eyebrow: 'Dá para gastar até o fim do mês', valor: c.saldo, pilulas: [`Hoje ${brl(porDia)}`, `Semana ${brl(porDia * Math.min(7, Math.max(1, c.diasRest)))}`] };
   }
@@ -56,7 +68,7 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
     // v10.0.1: a data dos valores (as atualizações automáticas), não a última data oficial do Claude — "posição de 13/11"
     // com valores de 19/11 confundia
     const dv = [p.data, ...Object.values(p.h?.ativos_atualizado_em || {})].filter(d => /^\d{4}-\d{2}-\d{2}/.test(d || '')).sort().pop() || p.data;
-    return { ...base, titulo: 'Carteira', sub: `valores de ${dv.slice(8, 10)}/${dv.slice(5, 7)}`, eyebrow: 'Patrimônio investido', valor: p.total,
+    return { ...base, titulo: v11 ? 'Patrimônio' : 'Carteira', sub: `valores de ${dv.slice(8, 10)}/${dv.slice(5, 7)}`, eyebrow: 'Patrimônio investido', valor: p.total,
       fontes: valorPorFonte(cart), // v9.30: Itaú e Binance logo embaixo do total
       pilulas: [...(s.estado ? [{ texto: s.estado, tom }] : []), { texto: `${brl(Math.abs(mercado))} no mês`, seta: mercado < 0 ? 'cai' : 'sobe' }, ...(s.fiel != null ? [`${s.fiel}% fiel`] : [])] };
   }
@@ -72,7 +84,7 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
     const futuro = m.tl.porDia.filter(p => p.dia >= ctx.diaHoje);
     const min = (futuro.length ? futuro : m.tl.porDia).reduce((a, p) => (p.saldo < a.saldo ? p : a));
     const fim = m.tl.porDia[m.tl.porDia.length - 1];
-    return { ...base, titulo: 'Caixa', eyebrow: 'Saldo da conta hoje', valor: c.caixa,
+    return { ...base, titulo: v11 ? 'Mês' : 'Caixa', eyebrow: 'Saldo da conta hoje', valor: c.caixa,
       pilulas: [`${min.saldo < 0 ? 'Pior momento' : 'Mínimo'} ${brl(min.saldo)} · dia ${min.dia}`, `Fecha com ${brl(fim.saldo)}`] };
   }
   if (aba === 'analises' && typeof m?.sc?.total === 'number') {
@@ -90,9 +102,9 @@ const ic = d => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke=
 
 // pílula do topo: texto, ou { texto, seta: 'sobe'|'cai' } (seta desenhada) ou { texto, tom } (estado: ícone + texto)
 const ESTADOS = {
-  ruim: '<circle cx="12" cy="12" r="9" fill="currentColor" stroke="none"/><path d="M12 7.6v5.2M12 16.4v.01" stroke="#1d0d05" stroke-width="2.6"/>',
-  atencao: '<circle cx="12" cy="12" r="9" fill="currentColor" stroke="none"/><path d="M12 7.6v5.2M12 16.4v.01" stroke="#1d0d05" stroke-width="2.6"/>',
-  bom: '<circle cx="12" cy="12" r="9" fill="currentColor" stroke="none"/><path d="m8 12.3 2.8 2.8L16.2 9.6" stroke="#1d0d05" stroke-width="2.4"/>',
+  ruim: '<circle cx="12" cy="12" r="9" fill="currentColor" stroke="none"/><path d="M12 7.6v5.2M12 16.4v.01" style="stroke:var(--cv-tinta)" stroke-width="2.6"/>',
+  atencao: '<circle cx="12" cy="12" r="9" fill="currentColor" stroke="none"/><path d="M12 7.6v5.2M12 16.4v.01" style="stroke:var(--cv-tinta)" stroke-width="2.6"/>',
+  bom: '<circle cx="12" cy="12" r="9" fill="currentColor" stroke="none"/><path d="m8 12.3 2.8 2.8L16.2 9.6" style="stroke:var(--cv-tinta)" stroke-width="2.4"/>',
 };
 const SETAS = { sobe: '<path d="M12 18V6M7 11l5-5 5 5"/>', cai: '<path d="M12 6v12M7 13l5 5 5-5"/>' };
 const pilula = p => (typeof p === 'string' ? `<span>${esc(p)}</span>`
@@ -117,7 +129,7 @@ export function htmlTopoCarvao(info, { esconder = false } = {}) {
       </div>
     </div>
     ${info.eyebrow ? `<p class="topo-eyebrow">${esc(info.eyebrow)}</p>` : ''}
-    ${numero}
+    ${info.detalhe && numero ? `<button type="button" class="topo-num-btn" data-detalhe="${esc(info.detalhe)}" aria-label="Por que este número">${numero}</button>` : numero}
     ${info.fontes?.length ? `<p class="topo-fontes">${info.fontes.map(f => `<span>${esc(f.nome)} <b class="num">${esc(brl(f.valor))}</b></span>`).join('')}</p>` : ''}
     ${info.pilulas.length ? `<div class="topo-pilulas">${info.pilulas.map(pilula).join('')}</div>` : ''}
   </header>
@@ -126,8 +138,10 @@ export function htmlTopoCarvao(info, { esconder = false } = {}) {
 }
 
 // Mais abre o menu de hoje (#appMenu); o ＋ (#appLancar) só no celular de quem publica
-export function htmlNavV10(abaAtual, { lancar = false } = {}) {
-  const botao = d => `<button type="button" class="aba v10-aba ${d.aba === abaAtual ? 'on' : ''}" data-aba="${d.aba}" aria-current="${d.aba === abaAtual ? 'page' : 'false'}">${ic(d.icone)}<span>${d.nome}</span></button>`; // v9.28: o nome à vista
+// v11.0: na Meia-noite o Caixa já se chama Mês e a Carteira, Patrimônio (o Cartão entra no Mês na v11.1)
+const NOMES_V11 = { mes: 'Mês', carteira: 'Patrimônio' };
+export function htmlNavV10(abaAtual, { lancar = false, v11 = false } = {}) {
+  const botao = d => `<button type="button" class="aba v10-aba ${d.aba === abaAtual ? 'on' : ''}" data-aba="${d.aba}" aria-current="${d.aba === abaAtual ? 'page' : 'false'}">${ic(d.icone)}<span>${(v11 && NOMES_V11[d.aba]) || d.nome}</span></button>`; // v9.28: o nome à vista
   const [hoje, caixa, cartao, invest] = DESTINOS;
   const meio = lancar ? `<button type="button" class="v10-mais" id="appLancar" aria-label="Lançar" aria-haspopup="dialog">${ic('<path d="M12 5v14M5 12h14"/>')}</button>` : '';
   return `<nav class="abas v10-nav" aria-label="Seções">${botao(hoje)}${botao(caixa)}${meio}${botao(cartao)}${botao(invest)}</nav>`;
