@@ -96,3 +96,51 @@ html.v11 .abas.v10-nav { background: rgba(14, 20, 38, .97); box-shadow: 0 10px 3
 html.v11 .cartao-cv.brasa .cv-topo { background: rgba(5, 10, 40, .25); }
 /* no computador o gráfico do ritmo não passa de 640 px (DESIGN.md) */
 html.v11 .hj11-ritmo { max-width: 520px; }
+
+/* v11.1 — o Mês (telas.js › mesCv): aviso do cheque especial, vista e filtros por rádio (o CSS mostra o escolhido),
+   calendário com o saldo de cada dia e os três baldes */
+html.v11 .aviso11 { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 18px; padding: 14px 16px;
+  border-radius: 20px; background: rgba(255, 138, 107, .08); border: 1px solid rgba(255, 138, 107, .32); }
+html.v11 .aviso11:focus-visible { outline: 2px solid var(--cv-coral); outline-offset: 2px; }
+html.v11 .aviso11 span { flex: 1; min-width: 0; } html.v11 .aviso11 b { display: block; font-size: 14.5px; color: var(--cv-tx); }
+html.v11 .aviso11 small { display: block; margin-top: 3px; font-size: 12.5px; line-height: 1.4; color: var(--cv-coral); }
+html.v11 .aviso11 em { flex: none; font-style: normal; font-size: 13px; font-weight: 700; padding: 8px 12px; border-radius: 99px; background: var(--v10-fundo2); color: var(--cv-tx); }
+html.v11 .seg11 { display: flex; padding: 4px; border-radius: 99px; background: var(--cv-bloco); border: 1px solid var(--v10-linha); }
+html.v11 .seg11-op { flex: 1; position: relative; cursor: pointer; }
+html.v11 :is(.seg11-op, .chips11 label) input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+html.v11 .seg11-op span { display: block; padding: 9px 0; border-radius: 99px; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--cv-tx2); }
+html.v11 .seg11-op:has(input:checked) span { background: var(--cv-brasa); color: var(--cv-tinta); }
+html.v11 :is(.seg11-op, .chips11 label):has(input:focus-visible) span { outline: 2px solid var(--cv-brasa-tx); outline-offset: 2px; }
+html.v11 .mv11, html.v11 .mf11 { display: none; margin-top: 14px; }
+html.v11 .mes11-vista:has(input[value="cal"]:checked) .mv11-cal, html.v11 .mes11-vista:has(input[value="linha"]:checked) .mv11-linha,
+html.v11 .mes11-vista:has(input[value="meses"]:checked) .mv11-meses,
+html.v11 .mes11-filtros:has(input[value="prox"]:checked) .mf11-prox, html.v11 .mes11-filtros:has(input[value="cartao"]:checked) .mf11-cartao,
+html.v11 .mes11-filtros:has(input[value="cat"]:checked) .mf11-cat, html.v11 .mes11-filtros:has(input[value="conta"]:checked) .mf11-conta { display: block; }
+html.v11 .cal11 { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+html.v11 .cal11-sem { padding-bottom: 2px; text-align: center; font-size: 12px; color: var(--cv-mut); }
+html.v11 .cal11-dia { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; align-items: center; min-height: 54px; padding: 6px 2px 5px;
+  border-radius: 12px; background: var(--cv-bloco); color: var(--cv-tx); font-variant-numeric: tabular-nums; }
+html.v11 .cal11-dia[tabindex="-1"] { cursor: default; }
+html.v11 .cal11-dia:focus-visible { outline: 2px solid var(--cv-brasa-tx); outline-offset: 1px; }
+html.v11 .cal11-dia b { font-size: 13px; font-weight: 700; } html.v11 .cal11-dia small { margin-top: auto; font-size: 12px; font-weight: 700; color: var(--cv-tx2); }
+html.v11 .cal11-dia.passou { opacity: .5; } html.v11 .cal11-dia.hoje { box-shadow: inset 0 0 0 2px var(--cv-brasa); }
+html.v11 .cal11-dia.neg { background: rgba(255, 122, 110, .16); } html.v11 .cal11-dia.neg small { color: var(--cv-cai); }
+html.v11 .cal11-pts { display: flex; gap: 3px; height: 8px; align-items: center; }
+html.v11 :is(.cal11-pts, .cal11-leg) i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+html.v11 :is(.cal11-pts, .cal11-leg) i.sobe { background: var(--cv-sobe); } html.v11 :is(.cal11-pts, .cal11-leg) i.cai { background: var(--cv-coral); } html.v11 .cal11-leg i.neg { background: rgba(255, 122, 110, .5); border-radius: 2px; }
+html.v11 .cal11-leg { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 4px 0; font-size: 12px; color: var(--cv-mut); }
+html.v11 .cal11-leg i { margin-right: 5px; }
+html.v11 .baldes11 { display: flex; flex-direction: column; gap: 14px; padding: 4px 4px 0; }
+html.v11 .baldes11 span { display: flex; justify-content: space-between; gap: 10px; font-size: 14.5px; }
+html.v11 .baldes11 .num { font-variant-numeric: tabular-nums; } html.v11 .baldes11 .sobe { color: var(--cv-sobe); } html.v11 .baldes11 .cai { color: var(--cv-cai); }
+html.v11 .baldes11 small { display: block; margin-top: 5px; font-size: 12.5px; line-height: 1.4; color: var(--cv-mut); }
+html.v11 .tr11 { display: block; height: 9px; margin-top: 7px; border-radius: 9px; background: var(--v10-linha); }
+html.v11 .tr11 > i { display: block; height: 100%; border-radius: 9px; background: var(--cv-brasa); }
+html.v11 .tr11 > i.livre { background: var(--cv-coral); } html.v11 .tr11 > i.sobra { background: var(--cv-sobe); } html.v11 .tr11 > i.neg { background: var(--cv-cai); }
+html.v11 .mes11-filtros { margin-top: 26px; }
+html.v11 .chips11 { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 4px; scrollbar-width: none; }
+html.v11 .chips11::-webkit-scrollbar { display: none; }
+html.v11 .chips11 label { position: relative; flex: none; cursor: pointer; }
+html.v11 .chips11 label span { display: block; padding: 8px 15px; border-radius: 99px; font-size: 13.5px; font-weight: 700; color: var(--cv-tx2); background: var(--cv-bloco); border: 1px solid var(--v10-linha); }
+html.v11 .chips11 label:has(input:checked) span { background: var(--cv-brasa); border-color: var(--cv-brasa); color: var(--cv-tinta); }
+@media (min-width: 960px) { html.v11 .cal11-dia { min-height: 64px; } }

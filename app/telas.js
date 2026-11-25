@@ -18,7 +18,7 @@ import { alertasPlano, alocacaoVsAlvo, rendimentoRendaFixa } from './estrategia.
 import { gatilhos, INDICADORES, pausa, textoItem } from './ficha.js';
 import { prazoResgate } from './liquidez.js';
 import { escada } from './rendafixa.js';
-import { agendaClaude, aportePlanejado, dolarMesAMes, livreDeVerdade, mesCurto, orcamentoDoMes, progressoMetas, rendaPassiva, resumoMeses } from './indicadores.js';
+import { agendaClaude, aportePlanejado, descasamento, dolarMesAMes, livreDeVerdade, mesCurto, orcamentoDoMes, progressoMetas, rendaPassiva, resumoMeses } from './indicadores.js';
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const MES3 = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -2020,7 +2020,7 @@ export function htmlAba(aba, m, dados, opcoes = {}) {
   const ctx = contexto(dados, opcoes.agora || new Date());
   if (aba === 'inicio' || !SUBABAS[aba]) return abaInicioHub(m, dados, ctx, opcoes);
   // v9.26: a interface nova desenha cada tela do zero; a leitura de antes (com os blocos do painel) só em "Tudo do painel"
-  if (opcoes.v10 && TELAS_CV[aba] && !opcoes.tudo) return TELAS_CV[aba](m, dados, ctx, opcoes);
+  if (opcoes.v10 && TELAS_CV[aba] && !opcoes.tudo) return (opcoes.v11 && aba === 'mes' ? mesCv : TELAS_CV[aba])(m, dados, ctx, opcoes); // v11.1: o Mês da Meia-noite
   let blocos = [];
   try {
     if (opcoes.doc) blocos = blocosDoPainel(opcoes.doc, { trocas: trocasDeGraficos(m, dados, ctx), abertos: opcoes.abertos, diaHoje: ctx.mesPassou ? 0 : ctx.diaHoje, pular: PULAR_DO_CAIXA });
@@ -2475,6 +2475,14 @@ function caixaCv(m, dados, ctx, o) {
   const partes = ['<span id="v10-mes-geral"></span>'], modelos = [];
   const curva = secao(() => curvaCv(m, ctx));
   if (curva) partes.push(secaoCv('O mês, dia a dia'), blocoCv(`${curva}${gh ? acoesCv([{ rotulo: 'Conferir com o saldo do banco', attr: 'data-conferir-banco' }]) : ''}`));
+  partes.push(...contasCv(m, dados, ctx, o), ...mesesCv(m, modelos));
+  partes.push(tudoDoPainelCv('mes', 'Agenda, contas do mês, gráficos e projeções'), ...modelos);
+  return partes.join('');
+}
+
+// v11.1: as contas daqui em diante (com Paguei/Recebi), os botões de lançar e o extrato — do Caixa e do Mês
+function contasCv(m, dados, ctx, o) {
+  const gh = !!o.github, partes = [];
   // contas e entradas daqui em diante (o salário a entrar fica junto, separado no total)
   let contas = [];
   try { contas = proximasContas(m, dados); } catch { /* sem agenda */ }
@@ -2496,7 +2504,12 @@ function caixaCv(m, dados, ctx, o) {
       : '<p class="cv-nota">Nada a pagar até o fim do mês.</p>'));
   if (gh) partes.push(acoesCv([{ rotulo: '+ Entrada', attr: 'data-nova-conta="receita"' }, { rotulo: '+ A pagar', attr: 'data-nova-conta="despesa"' }, { rotulo: '+ Investir', attr: 'data-investir="aporte"' }]));
   partes.push(blocoCv(listaCv([linhaCv({ icone: tile('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>'), titulo: 'Extrato do mês', sub: 'Busque em tudo: contas, cartão e investimentos', attr: 'data-extrato-abrir' })]), 'compacto'));
-  // próximos 12 meses: um cartão por mês com a sobra; tocar abre o que entra e o que sai
+  return partes;
+}
+
+// próximos 12 meses: um cartão por mês com a sobra; tocar abre o que entra e o que sai (as gavetas vão em `modelos`)
+function mesesCv(m, modelos) {
+  const partes = [];
   const meses = m.p12?.meses?.length ? resumoMeses(m.p12.meses) : [];
   if (meses.length) {
     const media = meses.reduce((s, x) => s + x.sobra, 0) / meses.length;
@@ -2511,6 +2524,78 @@ function caixaCv(m, dados, ctx, o) {
         });
       }), 'Próximos 12 meses'));
   }
+  return partes;
+}
+
+// ---------- v11.1 (Repaginação 360, Meia-noite): o Mês — Caixa e Cartão juntos ----------
+// Em cima, o aviso do cheque especial (descasamento); depois a vista (Calendário, Linha, 12 meses), os três baldes do
+// mês e os filtros (Próximos, Cartão, Categorias, Conta). Vista e filtro são rádios (o CSS mostra o painel escolhido, sem
+// JS); a escolha fica em o.mesSel para sobreviver ao redesenho (app.js guarda no change). As peças de antes entram como
+// estão: as contas com Paguei/Recebi, a tela do Cartão inteira (faturas, compras com edição, recorrentes), os 12 meses.
+const k1 = v => `${v < 0 ? '−' : ''}${(Math.abs(v) / 1000).toLocaleString('pt-BR', { maximumFractionDigits: Math.abs(v) < 10000 ? 1 : 0 })}k`;
+function calendarioCv({ tl }, ctx, modelos) {
+  const ini = new Date(ctx.ano, ctx.mes - 1, 1).getDay();
+  const dias = tl.porDia.map(p => {
+    const evs = (p.eventos || []).filter(e => Math.abs(e.valor) >= 50);
+    const pontos = [evs.some(e => e.valor > 0) && 'sobe', evs.some(e => e.valor <= -500 || /fatura/i.test(e.desc)) && 'cai'].filter(Boolean);
+    const cls = [!ctx.mesPassou && p.dia < ctx.diaHoje && 'passou', !ctx.mesPassou && p.dia === ctx.diaHoje && 'hoje', p.saldo < 0 && 'neg'].filter(Boolean).join(' ');
+    if (evs.length) modelos.push(detalheCv(`det-cal-${p.dia}`, `Dia ${p.dia} · saldo ${brl(p.saldo)}`, linhasDet(evs.map(e => [nomeCurto(e.desc), `${e.valor > 0 ? '+' : '−'}${esc(brl(Math.abs(e.valor)))}`, e.status === 'confirmado' ? (e.valor > 0 ? 'recebido' : 'pago') : '']))));
+    return `<button type="button" class="cal11-dia ${cls}"${evs.length ? ` data-detalhe="det-cal-${p.dia}"` : ' tabindex="-1"'} aria-label="Dia ${p.dia}, saldo ${esc(brl(p.saldo))}${evs.length ? `, ${evs.length} movimentos` : ''}">
+      <b>${p.dia}</b><span class="cal11-pts">${pontos.map(t => `<i class="${t}"></i>`).join('')}</span><small>${k1(p.saldo)}</small></button>`;
+  });
+  return `<div class="cal11" role="grid" aria-label="O mês dia a dia">${['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'].map(d => `<span class="cal11-sem">${d}</span>`).join('')}${'<span></span>'.repeat(ini)}${dias.join('')}</div>
+    <p class="cal11-leg"><span><i class="sobe"></i>entra dinheiro</span><span><i class="cai"></i>conta grande ou fatura</span><span><i class="neg"></i>no negativo</span><span>toque num dia com ponto</span></p>`;
+}
+function mesCv(m, dados, ctx, o) {
+  const c = m.c || {}, modelos = [], partes = ['<span id="v10-mes-geral"></span>'], sel = o.mesSel || {};
+  const radio = (nome, valor, rotulo, padrao) => `<label class="seg11-op"><input type="radio" name="${nome}" value="${valor}"${(sel[nome] || padrao) === valor ? ' checked' : ''}><span>${rotulo}</span></label>`;
+  // 1. o cheque especial (o bancário): dias no negativo e, se a culpa é do vencimento da fatura, a sugestão
+  let d = null;
+  try { d = ctx.mesPassou ? null : descasamento(m, dados); } catch { /* sem agenda */ }
+  if (d) {
+    const faixa = d.dias.length > 1 ? `nos dias ${d.dias[0]} a ${d.dias[d.dias.length - 1]}` : `no dia ${d.dias[0]}`;
+    modelos.push(detalheCv('det-venc', 'A conta no negativo', `${linhasDet([['Dias no negativo', d.dias.join(', ')], ['Pior saldo', esc(brl(d.pior.saldo)), `dia ${d.pior.dia}`], d.venc ? ['A fatura vence', `dia ${d.venc}`] : null, d.volta ? ['A conta volta ao positivo', `dia ${d.volta}`] : null])}
+      <p class="cv-texto">${d.sugestao ? `A fatura vence antes de o dinheiro entrar. Pedir ao Itaú para mudar o vencimento para o <b>dia ${d.sugestao}</b> tira a conta do negativo todo mês.` : 'Deixe a reserva de liquidez diária pronta para cobrir esses dias.'} No cheque especial o banco cobra juros e IOF por dia.</p>`));
+    partes.push(`<button type="button" class="aviso11" data-detalhe="det-venc"><span><b>A conta fica no negativo ${faixa}</b><small>${d.sugestao ? `a fatura vence dia ${d.venc} e o dinheiro só entra dia ${d.volta} — cheque especial cobra juros e IOF` : `pior saldo ${esc(brl(d.pior.saldo))} no dia ${d.pior.dia}`}</small></span><em>Como evitar</em></button>`);
+  }
+  // 2. a vista do mês
+  const curva = secao(() => curvaCv(m, ctx));
+  const meses = mesesCv(m, modelos);
+  partes.push(`<section class="mes11-vista"><div class="seg11" role="radiogroup" aria-label="Ver o mês">${radio('mes-vista', 'cal', 'Calendário', 'cal')}${radio('mes-vista', 'linha', 'Linha', 'cal')}${meses.length ? radio('mes-vista', 'meses', '12 meses', 'cal') : ''}</div>
+    <div class="mv11 mv11-cal">${secao(() => calendarioCv(m, ctx, modelos))}</div>
+    <div class="mv11 mv11-linha">${curva ? blocoCv(`${curva}${o.github ? acoesCv([{ rotulo: 'Conferir com o saldo do banco', attr: 'data-conferir-banco' }]) : ''}`) : ''}</div>
+    <div class="mv11 mv11-meses">${meses.join('')}</div></section>`);
+  // 3. o mês em três baldes (Monarch): fixo, livre e a sobra (a taxa de poupança)
+  const rec = c.receitas || 0, fixo = (c.fixas || 0) + (c.comprometido || 0), livre = c.gastoLivre || 0, sobra = c.saldoProj ?? c.saldo ?? 0;
+  if (rec > 0) {
+    const pc = v => `${Math.max(1, Math.min(100, Math.round((Math.abs(v) / rec) * 100)))}%`;
+    partes.push(secaoCv('O mês em três baldes', { link: `<span class="cv-nota">${esc(brl(rec))} entraram</span>` }), `<div class="baldes11">
+      <div><span><b>Fixo</b><b class="num">${esc(brl(fixo))}</b></span><i class="tr11"><i style="width:${pc(fixo)}"></i></i><small>contas fixas ${esc(brl(c.fixas || 0))} + o que o cartão já tem comprometido ${esc(brl(c.comprometido || 0))}</small></div>
+      <div><span><b>Livre</b><b class="num">${esc(brl(livre))}</b></span><i class="tr11"><i class="livre" style="width:${pc(livre)}"></i></i><small>o gasto do dia a dia no cartão${c.itauDia ? ` até o dia ${c.itauDia}` : ''}</small></div>
+      <div><span><b>Sobra</b><b class="num ${sobra < 0 ? 'cai' : 'sobe'}">${esc(brl(sobra))} · ${Math.round((sobra / rec) * 100)}%</b></span><i class="tr11"><i class="${sobra < 0 ? 'neg' : 'sobra'}" style="width:${pc(sobra)}"></i></i><small>projetada — é a taxa de poupança do mês</small></div></div>`);
+  }
+  // 4. os filtros: Próximos (contas com Paguei), Cartão (a tela do cartão inteira), Categorias (no ritmo), Conta
+  let orc = [];
+  try { orc = orcamentoDoMes(dados, ctx); } catch { /* sem orçamento */ }
+  const it = (dados.despesasVariaveis || []).find(x => x.id === 'var-itau');
+  const cats = (it?.categorias || []).filter(x => x.valor > 0).sort((a, b) => b.valor - a.valor);
+  const linhasCat = cats.map(x => {
+    const ob = orc.find(z => z.cat === x.cat || z.nome === nomeCategoria(x.cat));
+    const tom = !ob ? '' : ob.pct >= 1 ? 'ruim' : ob.ritmo > ob.limite ? 'atencao' : '';
+    return { icone: iconeCategoria(x.cat, 'micro'), rotulo: nomeCategoria(x.cat), valor: brl(x.valor), atual: x.valor, alvo: ob ? ob.limite : null, tom,
+      nota: !ob ? '' : ob.pct >= 1 ? `passou ${brl(-ob.sobra)} do orçamento de ${brl(ob.limite)}` : ob.ritmo > ob.limite ? `vai passar: no ritmo fecha em ${brl(ob.ritmo)} (orçamento ${brl(ob.limite)})` : `no ritmo · sobram ${brl(ob.sobra)}` };
+  });
+  const limite = dados.regras?.limiteSaudavelItau || 0;
+  const resumoCartao = blocoCv(listaCv([
+    linhaCv({ titulo: 'Fatura até agora', sub: dados.calendario?.faturaCartao ? `vence dia ${dados.calendario.faturaCartao}` : '', valor: esc(brl(c.itau || 0)) }),
+    c.itauProjetado ? linhaCv({ titulo: 'No ritmo de hoje', sub: limite && c.itauProjetado > limite ? `passa ${esc(brl(c.itauProjetado - limite))} do limite de ${esc(brl(limite))}` : 'dentro do limite', valor: `<span class="${limite && c.itauProjetado > limite ? 'cai' : ''}">${esc(brl(c.itauProjetado))}</span>` }) : '',
+    limite ? linhaCv({ titulo: (c.itau || 0) > limite ? 'Passou do limite' : 'Cabe ainda', sub: c.tetoPorDia && (c.itau || 0) <= limite ? `${esc(brl(c.tetoPorDia))} por dia até o fechamento` : '', valor: esc(brl(Math.abs(limite - (c.itau || 0)))) }) : '',
+  ].filter(Boolean)));
+  partes.push(`<section class="mes11-filtros"><div class="chips11" role="radiogroup" aria-label="Mostrar">${radio('mes-filtro', 'prox', 'Próximos', 'prox')}${radio('mes-filtro', 'cartao', 'Cartão', 'prox')}${cats.length ? radio('mes-filtro', 'cat', 'Categorias', 'prox') : ''}${radio('mes-filtro', 'conta', 'Conta', 'prox')}</div>
+    <div class="mf11 mf11-prox">${contasCv(m, dados, ctx, o).join('')}</div>
+    <div class="mf11 mf11-cartao">${resumoCartao}${secao(() => cartaoTelaCv(m, dados, ctx, o))}</div>
+    <div class="mf11 mf11-cat">${blocoCv(`${barrasAlvoCv(linhasCat)}${orc.length ? '<p class="cv-legenda"><i></i>gasto<em></em>orçamento · a cor avisa antes: no ritmo, vai passar, passou</p>' : '<p class="cv-nota">Sem orçamento por categoria — defina em menu › Orçamento para o app avisar antes de passar.</p>'}`)}</div>
+    <div class="mf11 mf11-conta"><span id="v10-mes-contas"></span>${secao(() => contasDoMes(dados, ctx, o, m))}</div></section>`);
   partes.push(tudoDoPainelCv('mes', 'Agenda, contas do mês, gráficos e projeções'), ...modelos);
   return partes.join('');
 }

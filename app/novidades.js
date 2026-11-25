@@ -2,6 +2,12 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '11.1.0': [
+    ['Meia-noite: o Mês', 'Na interface em teste, Caixa e Cartão viraram uma tela só, o Mês. Abre no calendário, com o saldo de cada dia (toque num dia com ponto para ver o que entra e sai). Também tem a linha e os 12 meses.', 'nova'],
+    ['O mês em três baldes', 'Fixo (o que já está comprometido), Livre (o gasto do dia a dia) e a Sobra, com a taxa de poupança do mês.', 'nova'],
+    ['Aviso do cheque especial', 'Se a conta fica no negativo porque a fatura vence antes do dinheiro entrar, o Mês avisa e sugere o melhor dia de vencimento.', 'nova'],
+    ['Cartão dentro do Mês', 'Na Meia-noite o Cartão saiu da barra: está no Mês, no filtro Cartão, com tudo o que tinha (faturas, compras, recorrentes). Categorias avisam antes de passar do orçamento.', 'melhoria'],
+  ],
   '11.0.0': [
     ['Lastro 11 em teste: a Meia-noite', 'A repaginação nova começou. Em Configurações, ligue "Interface Meia-noite (em teste)" para ver: cores azul-noite e coral, a barra com Hoje, Mês, Cartão e Patrimônio, e o Hoje novo. Quem não ligar continua com o app de sempre.', 'nova'],
     ['Livre de verdade', 'Na Meia-noite, o número grande do Hoje é o que dá para gastar sem mexer no que já tem destino: o que ainda cabe no cartão. Se os aportes do plano passarem do caixa do mês que vem, ele avisa. Toque no número para ver o porquê.', 'nova'],

@@ -294,3 +294,17 @@ export function livreDeVerdade(m, dados, cart, ctx) {
   const valor = cartao ? cartao.cabe : Math.max(0, caixa ?? 0);
   return { valor, cartao, aportes, piso, caixa, mesProx: prox?.label || '', planoPassa: caixa != null && caixa < 0 ? centavos(-caixa) : 0 };
 }
+
+// ---------- v11.1: o cheque especial pelo calendário (o "bancário" da Repaginação 360) ----------
+// Os dias do mês com a conta negativa e, quando a fatura vence logo antes do buraco, o dia em que o dinheiro volta e um
+// vencimento sugerido (o dia seguinte). m: motor (tl.porDia); null quando a conta não fica negativa.
+export function descasamento(m, dados) {
+  const porDia = m?.tl?.porDia || [];
+  const neg = porDia.filter(p => p.saldo < 0);
+  if (!neg.length) return null;
+  const pior = neg.reduce((a, b) => (b.saldo < a.saldo ? b : a));
+  const venc = Number(dados?.calendario?.faturaCartao) || null;
+  const volta = porDia.find(p => p.dia > neg[neg.length - 1].dia && p.saldo >= 0)?.dia || null;
+  const culpaDaFatura = !!venc && venc <= neg[0].dia && neg[0].dia - venc <= 2;
+  return { dias: neg.map(p => p.dia), pior: { dia: pior.dia, saldo: centavos(pior.saldo) }, venc, volta, sugestao: culpaDaFatura && volta ? Math.min(28, volta + 1) : null };
+}

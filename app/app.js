@@ -33,7 +33,7 @@ import { abrirDiscar, abasLancar, ligarAbasLancar, botaoCategoria, abrirConta, m
 import { conciliarAgora, depoisDoAviso, atualizarCriptoBinance, atualizarItau, configurarIntegracoes } from './integracoes.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao } from './v8.js';
 
-const VERSAO_APP = '11.0.0';
+const VERSAO_APP = '11.1.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 document.documentElement.classList.toggle('v10', v10Ligada()); // v9.18: a repaginação (Carvão), atrás da chave em Configurações
 document.documentElement.classList.toggle('v11', v11Ligada()); // v11.0: a Meia-noite (Repaginação 360), também atrás de uma chave
@@ -555,6 +555,8 @@ function abrirAportePlano() {
 
 function renderizarApp(aba, { remendo = false } = {}) {
   estado.aba = ['inicio', 'mes', 'cartao', 'carteira', 'analises'].includes(aba) ? aba : 'inicio';
+  // v11.1: na Meia-noite o Cartão mora no Mês (filtro Cartão); o "Tudo do painel" do cartão ainda abre a tela dele
+  if (estado.aba === 'cartao' && v11Ligada() && estado.tudo !== 'cartao') { estado.aba = 'mes'; estado.mesSel = { ...estado.mesSel, 'mes-filtro': 'cartao' }; }
   const sub = estado.sub[estado.aba] || subPadrao(estado.aba);
   const r = $('resumo');
   // v9.11: seletor de mês em Caixa e Cartão; fora do mês atual a tela é a do mês escolhido (fechado ou projeção)
@@ -566,7 +568,7 @@ function renderizarApp(aba, { remendo = false } = {}) {
   const cabeca = v10 ? htmlTopoCarvao(numerosDoTopo(estado.aba, estado.motor, estado.dados, estado.cart.dados, new Date(), { v11 }), { esconder: valoresEscondidos() }) : htmlTopo(estado.aba, estado.dados, { lancar: estado.github });
   const html = `<div class="app-conteudo${v10 ? ' v10' : ''}">${cabeca}${v10 ? '<section class="folha-v10">' : ''}${outroMes || v10 ? '' : htmlSubabas(estado.aba, sub)}${comMes ? seletorMes(estado.dados, estado.motor, outroMes) : ''}
     <main class="app-aba">${outroMes ? telaDoMes(estado.aba, outroMes, estado.motor, estado.dados, { github: estado.github, hoje: hojeBrasil() }) : htmlAba(estado.aba, estado.motor, estado.dados, {
-      github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, ordemInicio: lerOrdemInicio(), assinaturas: estado.assinaturas, hoje: hojeBrasil(), rascunhos: estado.rascunhos, fechamentoAplicado: estado.fechamentoAplicado, v10, v11, tudo: v10 && estado.tudo === estado.aba,
+      github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, ordemInicio: lerOrdemInicio(), assinaturas: estado.assinaturas, hoje: hojeBrasil(), rascunhos: estado.rascunhos, fechamentoAplicado: estado.fechamentoAplicado, v10, v11, mesSel: estado.mesSel, tudo: v10 && estado.tudo === estado.aba,
       docCarteira: estado.cart.frame?.contentDocument, carteira: estado.cart.dados, estimativa: estimativaAtual(), cdiHist: estado.cdiHist?.cdi, gatilhos: valoresGatilhos(),
     })}</main>${v10 ? '</section>' : ''}</div>
     ${v10 ? htmlNavV10(estado.aba, { lancar: !!estado.github, v11 }) : htmlNav(estado.aba, { lancar: !!estado.github })}`;
@@ -697,6 +699,8 @@ function ligarApp(r) {
   ligarDeslizar(r, () => !$('veu').hidden);
   ligarPuxar(r, () => !$('veu').hidden, () => Promise.all([buscarAtualizacao(), buscarCarteira({ silencioso: false }), atualizarCotacoes({ forcar: true })]));
   ligarArrastarFolha($('folha'), fecharFolha);
+  // v11.1: a vista e o filtro do Mês (rádios, sem JS para trocar) ficam guardados para o redesenho depois de um lançamento
+  r.addEventListener('change', e => { const n = e.target?.name; if (n === 'mes-vista' || n === 'mes-filtro') estado.mesSel = { ...estado.mesSel, [n]: e.target.value }; });
   r.addEventListener('click', e => {
     const el = e.target.closest('button, [data-expandir]');
     if (!el || !r.contains(el)) return;
@@ -760,7 +764,7 @@ function ligarApp(r) {
     if (el.dataset.tudo !== undefined) { // v9.26: "Tudo do painel" de cada tela (a leitura de antes) e a volta
       estado.tudo = el.dataset.tudo || null;
       if (el.dataset.tudoSecao) estado.irSecao = el.dataset.tudoSecao;
-      return renderizarApp(estado.aba);
+      return renderizarApp(estado.tudo || estado.aba); // v11.1: o Tudo do Cartão abre de dentro do Mês
     }
     if (el.dataset.aba || el.dataset.irAba) {
       const [aba, sub] = (el.dataset.aba || el.dataset.irAba).split('/');

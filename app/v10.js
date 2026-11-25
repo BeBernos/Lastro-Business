@@ -84,7 +84,9 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date(), { v11 = f
     const futuro = m.tl.porDia.filter(p => p.dia >= ctx.diaHoje);
     const min = (futuro.length ? futuro : m.tl.porDia).reduce((a, p) => (p.saldo < a.saldo ? p : a));
     const fim = m.tl.porDia[m.tl.porDia.length - 1];
-    return { ...base, titulo: v11 ? 'Mês' : 'Caixa', eyebrow: 'Saldo da conta hoje', valor: c.caixa,
+    // v11.1: o saldo de hoje pela agenda do mês (c.caixa é o último saldo lançado, que pode ser de dias atrás)
+    const hojeTl = m.tl.porDia[Math.min(Math.max(1, ctx.diaHoje), m.tl.porDia.length) - 1];
+    return { ...base, titulo: v11 ? 'Mês' : 'Caixa', eyebrow: v11 ? 'Na conta hoje' : 'Saldo da conta hoje', valor: v11 && !ctx.mesPassou && hojeTl ? hojeTl.saldo : c.caixa,
       pilulas: [`${min.saldo < 0 ? 'Pior momento' : 'Mínimo'} ${brl(min.saldo)} · dia ${min.dia}`, `Fecha com ${brl(fim.saldo)}`] };
   }
   if (aba === 'analises' && typeof m?.sc?.total === 'number') {
@@ -144,7 +146,7 @@ export function htmlNavV10(abaAtual, { lancar = false, v11 = false } = {}) {
   const botao = d => `<button type="button" class="aba v10-aba ${d.aba === abaAtual ? 'on' : ''}" data-aba="${d.aba}" aria-current="${d.aba === abaAtual ? 'page' : 'false'}">${ic(d.icone)}<span>${(v11 && NOMES_V11[d.aba]) || d.nome}</span></button>`; // v9.28: o nome à vista
   const [hoje, caixa, cartao, invest] = DESTINOS;
   const meio = lancar ? `<button type="button" class="v10-mais" id="appLancar" aria-label="Lançar" aria-haspopup="dialog">${ic('<path d="M12 5v14M5 12h14"/>')}</button>` : '';
-  return `<nav class="abas v10-nav" aria-label="Seções">${botao(hoje)}${botao(caixa)}${meio}${botao(cartao)}${botao(invest)}</nav>`;
+  return `<nav class="abas v10-nav" aria-label="Seções">${botao(hoje)}${botao(caixa)}${meio}${v11 ? '' : botao(cartao)}${botao(invest)}</nav>`; // v11.1: o Cartão mora no Mês
 }
 
 // ---------- v9.19 (etapa 2): o Hoje — quatro blocos e, só quando há o que fazer, até 3 faixas de ação ----------
