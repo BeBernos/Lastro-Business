@@ -33,10 +33,13 @@ import { abrirDiscar, abasLancar, ligarAbasLancar, botaoCategoria, abrirConta, m
 import { conciliarAgora, depoisDoAviso, atualizarCriptoBinance, atualizarItau, configurarIntegracoes } from './integracoes.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao } from './v8.js';
 
-const VERSAO_APP = '11.3.0';
+const VERSAO_APP = '11.3.1';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 document.documentElement.classList.toggle('v10', v10Ligada()); // v9.18: a repaginação (Carvão), atrás da chave em Configurações
 document.documentElement.classList.toggle('v11', v11Ligada()); // v11.0: a Meia-noite (Repaginação 360), também atrás de uma chave
+// v11.3.1: a cor da janela (barra de título do app instalado, barra do Android) acompanha a interface
+const corDaJanela = () => document.querySelector('meta[name="theme-color"]')?.setAttribute('content', v11Ligada() ? '#090D18' : '#0f0d0c');
+corDaJanela();
 const REMOTO = 'data/painel.enc';
 const REMOTO_CARTEIRA = 'data/carteira.enc';
 const GITHUB_PADRAO = { repo: 'usuario/repositorio', branch: 'main', caminho: 'app/data/painel.enc' };
@@ -1667,8 +1670,8 @@ function ligarMenu(folha) {
       b.disabled = true;
       try {
         if (qual === 'olho') alternarOlho();
-        if (qual === 'v11') { ligarV11(!v11Ligada()); document.documentElement.classList.toggle('v11', v11Ligada()); if (estado.resumoOk) renderizarApp(estado.aba); }
-        if (qual === 'v10') { ligarV10(!v10Ligada()); document.documentElement.classList.toggle('v10', v10Ligada()); document.documentElement.classList.toggle('v11', v11Ligada()); if (estado.resumoOk) renderizarApp(estado.aba); }
+        if (qual === 'v11') { ligarV11(!v11Ligada()); document.documentElement.classList.toggle('v11', v11Ligada()); corDaJanela(); if (estado.resumoOk) renderizarApp(estado.aba); }
+        if (qual === 'v10') { ligarV10(!v10Ligada()); document.documentElement.classList.toggle('v10', v10Ligada()); document.documentElement.classList.toggle('v11', v11Ligada()); corDaJanela(); if (estado.resumoOk) renderizarApp(estado.aba); }
         if (qual === 'avisos') { if (estado.avisos) await desligarAvisos(); else await ligarAvisos({ pedir: true }); }
         if (qual === 'lembretes') { if (estado.lembretes) await desligarLembretes(); else await ligarLembretes(); }
       } catch (e) {
@@ -4508,7 +4511,11 @@ async function instalarApp() {
 function prepararAmbiente() {
   if ('serviceWorker' in navigator) {
     const tinhaVersao = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.register('sw.js').then(reg => reg.update?.().catch(() => {})).catch(() => {});
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      reg.update?.().catch(() => {});
+      // v11.3.1: a janela do app instalado no computador fica aberta por dias — procura versão nova sempre que ela volta
+      addEventListener('visibilitychange', () => { if (!document.hidden) reg.update?.().catch(() => {}); });
+    }).catch(() => {});
     let recarregou = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (!tinhaVersao || recarregou) return;

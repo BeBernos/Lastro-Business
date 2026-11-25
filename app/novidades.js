@@ -2,6 +2,10 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '11.3.1': [
+    ['App instalado igual ao site', 'A barra de cima da janela do app instalado agora acompanha a interface (azul-noite na Meia-noite) e não fica mais bege com o Windows claro.', 'correcao'],
+    ['Atualiza sem fechar', 'A janela do app no computador agora procura a versão nova sempre que você volta para ela, sem precisar fechar e abrir.', 'correcao'],
+  ],
   '11.3.0': [
     ['Meia-noite: o Plano', 'Na interface em teste, a quarta aba é o Plano: os 5 números do consultor (poupança, patrimônio, reserva em meses, cartão e gasto livre), para onde vai a sobra do mês e os potes das metas.', 'nova'],
     ['A sobra confere com o caixa', 'O Plano soma os aportes que faltam e avisa se eles deixam a conta negativa no mês que vem — e sugere quanto adiar.', 'nova'],
