@@ -2,6 +2,12 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '11.2.0': [
+    ['Meia-noite: o Patrimônio', 'Na interface em teste, a Carteira virou Patrimônio. No topo, um mapa: cada tipo de investimento do tamanho do que vale, dizendo se está acima ou abaixo do alvo — toque num para ver os ativos dele.', 'nova'],
+    ['O que mudou no mês', 'Um gráfico em degraus mostra de onde veio a diferença: resgates, aportes e o mercado. Assim dá para ver se uma queda foi resgate ou prejuízo.', 'nova'],
+    ['Para onde vai, com o 13º', 'A linha do patrimônio do último ano e a projeção até daqui a 5 anos. Ligue "Investir o 13º e o PPR" para ver a diferença.', 'nova'],
+    ['Come-cotas avisado', 'Em maio e novembro, o app avisa o dia do come-cotas nos fundos de renda fixa: o valor líquido cai um pouco, e é imposto, não perda.', 'melhoria'],
+  ],
   '11.1.0': [
     ['Meia-noite: o Mês', 'Na interface em teste, Caixa e Cartão viraram uma tela só, o Mês. Abre no calendário, com o saldo de cada dia (toque num dia com ponto para ver o que entra e sai). Também tem a linha e os 12 meses.', 'nova'],
     ['O mês em três baldes', 'Fixo (o que já está comprometido), Livre (o gasto do dia a dia) e a Sobra, com a taxa de poupança do mês.', 'nova'],

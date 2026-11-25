@@ -190,3 +190,25 @@ export function colunasCv(itens, { altura = 140, formato = v => brl0(v), rotulo 
   }).join('');
   return `<svg viewBox="0 0 ${W} ${H}" class="grafico grafico-cv" role="img" aria-label="${esc(rotulo)}"><line x1="0" x2="${W}" y1="${n1(y0)}" y2="${n1(y0)}" class="gcv-zero"/>${cols}</svg>`;
 }
+
+// v11.2: mapa em retângulos (treemap "squarified"): itens já em ordem decrescente de valor → um retângulo por item, do
+// tamanho do que vale, dentro de w × h, o mais quadrado possível. Puro: [{ v }] → [{ x, y, w, h }] na mesma ordem.
+export function treemap(itens, w, h) {
+  const total = itens.reduce((s, i) => s + Math.max(0, i.v), 0);
+  if (!total) return itens.map(() => ({ x: 0, y: 0, w: 0, h: 0 }));
+  const areas = itens.map(i => (Math.max(0, i.v) / total) * w * h);
+  const out = [];
+  let x = 0, y = 0, W = w, H = h, fila = [];
+  const pior = (f, lado) => { const s = f.reduce((a, b) => a + b, 0), mx = Math.max(...f), mn = Math.min(...f); return Math.max((lado * lado * mx) / (s * s), (s * s) / (lado * lado * mn)); };
+  const coloca = f => {
+    const s = f.reduce((a, b) => a + b, 0);
+    if (W >= H) { const cw = s / H; let yy = y; for (const a of f) { out.push({ x, y: yy, w: cw, h: a / cw }); yy += a / cw; } x += cw; W -= cw; }
+    else { const rh = s / W; let xx = x; for (const a of f) { out.push({ x: xx, y, w: a / rh, h: rh }); xx += a / rh; } y += rh; H -= rh; }
+  };
+  for (let i = 0; i < areas.length;) {
+    const lado = Math.min(W, H), a = areas[i];
+    if (!fila.length || pior([...fila, a], lado) <= pior(fila, lado)) { fila.push(a); i++; } else { coloca(fila); fila = []; }
+  }
+  if (fila.length) coloca(fila);
+  return out;
+}

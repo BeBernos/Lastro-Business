@@ -308,3 +308,16 @@ export function descasamento(m, dados) {
   const culpaDaFatura = !!venc && venc <= neg[0].dia && neg[0].dia - venc <= 2;
   return { dias: neg.map(p => p.dia), pior: { dia: pior.dia, saldo: centavos(pior.saldo) }, venc, volta, sugestao: culpaDaFatura && volta ? Math.min(28, volta + 1) : null };
 }
+
+// ---------- v11.2: o come-cotas (o "contador" da Repaginação 360) ----------
+// No último dia útil de maio e de novembro os fundos de renda fixa adiantam o IR e o valor líquido cai um pouco.
+// Devolve { data: 'AAAA-MM-DD', fundos } de hoje até esse dia, quando a carteira tem fundos de renda fixa; senão null.
+// shortcut: último dia útil = último dia sem sábado e domingo (feriado nacional nesse dia é raro); trocar se cair num.
+export function comeCotas(hoje, cart) {
+  const [a, mes, d] = String(hoje || '').split('-').map(Number);
+  const fundos = Object.keys(cart?.fundos_renda_fixa || {}).length;
+  if (!fundos || ![5, 11].includes(mes)) return null;
+  const ultimo = new Date(Date.UTC(a, mes, 0));
+  while ([0, 6].includes(ultimo.getUTCDay())) ultimo.setUTCDate(ultimo.getUTCDate() - 1);
+  return d <= ultimo.getUTCDate() ? { data: ultimo.toISOString().slice(0, 10), fundos } : null;
+}

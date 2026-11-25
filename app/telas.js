@@ -6,7 +6,7 @@ import { anel, barrasH, brl, brl0, colunas, compacto, empilhada, esc, icTom, lin
 import { contexto, proximasContas } from './resumo.js';
 import { faixasDoHoje, htmlComposicaoV10, htmlHojeV10, saudeCarteira } from './v10.js';
 import { htmlHoje, htmlHojeV11, resumoHoje } from './hoje.js';
-import { acoesCv, areaCv, barrasAlvoCv, blocoCv, carrosselCv, CHECK, colunasCv, cartaoCv, codigoAtivo, diaCv, linhaCv, linkCv, listaCv, numerosCv, secaoCv, tudoDoPainelCv, variacaoCv } from './carvao.js';
+import { treemap, acoesCv, areaCv, barrasAlvoCv, blocoCv, carrosselCv, CHECK, colunasCv, cartaoCv, codigoAtivo, diaCv, linhaCv, linkCv, listaCv, numerosCv, secaoCv, tudoDoPainelCv, variacaoCv } from './carvao.js';
 import { blocosDoPainel } from './traduzir.js';
 import { mesBonito } from './painel.js';
 import { posicao, proximoPasso, reserva } from './carteira.js';
@@ -18,7 +18,7 @@ import { alertasPlano, alocacaoVsAlvo, rendimentoRendaFixa } from './estrategia.
 import { gatilhos, INDICADORES, pausa, textoItem } from './ficha.js';
 import { prazoResgate } from './liquidez.js';
 import { escada } from './rendafixa.js';
-import { agendaClaude, aportePlanejado, descasamento, dolarMesAMes, livreDeVerdade, mesCurto, orcamentoDoMes, progressoMetas, rendaPassiva, resumoMeses } from './indicadores.js';
+import { agendaClaude, aportePlanejado, comeCotas, descasamento, dolarMesAMes, livreDeVerdade, mesCurto, orcamentoDoMes, progressoMetas, rendaPassiva, resumoMeses } from './indicadores.js';
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const MES3 = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -2020,7 +2020,7 @@ export function htmlAba(aba, m, dados, opcoes = {}) {
   const ctx = contexto(dados, opcoes.agora || new Date());
   if (aba === 'inicio' || !SUBABAS[aba]) return abaInicioHub(m, dados, ctx, opcoes);
   // v9.26: a interface nova desenha cada tela do zero; a leitura de antes (com os blocos do painel) só em "Tudo do painel"
-  if (opcoes.v10 && TELAS_CV[aba] && !opcoes.tudo) return (opcoes.v11 && aba === 'mes' ? mesCv : TELAS_CV[aba])(m, dados, ctx, opcoes); // v11.1: o Mês da Meia-noite
+  if (opcoes.v10 && TELAS_CV[aba] && !opcoes.tudo) return ((opcoes.v11 && { mes: mesCv, carteira: patrimonioCv }[aba]) || TELAS_CV[aba])(m, dados, ctx, opcoes); // v11.1–2: Mês e Patrimônio da Meia-noite
   let blocos = [];
   try {
     if (opcoes.doc) blocos = blocosDoPainel(opcoes.doc, { trocas: trocasDeGraficos(m, dados, ctx), abertos: opcoes.abertos, diaHoje: ctx.mesPassou ? 0 : ctx.diaHoje, pular: PULAR_DO_CAIXA });
@@ -2332,7 +2332,7 @@ function investimentosCv(m, dados, ctx, o) {
       todos ? `<div class="grade-cv">${ativos.map(cartao).join('')}</div>` : carrosselCv(ativos.map(cartao), 'Seus ativos'));
   }
   // 2. estratégia: agora × alvo por classe, uma linha cada (a nota só onde está fora do alvo)
-  if (aloc) {
+  if (aloc && !o.v11) { // v11.2: na Meia-noite a estratégia é o mapa (patrimonioCv)
     const s = saudeCarteira(aloc, reserva(cart));
     const linhas = aloc.linhas.map(l => {
       const d = l.pct - l.alvo, perto = Math.abs(d) < 2;
@@ -2368,7 +2368,7 @@ function investimentosCv(m, dados, ctx, o) {
   } catch { /* sem histórico */ }
   const evo = secao(() => evolucaoCv(cart));
   const est = String(p.data).slice(0, 10) < hojeBrasil() ? secao(() => blocoEstimativa(o.estimativa, o, cart)) : '';
-  if (evo || nums.length) partes.push('<span id="v10-carteira-renda"></span>', secaoCv('Evolução e renda', { id: 'v10-carteira-futuro' }), blocoCv(`${evo || ''}${nums.length ? `<div class="separa-cv">${numerosCv(nums)}</div>` : ''}${est ? `<div class="separa-cv">${est}</div>` : ''}`));
+  if ((evo || nums.length) && !o.v11) partes.push('<span id="v10-carteira-renda"></span>', secaoCv('Evolução e renda', { id: 'v10-carteira-futuro' }), blocoCv(`${evo || ''}${nums.length ? `<div class="separa-cv">${numerosCv(nums)}</div>` : ''}${est ? `<div class="separa-cv">${est}</div>` : ''}`));
   // 3b. v10.0 (áudio do Bruno, 18/11): a projeção de cada ativo, ao lado da do total. Quem calcula é o Claude no
   // fechamento (`projecao_ativos`, contrato em projeto.txt) — o app só mostra; sem o campo, nada aparece.
   const pj = cart.projecao_ativos;
@@ -2597,6 +2597,90 @@ function mesCv(m, dados, ctx, o) {
     <div class="mf11 mf11-cat">${blocoCv(`${barrasAlvoCv(linhasCat)}${orc.length ? '<p class="cv-legenda"><i></i>gasto<em></em>orçamento · a cor avisa antes: no ritmo, vai passar, passou</p>' : '<p class="cv-nota">Sem orçamento por categoria — defina em menu › Orçamento para o app avisar antes de passar.</p>'}`)}</div>
     <div class="mf11 mf11-conta"><span id="v10-mes-contas"></span>${secao(() => contasDoMes(dados, ctx, o, m))}</div></section>`);
   partes.push(tudoDoPainelCv('mes', 'Agenda, contas do mês, gráficos e projeções'), ...modelos);
+  return partes.join('');
+}
+
+// ---------- v11.2 (Repaginação 360, Meia-noite): o Patrimônio ----------
+// O mapa (cada classe do tamanho do que vale, acima ou abaixo do alvo; tocar abre a gaveta com os ativos dela), o que
+// mudou no mês em degraus, o futuro com o marco do 13º/PPR (liga e desliga, sem JS), a renda e o aviso do come-cotas. O
+// resto da Carteira de antes (seus ativos, próximo passo, projeção de cada ativo, metas, movimentar) vem logo depois.
+const pct1v = v => `${String(Math.round(v * 10) / 10).replace('.', ',')}%`;
+function patrimonioCv(m, dados, ctx, o) {
+  const cart = o.carteira;
+  if (!cart) return investimentosCv(m, dados, ctx, o);
+  const partes = [], modelos = [], gh = !!o.github; // a âncora v10-carteira-visao vem do investimentosCv
+  // 1. o mapa
+  let aloc = null;
+  try { aloc = alocacaoVsAlvo(cart); } catch { /* carteira sem estratégia */ }
+  if (aloc?.linhas?.length) {
+    const ativos = variacaoAtivos(cart).filter(a => a.valor > 0);
+    const linhas = aloc.linhas.filter(l => l.atual > 0).sort((a, b) => b.atual - a.atual);
+    const W = 358, H = 280, caixas = treemap(linhas.map(l => ({ v: l.atual })), W, H);
+    const tiles = linhas.map((l, i) => {
+      const r = caixas[i], d = l.pct - l.alvo, perto = Math.abs(d) < 0.5, pequeno = r.w < 86 || r.h < 64;
+      const doTipo = ativos.filter(a => a.classe === l.classe).sort((a, b) => b.valor - a.valor);
+      modelos.push(detalheCv(`det-classe-${i}`, l.nome, `${linhasDet([['Vale', esc(brl(l.atual))], ['Agora × alvo', `${pct1v(l.pct)} × ${pct1v(l.alvo)}`], [l.falta > 0 ? 'Falta para o alvo' : 'Acima do alvo', esc(brl(Math.abs(l.falta)))]])}
+        ${doTipo.length ? `<p class="detalhe-sub">${doTipo.length} ${doTipo.length === 1 ? 'ativo' : 'ativos'}</p>${linhasDet(doTipo.map(a => [a.nome, esc(brl(a.valor)), a.var != null ? `${a.var < 0 ? '−' : '+'}${pct1v(Math.abs(a.var * 100))} no mês` : '']))}` : ''}
+        <p class="cv-texto">${perto ? 'No alvo: segue só o que o plano manda.' : d > 0 ? 'Acima do alvo: o dinheiro novo vai para o que falta, sem vender nada.' : 'Abaixo do alvo: entra na frente na ordem dos aportes.'}${l.tese ? ` ${esc(l.tese)}` : ''}</p>`));
+      const nota = perto ? 'no alvo' : `${d > 0 ? '+' : '−'}${String(Math.abs(Math.round(d * 10) / 10)).replace('.', ',')} ${d > 0 ? 'acima' : 'do alvo'}`;
+      return `<button type="button" class="tm11 tm11-${i % 7} ${d > 0.5 ? 'acima' : d < -0.5 ? 'abaixo' : ''}" style="left:${(r.x / W * 100).toFixed(2)}%;top:${(r.y / H * 100).toFixed(2)}%;width:${(r.w / W * 100).toFixed(2)}%;height:${(r.h / H * 100).toFixed(2)}%" data-detalhe="det-classe-${i}" aria-label="${esc(l.nome)}: ${pct1v(l.pct)}, alvo ${pct1v(l.alvo)}">
+        ${r.w < 58 || r.h < 46 ? '' : pequeno ? `<b class="num">${pct1v(l.pct)}</b><small>${esc(l.nome.split(' ')[0])}</small>` : `<span>${esc(l.nome)}</span><b class="num">${pct1v(l.pct)}</b><small>${nota}</small>`}</button>`;
+    }).join('');
+    partes.push(secaoCv('Onde está o dinheiro', { id: 'v10-carteira-aloc', link: linkCv('Ordem e gatilhos', 'data-tudo="carteira" data-tudo-secao="carteira-aloc"') }),
+      `<div class="mapa11">${tiles}</div><p class="cv-legenda mapa11-leg">cada retângulo do tamanho do que vale · toque para ver os ativos e o alvo</p>`,
+      gh ? acoesCv([{ rotulo: 'Revisar estratégia', attr: 'data-revisar-estrategia' }, { rotulo: 'Pesquisar ativo', attr: 'data-pesquisar=""' }]) : '');
+  }
+  // 2. o que mudou no mês, em degraus: o mês anterior → resgates → aportes → mercado → agora
+  const r = resultadoDoMes(cart);
+  if (r.base != null && r.patrimonio != null) {
+    const passos = [['antes', r.base, 'total'], ['resgates', -(r.resgates || 0), 'cai'], ['aportes', r.aportes || 0, 'sobe'], ['mercado', r.mercado || 0, (r.mercado || 0) < 0 ? 'cai' : 'sobe'], ['agora', r.patrimonio, 'total']];
+    const topo = Math.max(r.base, r.patrimonio, r.base + (r.aportes || 0)) * 1.04, Y = v => 128 - (v / topo) * 110;
+    let acum = r.base;
+    const barras = passos.map(([rot, v, tipo], i) => {
+      const x = 14 + i * 66, de = tipo === 'total' ? 0 : acum, ate = tipo === 'total' ? v : acum + v;
+      if (tipo !== 'total') acum = ate;
+      const y1 = Y(Math.max(de, ate)), alt = Math.max(3, Math.abs(Y(de) - Y(ate)));
+      const txt = tipo === 'total' ? `${(v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil` : `${v < 0 ? '−' : '+'}${Math.abs(v) >= 1000 ? `${(Math.abs(v) / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil` : brl0(Math.abs(v)).replace('R$ ', '')}`;
+      return `<rect x="${x}" y="${y1.toFixed(1)}" width="48" height="${alt.toFixed(1)}" rx="6" class="dg11 ${tipo}"></rect><text x="${x + 24}" y="${(y1 - 6).toFixed(1)}" text-anchor="middle" class="dg11-v ${tipo}">${esc(txt)}</text><text x="${x + 24}" y="146" text-anchor="middle" class="dg11-r">${rot}</text>`;
+    }).join('');
+    const frase = (r.resgates || 0) > Math.abs(r.mercado || 0) && r.patrimonio < r.base ? `A queda foi <b>resgate</b> (dinheiro que foi para o caixa e para o plano), não prejuízo: o mercado ${r.mercado < 0 ? `tirou ${esc(brl0(-r.mercado))}` : `rendeu ${esc(brl0(r.mercado))}`}.`
+      : `O mercado ${(r.mercado || 0) < 0 ? `tirou ${esc(brl0(-(r.mercado || 0)))}` : `rendeu ${esc(brl0(r.mercado || 0))}`} no mês${r.aportes ? ` e entraram ${esc(brl0(r.aportes))} de aportes` : ''}.`;
+    partes.push(secaoCv('O que mudou no mês'), blocoCv(`<svg viewBox="0 0 350 152" class="dg11-svg" role="img" aria-label="De ${esc(brl0(r.base))} a ${esc(brl0(r.patrimonio))}: resgates, aportes e mercado">${barras}</svg><p class="cv-texto">${frase}</p>`));
+  }
+  // 3. o futuro: o passado (investido) e a projeção do painel (patrimônio, inclui a conta); o marco do 13º/PPR liga e desliga
+  const hist = Object.keys(cart.historico_mensal || {}).sort().map(k => valorMes(cart.historico_mensal[k])).filter(v => v > 0).slice(-13);
+  const fut = (m.plp?.meses || []).map(x => x.patrimonio).filter(Number.isFinite);
+  if (hist.length > 1 && fut.length > 1) {
+    const taxa = m.plp?.TAXA_MENSAL || 0.00643;
+    const extra = ctx.mesPassou ? 0 : (m.tl?.porDia || []).filter(p => p.dia >= ctx.diaHoje).flatMap(p => p.eventos || []).filter(e => e.valor > 0 && e.status !== 'confirmado' && /13º|ppr/i.test(e.desc)).reduce((s, e) => s + e.valor, 0);
+    const futExtra = fut.map((v, k) => v + extra * (1 + taxa) ** (k + 1));
+    const todos = [...hist, ...fut, ...(extra ? futExtra : [])], mn = Math.min(...todos) * 0.96, mx = Math.max(...todos) * 1.02;
+    const Y = v => 108 - ((v - mn) / (mx - mn || 1)) * 96, xP = i => (i / (hist.length - 1)) * 110, xF = i => 110 + ((i + 1) / fut.length) * 230;
+    const caminho = (vals, xf, ini) => `${ini}${vals.map((v, i) => ` L${xf(i).toFixed(1)} ${Y(v).toFixed(1)}`).join('')}`;
+    const pPas = `M0 ${Y(hist[0]).toFixed(1)}${hist.slice(1).map((v, i) => ` L${xP(i + 1).toFixed(1)} ${Y(v).toFixed(1)}`).join('')}`;
+    const ini = `M110 ${Y(hist[hist.length - 1]).toFixed(1)}`, ult = m.plp.meses[m.plp.meses.length - 1];
+    partes.push(secaoCv('Para onde vai', { id: 'v10-carteira-futuro' }), `<section class="bloco-cv fut11">
+      ${extra ? `<label class="fut11-marco"><input type="checkbox"><span>Investir o 13º e o PPR (+${esc(brl0(extra))})</span></label>` : ''}
+      <p class="fut11-num">Em ${esc(`${ult.mesLabel}/${ult.ano}`.toLowerCase())}: <b class="num sem13">${esc(brl0(fut[fut.length - 1]))}</b>${extra ? `<b class="num com13">${esc(brl0(futExtra[futExtra.length - 1]))}</b>` : ''}</p>
+      <svg viewBox="0 0 340 122" class="fut11-svg" role="img" aria-label="Patrimônio dos últimos meses e a projeção até ${esc(String(ult.ano))}">
+        <path d="${pPas}" class="f11-pas"></path><path d="${caminho(fut, xF, ini)}" class="f11-fut"></path>${extra ? `<path d="${caminho(futExtra, xF, ini)}" class="f11-extra"></path>` : ''}
+        <circle cx="110" cy="${Y(hist[hist.length - 1]).toFixed(1)}" r="4.5" class="f11-pt"></circle><text x="0" y="120" class="f11-t">há 1 ano</text><text x="110" y="120" text-anchor="middle" class="f11-t">hoje</text><text x="340" y="120" text-anchor="end" class="f11-t">${esc(String(ult.ano))}</text>
+      </svg>
+      <p class="cv-legenda">linha cheia: investido até hoje · tracejada: projeção do painel a ${esc((taxa * 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 }))}% ao mês (inclui a conta) — estimativa, não promessa</p></section>`);
+  }
+  // 4. a renda que a carteira paga (dividendos mês a mês) e o come-cotas (o contador)
+  const meses = Object.keys(cart.historico_mensal || {}).sort().slice(-12);
+  const divs = meses.map(k => Number(cart.historico_mensal[k].dividendos) || 0);
+  if (divs.some(v => v > 0)) {
+    const mx = Math.max(...divs), fechados = divs.slice(0, -1).filter(v => v > 0), media = fechados.length ? fechados.reduce((s, v) => s + v, 0) / fechados.length : divs[divs.length - 1];
+    partes.push(secaoCv('Renda da carteira', { id: 'v10-carteira-renda', link: `<span class="cv-nota">média ${esc(brl0(media))}/mês</span>` }),
+      blocoCv(`<div class="renda11" role="img" aria-label="Dividendos dos últimos ${divs.length} meses">${divs.map((v, i) => `<i style="height:${Math.max(4, Math.round((v / (mx || 1)) * 100))}%"${i === divs.length - 1 ? ' class="agora"' : ''} data-dica="${esc(rotuloMes(meses[i]).curto)}: ${esc(brl(v))}"></i>`).join('')}</div>
+        <p class="cv-texto">${esc(brl(divs[divs.length - 1]))} em ${esc(rotuloMes(meses[meses.length - 1]).curto)}${r.emAndamento ? ' até agora' : ''}. FIIs pagam isento de IR: é renda líquida.</p>`));
+  }
+  const cc = comeCotas(o.hoje || hojeBrasil(), cart);
+  if (cc) partes.push(`<p class="ok-cv cc11">${icTom('info')}<span><b>${cc.data.slice(8, 10)}/${cc.data.slice(5, 7)}: come-cotas nos ${cc.fundos} fundos de renda fixa</b><small>No último dia útil de maio e de novembro esses fundos adiantam o IR: o valor líquido cai um pouco. É imposto, não perda.</small></span></p>`);
+  // 5. o resto da Carteira de antes: seus ativos, próximo passo, projeção de cada ativo, metas, movimentar, Tudo do painel
+  partes.push(investimentosCv(m, dados, ctx, o), ...modelos);
   return partes.join('');
 }
 

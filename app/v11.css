@@ -144,3 +144,40 @@ html.v11 .chips11 label { position: relative; flex: none; cursor: pointer; }
 html.v11 .chips11 label span { display: block; padding: 8px 15px; border-radius: 99px; font-size: 13.5px; font-weight: 700; color: var(--cv-tx2); background: var(--cv-bloco); border: 1px solid var(--v10-linha); }
 html.v11 .chips11 label:has(input:checked) span { background: var(--cv-brasa); border-color: var(--cv-brasa); color: var(--cv-tinta); }
 @media (min-width: 960px) { html.v11 .cal11-dia { min-height: 64px; } }
+
+/* v11.2 — o Patrimônio (telas.js › patrimonioCv): o mapa, os degraus do mês, o futuro com o marco e a renda */
+html.v11 .mapa11 { position: relative; height: 280px; margin-top: 4px; }
+@media (min-width: 960px) { html.v11 .mapa11 { height: 340px; } }
+html.v11 .tm11 { all: unset; box-sizing: border-box; position: absolute; cursor: pointer; display: flex; flex-direction: column; overflow: hidden; padding: 10px 12px;
+  border: 2px solid var(--cv-chao); border-radius: 16px; color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14); }
+html.v11 .tm11:focus-visible { outline: 2px solid #fff; outline-offset: -4px; }
+html.v11 .tm11 span { font-size: 13.5px; font-weight: 700; } html.v11 .tm11 b { font: 800 22px/1.1 var(--display); letter-spacing: -.02em; margin-top: 2px; }
+html.v11 .tm11 small { margin-top: auto; font-size: 12px; opacity: .9; }
+html.v11 .tm11.acima small::before { content: '▲ '; } html.v11 .tm11.abaixo small::before { content: '▼ '; }
+html.v11 .tm11-0 { background: #3049D6; } html.v11 .tm11-1 { background: #4B63F2; } html.v11 .tm11-2 { background: #6B5BFF; } html.v11 .tm11-3 { background: #2D3E9E; }
+html.v11 .tm11-4 { background: #5A6CC8; } html.v11 .tm11-5 { background: #7B66FF; } html.v11 .tm11-6 { background: #C8503A; }
+html.v11 .mapa11-leg { margin: 8px 4px 0; }
+html.v11 .dg11-svg { display: block; width: 100%; max-width: 520px; height: auto; overflow: visible; }
+html.v11 .dg11.total { fill: var(--cv-card1); } html.v11 .dg11.cai { fill: var(--cv-cai); } html.v11 .dg11.sobe { fill: var(--cv-sobe); }
+html.v11 .dg11-v { font: 800 12.5px var(--sans); fill: var(--cv-tx); } html.v11 .dg11-v.cai { fill: var(--cv-cai); } html.v11 .dg11-v.sobe { fill: var(--cv-sobe); }
+html.v11 .dg11-r { font: 500 12px var(--sans); fill: var(--cv-mut); }
+html.v11 .fut11-marco { position: relative; display: inline-flex; cursor: pointer; }
+html.v11 .fut11-marco input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+html.v11 .fut11-marco span { padding: 8px 13px; border-radius: 12px; font-size: 13px; font-weight: 700; color: var(--cv-tx2); background: var(--v10-fundo2); border: 1px solid var(--v10-linha); }
+html.v11 .fut11-marco:has(input:checked) span { color: var(--cv-tx); border-color: var(--cv-brasa); background: rgba(124, 156, 255, .16); }
+html.v11 .fut11-marco:has(input:focus-visible) span { outline: 2px solid var(--cv-brasa-tx); outline-offset: 2px; }
+html.v11 .fut11-num { margin: 12px 0 0; font-size: 13.5px; color: var(--cv-tx2); }
+html.v11 .fut11-num b { margin-left: 6px; font: 800 24px var(--display); color: var(--cv-sobe); letter-spacing: -.02em; }
+html.v11 .fut11 .com13, html.v11 .fut11 .f11-extra { display: none; }
+html.v11 .fut11:has(.fut11-marco input:checked) .com13, html.v11 .fut11:has(.fut11-marco input:checked) .f11-extra { display: inline; }
+html.v11 .fut11:has(.fut11-marco input:checked) .sem13 { display: none; }
+html.v11 .fut11:has(.fut11-marco input:checked) .f11-fut { stroke: var(--cv-mut); stroke-width: 1.5; opacity: .6; }
+html.v11 .fut11-svg { display: block; width: 100%; max-width: 560px; height: auto; margin-top: 10px; overflow: visible; }
+html.v11 .f11-pas { fill: none; stroke: var(--cv-brasa); stroke-width: 2.5; stroke-linejoin: round; }
+html.v11 .f11-fut { fill: none; stroke: var(--cv-brasa); stroke-width: 2.5; stroke-dasharray: 5 5; }
+html.v11 .f11-extra { fill: none; stroke: var(--cv-sobe); stroke-width: 2.5; stroke-dasharray: 5 5; }
+html.v11 .f11-pt { fill: var(--cv-brasa); stroke: var(--cv-chao); stroke-width: 2; } html.v11 .f11-t { font: 500 12px var(--sans); fill: var(--cv-mut); }
+html.v11 .renda11 { display: flex; align-items: flex-end; gap: 5px; height: 72px; max-width: 520px; }
+html.v11 .renda11 i { flex: 1; border-radius: 5px 5px 2px 2px; background: var(--cv-brasa); opacity: .45; } html.v11 .renda11 i.agora { opacity: 1; }
+html.v11 .cc11 { margin: 18px 0 0; padding: 14px 16px; border-radius: 18px; border-top: 0; background: var(--cv-bloco); border: 1px solid var(--v10-linha); }
+html.v11 .cc11 .ic { color: var(--cv-brasa-tx); }
