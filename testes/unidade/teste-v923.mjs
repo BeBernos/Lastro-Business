@@ -10,7 +10,7 @@ const extra = '<input id="usuarioX" hidden>';
 
 const d = htmlAberturaV10({ soSenha: false, agora: noite, usuario: extra });
 confere('saudação pela hora de Brasília (madrugada = Boa noite)', htmlAberturaV10({ agora: new Date('2026-11-15T02:30:00-03:00') }).includes('Boa noite') && d.includes('Boa noite') && htmlAberturaV10({ soSenha: false, agora: manha, usuario: '' }).includes('Bom dia'));
-confere('três anéis em volta da marca', (d.match(/class="anel-v10 a\d"/g) || []).length === 3 && d.includes('icons/logo.svg'));
+confere('três anéis em volta da marca (sem o fundo, v11.6)', (d.match(/class="anel-v10 a\d"/g) || []).length === 3 && d.includes('icons/marca.svg'));
 confere('digital: botão de destrancar e o link da senha', d.includes('id="destravar"') && d.includes('id="usarSenha"') && /id="formTrava" hidden/.test(d));
 confere('campos que o app já usa', ['id="senhaTrava"', 'id="erroTrava"', 'autocomplete="current-password"', 'usuarioX'].every(t => d.includes(t)));
 const s = htmlAberturaV10({ soSenha: true, agora: noite, usuario: '' });
