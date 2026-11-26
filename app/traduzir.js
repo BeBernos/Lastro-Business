@@ -253,13 +253,12 @@ function tabela(el, ctx) {
     const cor = corTexto(td);
     return { html: sinal(filhos(td, ctx)), cor };
   };
-  const v10 = typeof document !== 'undefined' && document.documentElement.classList.contains('v10');
   if (ncol <= 2) {
     // v10.1: 3+ valores em R$ (ou só em %) ganham uma barra do tamanho de cada um — rótulo · barra · valor
     const vals = linhas.filter(l => !l.classList.contains('total')).map(l => limpo(l.children[1]?.textContent || ''));
     const mesmaUnidade = vals.every(v => /^[−+-]?\s?R\$/.test(v)) || vals.every(v => /^[−+-]?\s?\d[\d.,]*\s?%$/.test(v));
     const nums = vals.map(v => Math.abs(Number(v.replace(/[^\d,]/g, '').replace(',', '.'))));
-    const maior = v10 && vals.length >= 3 && mesmaUnidade && nums.every(Number.isFinite) ? Math.max(...nums) : 0;
+    const maior = vals.length >= 3 && mesmaUnidade && nums.every(Number.isFinite) ? Math.max(...nums) : 0;
     return limitar(`<ul class="linhas pn-tabela">${linhas.map(l => {
       const [a, b] = [...l.children].map(celula);
       const n = Math.abs(Number(limpo(l.children[1]?.textContent || '').replace(/[^\d,]/g, '').replace(',', '.')));
@@ -267,20 +266,8 @@ function tabela(el, ctx) {
       return `<li class="${l.classList.contains('total') ? 'total' : ''}${barra ? ' com-barra' : ''}"><span class="${a.cor}">${a.html}</span>${barra}${b ? `<b class="${b.cor}">${b.html}</b>` : ''}</li>`;
     }).join('')}</ul>`, linhas.length, el, ctx, 6);
   }
-  // tabela compacta só quando as colunas de valor são curtas (números); texto longo vira cartãozinho
-  const larguraValores = Array.from({ length: ncol - 1 }, (_, i) => Math.max(...linhas.map(l => limpo(l.children[i + 1]?.textContent || '').length)));
-  const compacta = larguraValores.every(n => n <= 16) && larguraValores.reduce((a, b) => a + b, 0) <= 40;
-  // v9.28: na interface nova não há tabela estreita — cada linha vira um item de lista (título + rótulo: valor), que cabe
-  // no celular sem quebrar palavra ("CATEGORI / A") nem espremer números
-  if (ncol <= 4 && compacta && !v10) { // tabela compacta: nome à esquerda, números alinhados à direita
-    const colunas = `grid-template-columns:minmax(5.5em,1fr)${' auto'.repeat(ncol - 1)}`;
-    // v9.9.6: com 3 colunas de valor, o "R$" repetido não cabia no celular com a fonte do Android maior (as colunas
-    // encostavam e a última saía do cartão) — tira o "R$" das células e diminui um pouco a letra
-    const larga = ncol >= 4, semRS = h => (larga ? h.replace(/R\$\s?/g, '') : h);
-    // uma grade só para a tabela (as linhas usam subgrid): cabeçalho e números ficam nas mesmas colunas
-    const cabeca = cab.length ? `<div class="pn-tab-l pn-tab-cab">${cab.slice(0, ncol).map(c => `<span>${esc(c)}</span>`).join('')}</div>` : '';
-    return limitar(`<div class="pn-tab${larga ? ' pn-tab-larga' : ''}" style="${colunas}">${cabeca}${linhas.map(l => `<div class="pn-tab-l${l.classList.contains('total') ? ' total' : ''}">${[...l.children].map(celula).map(c => `<span class="${c.cor}">${semRS(c.html)}</span>`).join('')}</div>`).join('')}</div>`, linhas.length, el, ctx, 5, cabeca ? 1 : 0);
-  }
+  // v9.28: não há tabela estreita — cada linha vira um item de lista (título + rótulo: valor), que cabe no celular sem
+  // quebrar palavra ("CATEGORI / A") nem espremer números
   return limitar(`<ul class="pn-registros${ncol <= 4 ? ' poucas' : ''}">${linhas.map(l => {
     const tds = [...l.children];
     const [primeira, ...resto] = tds.map(celula);

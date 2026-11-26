@@ -1,6 +1,5 @@
-// v9.18 — repaginação, etapa 1 (docs/superpowers/specs/2026-11-15-repaginacao-360-design.md): a casca "Carvão".
-// Funções puras: os destinos da barra, os números do topo de cada tela e o HTML do topo e da barra. A chave fica no
-// aparelho ('lastro-v10'); desligada, o app é o de antes. As telas por dentro mudam nas etapas 2–5.
+// A casca do app (nasceu no Carvão, v9.18; Meia-noite desde a v11.4 e a única interface desde a v11.5). Funções puras:
+// os destinos da barra, os números do topo de cada tela, o HTML do topo, da barra e da abertura.
 import { brl, esc } from './graficos.js';
 import { posicao, reserva } from './carteira.js';
 import { alocacaoVsAlvo } from './estrategia.js';
@@ -8,32 +7,18 @@ import { resultadoDoMes, valorPorFonte } from './investimentos.js';
 import { contexto } from './resumo.js';
 import { livreDeVerdade } from './indicadores.js';
 
-const CHAVE = 'lastro-v10';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const pad = n => String(n).padStart(2, '0');
 
-// v9.27 (pedido do Bruno): a barra na ordem de prioridade — Hoje, Caixa, ＋, Cartão e Investimentos por último;
-// o "Mais" (⋯, o menu) foi para o topo, ao lado da busca e do olho
+// A barra: Hoje · Mês · ＋ · Patrimônio · Plano (v11.3; o Cartão mora no Mês desde a v11.1). O "Mais" (⋯, o menu) fica no
+// topo, ao lado da busca e do olho
 export const DESTINOS = [
   { id: 'hoje', aba: 'inicio', nome: 'Hoje', icone: '<path d="M4 10.5 12 4l8 6.5V20H4z"/>' },
-  { id: 'caixa', aba: 'mes', nome: 'Caixa', icone: '<path d="M5 8.5V7a2 2 0 0 1 2-2h10"/><rect x="4" y="8.5" width="16" height="10.5" rx="2.5"/><path d="M16 13.75h.01"/>' },
-  { id: 'cartao', aba: 'cartao', nome: 'Cartão', icone: '<rect x="3" y="5.5" width="18" height="13" rx="3"/><path d="M3 10h18M7 15h4"/>' },
-  { id: 'invest', aba: 'carteira', nome: 'Carteira', icone: '<path d="M4 19V5M4 19h16M8 15l3-4 3 2 5-6"/>' },
+  { id: 'mes', aba: 'mes', nome: 'Mês', icone: '<path d="M5 8.5V7a2 2 0 0 1 2-2h10"/><rect x="4" y="8.5" width="16" height="10.5" rx="2.5"/><path d="M16 13.75h.01"/>' },
+  { id: 'patrimonio', aba: 'carteira', nome: 'Patrimônio', icone: '<path d="M4 19V5M4 19h16M8 15l3-4 3 2 5-6"/>' },
+  { id: 'plano', aba: 'analises', nome: 'Plano', icone: '<path d="M10 6h10M10 12h10M10 18h10M4 6l1.2 1.2L7.5 5M4 12l1.2 1.2L7.5 11M4 18l1.2 1.2L7.5 17"/>' },
 ];
 const MAIS = '<circle cx="5.5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18.5" cy="12" r="1.4"/>';
-
-// v10.0 (etapa 8, aprovada pelo Bruno em 18/11/2026): o Carvão é o padrão — no celular e no computador, na família e na
-// demo. Só '0' (a chave desligada em Configurações) volta à interface anterior, que fica por pouco tempo.
-export function v10Ligada() {
-  try { return localStorage.getItem(CHAVE) !== '0'; } catch { return true; }
-}
-export function ligarV10(on) {
-  try { localStorage.setItem(CHAVE, on ? '1' : '0'); } catch { /* fica só nesta abertura */ }
-}
-// v11.0 (Repaginação 360, 25/11/2026): a Meia-noite, sobre o Carvão. Padrão desde a v11.4 (ok do Bruno em 26/11/2026):
-// só '0' (chave desligada em Configurações) volta ao Carvão
-export const v11Ligada = () => { try { return v10Ligada() && localStorage.getItem('lastro-v11') !== '0'; } catch { return v10Ligada(); } };
-export const ligarV11 = on => { try { localStorage.setItem('lastro-v11', on ? '1' : '0'); } catch { /* fica só nesta abertura */ } };
 
 function saudacao(agora) {
   const h = Number(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hourCycle: 'h23' }));
@@ -41,7 +26,7 @@ function saudacao(agora) {
 }
 
 // { titulo, sub, eyebrow, valor (número ou null), pilulas }
-export function numerosDoTopo(aba, m, dados, cart, agora = new Date(), { v11 = false } = {}) {
+export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
   const ctx = contexto(dados, agora);
   const c = m?.c || {};
   const sub = `${MESES[ctx.mes - 1].slice(0, 3)} · ${c.diasRest ?? ctx.dias - ctx.diaHoje} dias`;
@@ -49,7 +34,7 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date(), { v11 = f
   if (aba === 'inicio') {
     if (ctx.mesPassou) return { ...base, eyebrow: `Falta fechar ${MESES[ctx.mes - 1]}` };
     // v11.0: o "Livre de verdade" — a sobra do mês já tem dono (os aportes do plano); livre é o que cabe no cartão
-    if (v11 && m?.c) {
+    if (m?.c) {
       const l = livreDeVerdade(m, dados, cart, ctx);
       if (l.cartao) return { ...base, eyebrow: l.cartao.passou ? 'O cartão passou do limite' : 'Livre para gastar até a fatura fechar', valor: l.cartao.passou ? -l.cartao.passou : l.valor, detalhe: 'det-livre',
         pilulas: [...(l.cartao.passou ? [] : [`${brl(l.cartao.porDia)} por dia`]), l.planoPassa ? { texto: `O plano passa ${brl(l.planoPassa)} do caixa de ${l.mesProx.toLowerCase()}`, tom: 'ruim' } : 'O resto do mês já tem destino'] };
@@ -68,7 +53,7 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date(), { v11 = f
     // v10.0.1: a data dos valores (as atualizações automáticas), não a última data oficial do Claude — "posição de 13/11"
     // com valores de 19/11 confundia
     const dv = [p.data, ...Object.values(p.h?.ativos_atualizado_em || {})].filter(d => /^\d{4}-\d{2}-\d{2}/.test(d || '')).sort().pop() || p.data;
-    return { ...base, titulo: v11 ? 'Patrimônio' : 'Carteira', sub: `valores de ${dv.slice(8, 10)}/${dv.slice(5, 7)}`, eyebrow: 'Patrimônio investido', valor: p.total,
+    return { ...base, titulo: 'Patrimônio', sub: `valores de ${dv.slice(8, 10)}/${dv.slice(5, 7)}`, eyebrow: 'Patrimônio investido', valor: p.total,
       fontes: valorPorFonte(cart), // v9.30: Itaú e Binance logo embaixo do total
       pilulas: [...(s.estado ? [{ texto: s.estado, tom }] : []), { texto: `${brl(Math.abs(mercado))} no mês`, seta: mercado < 0 ? 'cai' : 'sobe' }, ...(s.fiel != null ? [`${s.fiel}% fiel`] : [])] };
   }
@@ -86,10 +71,10 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date(), { v11 = f
     const fim = m.tl.porDia[m.tl.porDia.length - 1];
     // v11.1: o saldo de hoje pela agenda do mês (c.caixa é o último saldo lançado, que pode ser de dias atrás)
     const hojeTl = m.tl.porDia[Math.min(Math.max(1, ctx.diaHoje), m.tl.porDia.length) - 1];
-    return { ...base, titulo: v11 ? 'Mês' : 'Caixa', eyebrow: v11 ? 'Na conta hoje' : 'Saldo da conta hoje', valor: v11 && !ctx.mesPassou && hojeTl ? hojeTl.saldo : c.caixa,
+    return { ...base, titulo: 'Mês', eyebrow: 'Na conta hoje', valor: !ctx.mesPassou && hojeTl ? hojeTl.saldo : c.caixa,
       pilulas: [`${min.saldo < 0 ? 'Pior momento' : 'Mínimo'} ${brl(min.saldo)} · dia ${min.dia}`, `Fecha com ${brl(fim.saldo)}`] };
   }
-  if (aba === 'analises' && v11) {
+  if (aba === 'analises') {
     // v11.3: o Plano responde no topo com os passos feitos do plano; a nota de saúde saiu
     const ps = cart?.plano_acao?.passos || [], hj = `${ctx.ano}-${pad(ctx.mes)}-${pad(Math.max(1, ctx.diaHoje))}`;
     const total = ps.filter(p => !/cancel/i.test(p.status || '')).length, feitos = ps.filter(p => /conclu/i.test(p.status || '')).length;
@@ -98,14 +83,7 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date(), { v11 = f
     return { ...base, titulo: 'Plano', eyebrow: total ? 'Passos do plano feitos' : 'Plano', valor: null, numeroTexto: total ? String(feitos) : '', numeroSufixo: total ? ` de ${total}` : '',
       pilulas: [atras ? { texto: `${atras} ${atras === 1 ? 'atrasado' : 'atrasados'}`, tom: 'ruim' } : '', prox ? `Próximo: ${prox.slice(8, 10)}/${prox.slice(5, 7)}` : ''].filter(Boolean) };
   }
-  if (aba === 'analises' && typeof m?.sc?.total === 'number') {
-    // v9.26: as Análises respondem no topo com a nota de saúde do mês (um número que não é dinheiro)
-    const n = [...(dados?.analises || []), ...(cart?.analises || [])].filter(a => a && (a.titulo || a.texto)).length;
-    const st = String(m.sc.status || '').toLowerCase();
-    return { ...base, titulo: 'Análises', eyebrow: 'Saúde financeira do mês', valor: null, numeroTexto: String(m.sc.total), numeroSufixo: ' de 100',
-      pilulas: [st ? st.charAt(0).toUpperCase() + st.slice(1) : '', n ? `${n} ${n === 1 ? 'análise' : 'análises'} do Claude` : ''].filter(Boolean) };
-  }
-  const nomes = { mes: 'Caixa', analises: 'Análises' };
+  const nomes = { mes: 'Mês' };
   return { ...base, titulo: nomes[aba] || base.titulo, sub: '' };
 }
 
@@ -149,56 +127,11 @@ export function htmlTopoCarvao(info, { esconder = false } = {}) {
 }
 
 // Mais abre o menu de hoje (#appMenu); o ＋ (#appLancar) só no celular de quem publica
-// v11.0: na Meia-noite o Caixa já se chama Mês e a Carteira, Patrimônio (o Cartão entra no Mês na v11.1)
-const NOMES_V11 = { mes: 'Mês', carteira: 'Patrimônio' };
-const PLANO_V11 = { id: 'plano', aba: 'analises', nome: 'Plano', icone: '<path d="M10 6h10M10 12h10M10 18h10M4 6l1.2 1.2L7.5 5M4 12l1.2 1.2L7.5 11M4 18l1.2 1.2L7.5 17"/>' };
-export function htmlNavV10(abaAtual, { lancar = false, v11 = false } = {}) {
-  const botao = d => `<button type="button" class="aba v10-aba ${d.aba === abaAtual ? 'on' : ''}" data-aba="${d.aba}" aria-current="${d.aba === abaAtual ? 'page' : 'false'}">${ic(d.icone)}<span>${(v11 && NOMES_V11[d.aba]) || d.nome}</span></button>`; // v9.28: o nome à vista
-  const [hoje, caixa, cartao, invest] = DESTINOS;
+export function htmlNavV10(abaAtual, { lancar = false } = {}) {
+  const botao = d => `<button type="button" class="aba v10-aba ${d.aba === abaAtual ? 'on' : ''}" data-aba="${d.aba}" aria-current="${d.aba === abaAtual ? 'page' : 'false'}">${ic(d.icone)}<span>${d.nome}</span></button>`; // v9.28: o nome à vista
+  const [hoje, mes, patrimonio, plano] = DESTINOS;
   const meio = lancar ? `<button type="button" class="v10-mais" id="appLancar" aria-label="Lançar" aria-haspopup="dialog">${ic('<path d="M12 5v14M5 12h14"/>')}</button>` : '';
-  return `<nav class="abas v10-nav" aria-label="Seções">${botao(hoje)}${botao(caixa)}${meio}${v11 ? '' : botao(cartao)}${botao(invest)}${v11 ? botao(PLANO_V11) : ''}</nav>`; // v11.1: o Cartão mora no Mês; v11.3: o Plano (as Análises)
-}
-
-// ---------- v9.19 (etapa 2): o Hoje — quatro blocos e, só quando há o que fazer, até 3 faixas de ação ----------
-const pesoDaLinha = l => (l.tom === 'ruim' ? 0 : l.tom === 'atencao' ? 1 : l.acao ? 2 : 3); // a mesma regra de linhasDoHoje
-export function faixasDoHoje(linhas, extras = []) {
-  return [...extras, ...linhas].map((l, i) => ({ l, i })).sort((a, b) => pesoDaLinha(a.l) - pesoDaLinha(b.l) || a.i - b.i).slice(0, 3).map(x => x.l);
-}
-
-const ICONES_HOJE = {
-  cartao: '<rect x="3" y="5.5" width="18" height="13" rx="3"/><path d="M3 10h18M7 15h4"/>',
-  folga: '<path d="M4 16a8 8 0 0 1 16 0"/><path d="M12 16l4-5"/>',
-  banco: '<path d="M4 10l8-5 8 5M6 10v7M10 10v7M14 10v7M18 10v7M4 19h16"/>',
-  sobe: '<path d="M4 16l5-5 4 3 7-7M15 7h5v5"/>',
-};
-// v10.0 (revisão): ícones com o círculo, como nas Análises (o "!" solto parecia um caractere)
-const TOM_ICONE = { ruim: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5m0 3v.01"/>', atencao: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5m0 3v.01"/>', bom: '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5m0-8.5v.01"/>' };
-
-// v9.30: valores exatos, com os centavos menores (o Bruno: "falta mostrar o valor exato")
-const exato = v => { const t = brl(v), i = t.lastIndexOf(','); return i < 0 ? esc(t) : `${esc(t.slice(0, i))}<small class="cent">${esc(t.slice(i))}</small>`; };
-export function htmlHojeV10({ c = {}, limite = 0, venceDia = null, mesProx = null, investido = null, faixas = [], github = false }) {
-  const cabe = Math.max(0, limite - (c.itau || 0));
-  const passou = limite > 0 && (c.itau || 0) > limite;
-  const pctCabe = limite > 0 ? Math.min(100, Math.round((cabe / limite) * 100)) : 0;
-  const bloco = (attr, icone, rotulo, valor, rodape) => `<button type="button" class="bloco-v10" ${attr}>
-      <span class="bloco-cab">${ic(icone)}${esc(rotulo)}</span><b class="num">${valor}</b>${rodape}</button>`;
-  const invest = investido
-    ? bloco('data-aba="carteira"', ICONES_HOJE.sobe, 'Investido', exato(investido.total), `<small class="${investido.mercado < 0 ? 'cai' : 'sobe'}">${ic(SETAS[investido.mercado < 0 ? 'cai' : 'sobe'])}${esc(brl(Math.abs(investido.mercado)))} no mês</small>`)
-    : `<div class="bloco-v10 vazio"><span class="bloco-cab">${ic(ICONES_HOJE.sobe)}Investido</span><small>Carteira ainda não carregada</small></div>`;
-  const faixa = f => `<div class="faixa-v10 tom-${f.tom}">
-      <button type="button" class="faixa-texto" ${f.attr || `data-ir-aba="${esc(f.ir || 'inicio')}"`}>${ic(TOM_ICONE[f.tom] || TOM_ICONE.info)}<span>${esc(f.texto)}</span></button>
-      ${f.acao && github ? `<button type="button" class="faixa-acao-v10" ${f.acao.attr}>${esc(f.acao.rotulo)}</button>` : ''}</div>`;
-  return `<div class="hoje-v10">
-    <div class="blocos-v10">
-      ${bloco('data-ir-aba="mes/geral"', ICONES_HOJE.banco, 'No banco', exato(c.caixa || 0), '<small>saldo de hoje</small>')}
-      ${bloco('data-aba="cartao"', ICONES_HOJE.cartao, 'Fatura', exato(c.itau || 0), venceDia ? `<small>vence ${pad(venceDia)}/${pad(mesProx)}</small>` : '')}
-      ${passou
-        ? bloco('data-aba="cartao"', ICONES_HOJE.folga, 'Passou do limite', `<span class="cai">+${exato(c.itau - limite)}</span>`, `<small class="cai">fatura ${esc(brl(c.itau))} · limite ${esc(brl(limite))}</small><i class="barra-v10 cheia"><i style="width:100%"></i></i>`)
-        : bloco('data-aba="cartao"', ICONES_HOJE.folga, 'Cabe no cartão', exato(cabe), `<i class="barra-v10"><i style="width:${pctCabe}%"></i></i>`)}
-      ${invest}
-    </div>
-    ${faixas.length ? `<div class="faixas-v10">${faixas.map(faixa).join('')}</div>` : ''}
-  </div>`;
+  return `<nav class="abas v10-nav" aria-label="Seções">${botao(hoje)}${botao(mes)}${meio}${botao(patrimonio)}${botao(plano)}</nav>`;
 }
 
 // ---------- v9.20 (etapa 3): o Cartão — composição da fatura e o ritmo até o limite saudável ----------

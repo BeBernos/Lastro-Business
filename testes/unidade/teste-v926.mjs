@@ -33,11 +33,12 @@ confere('botões em grade 2×2', /class="acoes-cv grade2"/.test(cv.acoesCv([{ ro
 confere('ação redonda tem nome acessível', /aria-label="Paguei"/.test(cv.linhaCv({ titulo: 'Luz', acao: { rotulo: 'Paguei', attr: 'data-pagar="x"', icone: cv.CHECK } })));
 
 const { numerosDoTopo, htmlTopoCarvao } = await import('../../app/v10.js');
-const an = numerosDoTopo('analises', { c: {}, sc: { total: 80, status: 'ATENÇÃO', crit: [] } }, { periodo: '2026-11', analises: [{ titulo: 'a' }, { titulo: 'b' }] }, { analises: [{ texto: 'c' }] }, new Date('2026-11-14T21:00:00-03:00'));
-confere('Análises: a nota no topo (não é dinheiro)', an.valor === null && an.numeroTexto === '80' && an.pilulas.includes('Atenção') && an.pilulas.includes('3 análises do Claude'), JSON.stringify(an));
-const th = htmlTopoCarvao(an);
-confere('topo desenha a nota sem R$', /class="topo-num num">80<span class="cent"> de 100/.test(th) && !th.includes('R$'), th.slice(0, 400));
-confere('sem nota: só o título', numerosDoTopo('analises', { c: {} }, { periodo: '2026-11' }, null, new Date()).eyebrow === '');
+// v11.3: a nota de saúde saiu; o Plano mostra os passos feitos — um número que não é dinheiro
+const plano = numerosDoTopo('analises', { c: {} }, { periodo: '2026-11' }, { plano_acao: { passos: [{ status: 'CONCLUIDO', quando: '2026-11-10' }, { status: 'PENDENTE', quando: '2026-11-30' }] } }, new Date('2026-11-14T21:00:00-03:00'));
+confere('Plano: os passos feitos no topo (não é dinheiro)', plano.valor === null && plano.numeroTexto === '1' && plano.numeroSufixo === ' de 2', JSON.stringify(plano));
+const th = htmlTopoCarvao(plano);
+confere('topo desenha o número sem R$', /class="topo-num num">1<span class="cent"> de 2/.test(th) && !th.includes('R$'), th.slice(0, 400));
+confere('sem plano: só o título', numerosDoTopo('analises', { c: {} }, { periodo: '2026-11' }, null, new Date()).numeroTexto === '');
 
 console.log(`v9.26 componentes Carteira de cartões: ${ok} ok, ${falhas} falhas`);
 process.exitCode = falhas ? 1 : 0;

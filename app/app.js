@@ -3,7 +3,7 @@ import { banco } from './banco.js';
 import { aplicarDados, extrairDados, lerArquivo, mesBonito, resumo } from './painel.js';
 import { aplicarCarteira, ehCarteira, ehDadosCarteira, extrairCarteira, lerArquivoCarteira, posicao, resumoCarteira } from './carteira.js';
 import { contexto, lerMotor, proximasContas } from './resumo.js';
-import { ABAS, CARTOES_INICIO, htmlAba, htmlNav, htmlSubabas, htmlTopo, mesesDoSeletor, ordemInicio, resumoSemanaHtml, seletorMes, situacoesMais, SUBABAS, subPadrao, telaDoMes, variacaoAtivos } from './telas.js';
+import { ABAS, htmlAba, mesesDoSeletor, resumoSemanaHtml, seletorMes, situacoesMais, SUBABAS, subPadrao, telaDoMes, variacaoAtivos } from './telas.js';
 import { dataDaCompra, extratoDoMes, filtrarExtrato, TIPOS } from './extrato.js';
 import { gerarXlsx, TIPO_XLSX } from './xlsx.js';
 import { agendaClaude, aportePlanejado, definirOrcamentos, excluirMeta, pacoteIR, registrarAssinaturas, revisarAssinaturas, salvarMeta, sugestaoOrcamento } from './indicadores.js';
@@ -25,21 +25,15 @@ import { DEMO } from './modo.js';
 import { NOME_CAMPO } from './parcial.js';
 import { alternarPausa, derivarTarget, gatilhos, mudancasEstrategia, textoItem } from './ficha.js';
 import { NOVIDADES } from './novidades.js';
-import { htmlAberturaV10, htmlNavV10, htmlTopoCarvao, ligarV10, ligarV11, numerosDoTopo, v10Ligada, v11Ligada } from './v10.js';
+import { htmlAberturaV10, htmlNavV10, htmlTopoCarvao, numerosDoTopo } from './v10.js';
 import { ligarCarrosseis } from './carvao.js';
 import { $, esc, brlTexto, dataCurta, dataHora, icone, aviso, mascarar, fecharAvisoCarregando, valoresEscondidos, trocarEsconder, confirmar, ALCANCES_EDITAR, ALCANCES_PARCELA, escolherAlcance, abrirFolha, fecharFolha, configurarFolha } from './ui.js';
 import { enviarArquivo, exportarPlanilhaFatura, enviarArquivos, conectorLigado, pedidoPeloConector, mesSeguinte, etapaAberta, marcarEtapa, abrirLevarClaude, svgCadeado, abrirLancamentos, configurarClaude } from './claude.js';
 import { abrirDiscar, abasLancar, ligarAbasLancar, botaoCategoria, abrirConta, mesCurto, abrirValorFuturo, abrirNovaConta, abrirInvestir, abrirValores, configurarLancar } from './lancar.js';
 import { conciliarAgora, depoisDoAviso, atualizarCriptoBinance, atualizarItau, configurarIntegracoes } from './integracoes.js';
-import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao } from './v8.js';
+import { animarNumeros, ESQUELETO, ligarArrastarFolha, ligarPuxar, comTransicao } from './movimento.js';
 
-const VERSAO_APP = '11.4.0';
-lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
-document.documentElement.classList.toggle('v10', v10Ligada()); // v9.18: a repaginação (Carvão), atrás da chave em Configurações
-document.documentElement.classList.toggle('v11', v11Ligada()); // v11.0: a Meia-noite (Repaginação 360), também atrás de uma chave
-// v11.3.1: a cor da janela (barra de título do app instalado, barra do Android) acompanha a interface
-const corDaJanela = () => document.querySelector('meta[name="theme-color"]')?.setAttribute('content', v11Ligada() ? '#090D18' : '#0f0d0c');
-corDaJanela();
+const VERSAO_APP = '11.5.0';
 const REMOTO = 'data/painel.enc';
 const REMOTO_CARTEIRA = 'data/carteira.enc';
 const GITHUB_PADRAO = { repo: 'usuario/repositorio', branch: 'main', caminho: 'app/data/painel.enc' };
@@ -559,29 +553,28 @@ function abrirAportePlano() {
 function renderizarApp(aba, { remendo = false } = {}) {
   estado.aba = ['inicio', 'mes', 'cartao', 'carteira', 'analises'].includes(aba) ? aba : 'inicio';
   // v11.1: na Meia-noite o Cartão mora no Mês (filtro Cartão); o "Tudo do painel" do cartão ainda abre a tela dele
-  if (estado.aba === 'cartao' && v11Ligada() && estado.tudo !== 'cartao') { estado.aba = 'mes'; estado.mesSel = { ...estado.mesSel, 'mes-filtro': 'cartao' }; }
+  if (estado.aba === 'cartao' && estado.tudo !== 'cartao') { estado.aba = 'mes'; estado.mesSel = { ...estado.mesSel, 'mes-filtro': 'cartao' }; }
   const sub = estado.sub[estado.aba] || subPadrao(estado.aba);
   const r = $('resumo');
   // v9.11: seletor de mês em Caixa e Cartão; fora do mês atual a tela é a do mês escolhido (fechado ou projeção)
   const comMes = ['mes', 'cartao'].includes(estado.aba) && estado.dados && estado.motor;
   if (comMes && estado.mesVer && (estado.mesVer === estado.dados.periodo || !mesesDoSeletor(estado.dados, estado.motor).includes(estado.mesVer))) estado.mesVer = null; // mês virou ou saiu da projeção
   const outroMes = comMes && estado.mesVer;
-  const v10 = v10Ligada(), v11 = v11Ligada();
   if (estado.tudo && estado.tudo !== estado.aba) estado.tudo = null; // trocou de tela: sai do "Tudo do painel"
-  const cabeca = v10 ? htmlTopoCarvao(numerosDoTopo(estado.aba, estado.motor, estado.dados, estado.cart.dados, new Date(), { v11 }), { esconder: valoresEscondidos() }) : htmlTopo(estado.aba, estado.dados, { lancar: estado.github });
-  const html = `<div class="app-conteudo${v10 ? ' v10' : ''}">${cabeca}${v10 ? '<section class="folha-v10">' : ''}${outroMes || v10 ? '' : htmlSubabas(estado.aba, sub)}${comMes ? seletorMes(estado.dados, estado.motor, outroMes) : ''}
+  const cabeca = htmlTopoCarvao(numerosDoTopo(estado.aba, estado.motor, estado.dados, estado.cart.dados, new Date()), { esconder: valoresEscondidos() });
+  const html = `<div class="app-conteudo v10">${cabeca}<section class="folha-v10">${comMes ? seletorMes(estado.dados, estado.motor, outroMes) : ''}
     <main class="app-aba">${outroMes ? telaDoMes(estado.aba, outroMes, estado.motor, estado.dados, { github: estado.github, hoje: hojeBrasil() }) : htmlAba(estado.aba, estado.motor, estado.dados, {
-      github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, ordemInicio: lerOrdemInicio(), assinaturas: estado.assinaturas, hoje: hojeBrasil(), rascunhos: estado.rascunhos, fechamentoAplicado: estado.fechamentoAplicado, v10, v11, mesSel: estado.mesSel, tudo: v10 && estado.tudo === estado.aba,
+      github: estado.github, sub, abertos: estado.abertos, doc: estado.frame?.contentDocument, assinaturas: estado.assinaturas, hoje: hojeBrasil(), rascunhos: estado.rascunhos, fechamentoAplicado: estado.fechamentoAplicado, mesSel: estado.mesSel, tudo: estado.tudo === estado.aba,
       docCarteira: estado.cart.frame?.contentDocument, carteira: estado.cart.dados, estimativa: estimativaAtual(), cdiHist: estado.cdiHist?.cdi, gatilhos: valoresGatilhos(),
-    })}</main>${v10 ? '</section>' : ''}</div>
-    ${v10 ? htmlNavV10(estado.aba, { lancar: !!estado.github, v11 }) : htmlNav(estado.aba, { lancar: !!estado.github })}`;
+    })}</main></section></div>
+    ${htmlNavV10(estado.aba, { lancar: !!estado.github })}`;
   // redesenho no lugar (depois de lançar, simulador): sem a animação de entrada — senão a tela pisca
   r.classList.toggle('sem-anim', remendo);
   if (!remendo) {
     r.innerHTML = html;
     r.scrollTop = 0;
     // v9.24: na interface nova não há sub-abas — um link para "aba/sub" rola até a seção dela
-    const alvo = estado.irSecao && v10 && r.querySelector(`#v10-${estado.irSecao}`);
+    const alvo = estado.irSecao && r.querySelector(`#v10-${estado.irSecao}`);
     if (estado.irSecao) { clearTimeout(estado.irSecaoT); estado.irSecaoT = setTimeout(() => { estado.irSecao = null; }, 900); } // fechar o menu redesenha de novo logo depois
     if (alvo) { let y = 0; for (let e = alvo; e && e !== r; e = e.offsetParent) y += e.offsetTop; r.scrollTop = y - 76; } // offsetTop: a folha entra com transform
     mostrarAbas(true);
@@ -650,13 +643,6 @@ async function repassar(el, tipo) {
   renderizarApp(estado.aba, { remendo: true });
 }
 
-function irParaSub(sub) {
-  if (estado.sub[estado.aba] === sub || (!estado.sub[estado.aba] && sub === subPadrao(estado.aba))) return;
-  estado.sub[estado.aba] = sub;
-  history.replaceState({ ...(history.state || {}), sub: estado.sub }, '');
-  renderizarApp(estado.aba);
-}
-
 async function exportarTexto(botao, baixar) {
   const texto = botao.closest('.pn-exportar')?.querySelector('textarea')?.value || '';
   if (baixar) {
@@ -685,7 +671,7 @@ function ligarBarraAbas(r) {
   let ultimo = r.scrollTop;
   r.addEventListener('scroll', () => {
     const y = r.scrollTop;
-    r.classList.toggle('compacto', y > 170 && v10Ligada()); // v9.21: cabeçalho pequeno quando o número grande sai da tela (não muda a altura da página)
+    r.classList.toggle('compacto', y > 170); // v9.21: cabeçalho pequeno quando o número grande sai da tela (não muda a altura da página)
     const fim = y + r.clientHeight >= r.scrollHeight - 24;
     const delta = y - ultimo;
     if (y < 40 || fim) mostrarAbas(true);
@@ -699,7 +685,6 @@ function ligarBarraAbas(r) {
 // Toques e digitação no app: um ouvinte só no contêiner (a tela é redesenhada a cada troca).
 function ligarApp(r) {
   ligarBarraAbas(r);
-  ligarDeslizar(r, () => !$('veu').hidden);
   ligarPuxar(r, () => !$('veu').hidden, () => Promise.all([buscarAtualizacao(), buscarCarteira({ silencioso: false }), atualizarCotacoes({ forcar: true })]));
   ligarArrastarFolha($('folha'), fecharFolha);
   // v11.1: a vista e o filtro do Mês (rádios, sem JS para trocar) ficam guardados para o redesenho depois de um lançamento
@@ -774,7 +759,6 @@ function ligarApp(r) {
       if (sub) { estado.sub[aba] = sub; estado.irSecao = `${aba}-${sub}`; }
       return irParaAba(aba);
     }
-    if (el.dataset.sub) return irParaSub(el.dataset.sub);
     if (el.dataset.proxy) return repassar(el, 'clique');
     if (el.dataset.modelo) return abrirModeloCarteira(el.dataset.modelo === 'fechamento');
     if (el.dataset.importarCarteira !== undefined) return escolherArquivo();
@@ -1551,7 +1535,7 @@ function menuHtml() {
       <div class="menu-acoes"><button type="button" class="botao-sec" data-acao="atualizar">Buscar atualização</button>${gh && local ? '<button type="button" class="botao-sec" data-acao="publicar">Publicar agora</button>' : ''}</div>
     </section>
     ${estado.resumoOk && estado.vista === 'painel' ? itemMenu('resumo', 'resumo', 'Voltar ao app', 'Início, caixa, cartão, carteira e análises') : ''}
-    ${d && v10Ligada() ? grupoCaixaV10() : ''}
+    ${d ? grupoCaixaV10() : ''}
     ${d ? `<p class="grupo">Do dia a dia</p>
     ${itemMenu('extrato', 'lupa', 'Extrato do mês', 'Busca em tudo: contas, cartão e investimentos')}
     ${itemMenu('semana', 'resumo', 'Resumo da semana', 'Quanto saiu nos últimos 7 dias e o que vem aí (aparece sozinho aos domingos)')}
@@ -1597,13 +1581,10 @@ async function configHtml() {
     <button type="button" class="link voltar-menu" data-acao="menu">‹ Menu</button>
     <h2>Configurações</h2>
     <p class="grupo">Neste celular</p>
-    ${itemChave('v10', 'novidade', 'Interface Carvão', 'A interface do Lastro desde a v10 — desligue só se precisar da anterior por um tempo', v10Ligada())}
-    ${v10Ligada() ? itemChave('v11', 'novidade', 'Interface Meia-noite', 'A interface do Lastro desde a v11.4 — desligue só se precisar do Carvão por um tempo', v11Ligada()) : ''}
     ${suportaAvisos() && !DEMO ? itemChave('avisos', 'avisos', 'Avisos de atualização', 'Notifica quando sai painel novo', !!estado.avisos) : ''}
     ${itemChave('lembretes', 'sino', 'Lembretes de contas', 'Na véspera e no dia de cada conta', !!estado.lembretes)}
     ${itemMenu('protecao', 'cadeado', 'Proteção do app', estado.salvo?.modo === 'senha' ? 'Senha da família a cada abertura' : 'Digital a cada abertura · trancar agora')}
     ${itemMenu('senha', 'chave', 'Senha da família', estado.cofre?.senha ? 'Ver, copiar ou enviar para o outro celular' : 'Criar uma nova senha')}
-    ${itemMenu('organizar', 'ordem', 'Organizar o Início', 'Ordem dos cartões e o que aparece neste celular')}
     ${estado.instalar ? itemMenu('instalar', 'instalar', 'Instalar na tela inicial', 'Abre como app, sem barra do navegador') : ''}
     ${DEMO ? '' : estado.github ? `<p class="grupo">Publicação</p>${itemMenu('github', 'github', 'Token do GitHub', token)}` : `<p class="grupo">Publicação</p>${itemMenu('github', 'github', 'Configurar publicação', 'Só no celular de quem lança (token do GitHub)')}`}
     <p class="grupo">Suporte</p>
@@ -1629,7 +1610,6 @@ function ligarMenu(folha) {
     extrato: () => abrirExtrato(),
     semana: () => abrirResumoSemana(),
     ir: () => abrirPacoteIR(),
-    organizar: () => abrirOrganizarInicio(),
     tour: () => abrirTour(),
     olho: () => { fecharFolha(); alternarOlho(); },
     config: () => abrirConfiguracoes(),
@@ -1670,8 +1650,6 @@ function ligarMenu(folha) {
       b.disabled = true;
       try {
         if (qual === 'olho') alternarOlho();
-        if (qual === 'v11') { ligarV11(!v11Ligada()); document.documentElement.classList.toggle('v11', v11Ligada()); corDaJanela(); if (estado.resumoOk) renderizarApp(estado.aba); }
-        if (qual === 'v10') { ligarV10(!v10Ligada()); document.documentElement.classList.toggle('v10', v10Ligada()); document.documentElement.classList.toggle('v11', v11Ligada()); corDaJanela(); if (estado.resumoOk) renderizarApp(estado.aba); }
         if (qual === 'avisos') { if (estado.avisos) await desligarAvisos(); else await ligarAvisos({ pedir: true }); }
         if (qual === 'lembretes') { if (estado.lembretes) await desligarLembretes(); else await ligarLembretes(); }
       } catch (e) {
@@ -2027,7 +2005,6 @@ function travar() {
   estado.travado = true;
   mostrarTrava();
   destrancado = new Promise(r => { aoDestrancar = r; });
-  if (!document.hidden && !v10Ligada()) destravar(); // v9.27: na interface nova, a digital só ao tocar na tela
   return destrancado;
 }
 
@@ -2044,21 +2021,7 @@ function mostrarTrava() {
   const t = $('trava');
   const soSenha = estado.salvo?.modo === 'senha';
   t.hidden = false;
-  t.innerHTML = v10Ligada() ? htmlAberturaV10({ soSenha, usuario: USUARIO_SENHA }) : `
-    <div class="entrada">
-      <img class="marca" src="icons/logo.svg" alt="">
-      <h1>Lastro trancado</h1>
-      <p class="texto">${soSenha ? 'Digite a senha da família para abrir.' : 'Use a digital para abrir.'}</p>
-      ${soSenha ? '' : '<button type="button" class="btn prim" id="destravar">Destrancar</button>'}
-      <form id="formTrava"${soSenha ? '' : ' hidden'}>
-        ${USUARIO_SENHA}
-        <label for="senhaTrava">Senha da família</label>
-        <input class="campo mono" id="senhaTrava" name="password" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" required>
-        <p class="erro" id="erroTrava"></p>
-        <button class="btn${soSenha ? ' prim' : ''}">Destrancar com a senha</button>
-      </form>
-      ${soSenha ? '' : '<button type="button" class="link" id="usarSenha">Usar a senha da família</button>'}
-    </div>`;
+  t.innerHTML = htmlAberturaV10({ soSenha, usuario: USUARIO_SENHA });
   t.querySelector('#destravar')?.addEventListener('click', destravar);
   t.querySelector('#usarSenha')?.addEventListener('click', () => {
     t.querySelector('#formTrava').hidden = false;
@@ -2519,7 +2482,7 @@ function abrirLancar(tipo = 'cartao', preenchido = {}) {
   // v9.19.1: no Carvão o botão já diz quanto sobra no mês depois deste gasto (o dá para gastar do painel − o valor)
   const atualizarSobra = () => {
     const s0 = estado.motor?.c?.saldo;
-    if (!v10Ligada() || editar || estorno || !Number.isFinite(s0)) return;
+    if (editar || estorno || !Number.isFinite(s0)) return;
     $f('#lOk').innerHTML = `Lançar <small>· sobra ${esc(brlTexto(s0 - (lerValor(valor.value) || 0)))}</small>`;
   };
   valor.addEventListener('input', atualizarSobra);
@@ -3125,33 +3088,6 @@ function abrirTour(i = 0) {
   folha.querySelector('#tourPular')?.addEventListener('click', fecharFolha);
 }
 
-// ---------- v8.7: organizar o Início (ordem e o que aparece, guardado neste celular) ----------
-const lerOrdemInicio = () => { try { return JSON.parse(localStorage.getItem('lastro-inicio') || 'null'); } catch { return null; } };
-function abrirOrganizarInicio() {
-  const ordem = ordemInicio(lerOrdemInicio());
-  const nome = id => CARTOES_INICIO.find(([k]) => k === id)?.[1] || id;
-  const salvar = () => {
-    try { localStorage.setItem('lastro-inicio', JSON.stringify(ordem)); } catch { /* fica só nesta abertura */ }
-    if (estado.aba === 'inicio') renderizarApp('inicio', { remendo: true });
-  };
-  const desenhar = () => {
-    const folha = abrirFolha(`<h2>Organizar o Início</h2>
-      <p class="meta">Escolha a ordem dos cartões e o que aparece. Vale só para este celular.</p>
-      <ul class="organizar">${ordem.map((c, i) => `<li class="${c.on ? '' : 'fora'}">
-        <label class="marcar"><input type="checkbox" data-org-on="${i}"${c.on ? ' checked' : ''}><span>${esc(nome(c.id))}</span></label>
-        <button type="button" class="org-mover" data-org-sobe="${i}" aria-label="Subir ${esc(nome(c.id))}"${i ? '' : ' disabled'}>${icone('subir')}</button>
-        <button type="button" class="org-mover" data-org-desce="${i}" aria-label="Descer ${esc(nome(c.id))}"${i < ordem.length - 1 ? '' : ' disabled'}>${icone('descer')}</button>
-      </li>`).join('')}</ul>
-      <button type="button" class="btn" id="orgPadrao">Voltar à ordem padrão</button>`);
-    folha.querySelectorAll('[data-org-on]').forEach(c => { c.onchange = () => { ordem[c.dataset.orgOn].on = c.checked; salvar(); desenhar(); }; });
-    const mover = (i, j) => { [ordem[i], ordem[j]] = [ordem[j], ordem[i]]; salvar(); desenhar(); };
-    folha.querySelectorAll('[data-org-sobe]').forEach(b => { b.onclick = () => mover(+b.dataset.orgSobe, +b.dataset.orgSobe - 1); });
-    folha.querySelectorAll('[data-org-desce]').forEach(b => { b.onclick = () => mover(+b.dataset.orgDesce, +b.dataset.orgDesce + 1); });
-    folha.querySelector('#orgPadrao').onclick = () => { ordem.splice(0, ordem.length, ...ordemInicio(null)); salvar(); desenhar(); };
-  };
-  desenhar();
-}
-
 // ---------- v8.7: aviso antes de o token do GitHub vencer ----------
 // O GitHub manda a validade no cabeçalho github-authentication-token-expiration, mas não deixa o navegador lê-lo (fica
 // fora do Access-Control-Expose-Headers). Por isso o Bruno informa a data na configuração da publicação.
@@ -3269,7 +3205,8 @@ async function enviarFeedback(gh, entradas) {
 async function abrirFeedback() {
   const lista = (await banco.ler('feedback').catch(() => null)) || [];
   const r = $('resumo');
-  const tela = estado.vista === 'resumo' ? [r.querySelector('.topo h1')?.textContent, r.querySelector('.subabas button.on')?.textContent].filter(Boolean).join(' › ') : 'painel original';
+  // v11.5: a aba da barra (o Tudo do Cartão não está na barra: vale o título do topo) e, se for o caso, o Tudo do painel
+  const tela = estado.vista === 'resumo' ? [r.querySelector('.abas .aba.on span')?.textContent || r.querySelector('.topo-oi b')?.textContent, estado.tudo ? 'Tudo do painel' : ''].filter(Boolean).join(' › ') : 'painel original';
   const pendentes = lista.filter(f => !f.enviado);
   const folha = abrirFolha(`
     <h2>Ideias e feedback</h2>
@@ -4572,7 +4509,7 @@ function prepararAmbiente() {
     clearTimeout(timerTrava);
     esquecerSessao(); // o app não foi recarregado: a cópia guardada ao sair não serve mais
     const fora = Date.now() - saiuEm;
-    if (estado.travado) return v10Ligada() ? undefined : destravar(); // trancou em segundo plano: pede a digital agora (na interface nova, só ao tocar)
+    if (estado.travado) return; // trancou em segundo plano: a digital só ao tocar na tela (v9.27)
     if (estado.cofre && fora > TEMPO_FORA) return trancarEVoltar();
     descobrir();
     if (estado.painelPendente && estado.conteudo) mostrarPainel(estado.conteudo);

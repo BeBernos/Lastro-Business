@@ -125,13 +125,13 @@ components:
 
 # Design System: Lastro — "Carvão"
 
-A interface do app desde a **v10.0** (18/11/2026; construída da v9.18 à v9.30), no celular e no computador. Código: `app/v10.css` (tudo sob `html.v10`), `app/v10.js`
-(topo, barra, Hoje, abertura), `app/carvao.js` (componentes puros) e `TELAS_CV` em `app/telas.js`. A interface anterior
-("Brasa", v8 — `app/v8.css`) só aparece com a chave desligada (`localStorage lastro-v10 = '0'`) e sai de vez quando a
-bateria de testes for reescrita para o Carvão.
+O sistema de componentes do app desde a **v10.0** (18/11/2026; construído da v9.18 à v9.30), no celular e no computador.
+Código: `app/estilo.css` (tudo sob `html.lastro`; até a v11.4 era o `v10.css`), `app/v10.js` (topo, barra, abertura),
+`app/carvao.js` (componentes puros) e `TELAS_CV` em `app/telas.js`. As interfaces anteriores (v8 "Brasa" e as cores do
+Carvão) saíram do código na v11.5.
 
-> **Padrão desde a v11.4 (26/11/2026): a Meia-noite** (Repaginação 360). Fica por cima do
-> Carvão; `lastro-v11 = '0'` volta a ele (`app/v11.css` troca só as variáveis `--cv-*` do `v10.css`). Cores: chão
+> **A única interface desde a v11.5 (padrão na v11.4, 26/11/2026): a Meia-noite** (Repaginação 360), sem chaves. As
+> variáveis `--cv-*` têm os valores dela na seção "a Meia-noite" do `app/estilo.css`. Cores: chão
 > `#090D18`, bloco `#111829`, ação e dado azul `#7C9CFF`, atenção coral `#FF8A6B`, subiu `#8FB4FF`, caiu `#FF7A6E`,
 > número do topo em branco; fonte **Manrope** (texto e números, `app/fontes/manrope.woff2`); ícone = o mesmo pássaro com
 > anel azul → coral sobre azul-noite. Estrutura: Hoje (briefing com o "Livre de verdade") · Mês · Patrimônio · Plano — ver

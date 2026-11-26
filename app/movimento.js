@@ -1,27 +1,14 @@
-// v8 — interface nova (direção "Brasa", escolhida pelo Bruno em 28/10/2026). Padrão desde a v8.2; a anterior
-// continua em menu → Avançado → "Interface nova" (desligar). Só muda aparência e movimento: as telas continuam as mesmas
-// (telas.js/traduzir.js), então nada de número ou de lançamento depende daqui.
-// Movimento: números que contam até o valor novo, telas que entram em cascata, deslizar o dedo entre
-// as sub-abas, folhas com mola que fecham arrastando para baixo e vibração curta ao salvar.
+// Movimento do app (nasceu na v8, 28/10/2026; era o v8.js até a v11.5): números que contam até o valor novo, o esqueleto
+// de carregando, folhas que fecham arrastando para baixo, puxar para atualizar, troca de aba com View Transition e vibração
+// curta ao salvar. Nada de número ou de lançamento depende daqui.
 
-const CHAVE = 'lastro-ui';
 const calmo = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)') || { matches: true };
 const vistos = new Map(); // último valor mostrado de cada número grande ("aba/sub#posição")
-
-export const v8Ligada = () => document.documentElement.dataset.ui === 'v8';
-
-// v9.4: a interface anterior (v7) saiu do app — a v8 vale sempre, mesmo com a chave antiga 'v7' salva
-export function lerChaveV8() {
-  try { localStorage.removeItem(CHAVE); } catch { /* sem armazenamento */ }
-  document.documentElement.dataset.ui = 'v8';
-  return true;
-}
 
 // carregando: esqueleto com a forma da tela no lugar do círculo girando
 export const ESQUELETO = '<div class="app-conteudo v8-esqueleto" role="status" aria-label="Carregando"><i></i><i></i><i></i><i></i></div>';
 
 export function vibrar(ms = 12) {
-  if (!v8Ligada()) return;
   try { navigator.vibrate?.(ms); } catch { /* aparelho sem vibração */ }
 }
 
@@ -40,7 +27,6 @@ export function escreverNumero(texto, valor, casas) {
 // Números grandes contam do valor anterior até o novo (lançou R$ 50 → o "Dá para gastar" desce na frente).
 // Na primeira vez que aparecem nesta abertura, contam a partir de zero.
 export function animarNumeros(raiz, chave) {
-  if (!v8Ligada()) return;
   raiz.querySelectorAll('.hero-valor').forEach((el, i) => {
     const id = `${chave}#${i}`;
     const final = el.textContent;
@@ -62,40 +48,13 @@ export function animarNumeros(raiz, chave) {
     requestAnimationFrame(passo);
     setTimeout(() => el.classList.remove('v8-conta'), dur + 300);
   });
-  setTimeout(() => document.documentElement.style.removeProperty('--v8-lado'), 450); // só a troca pelo dedo vem do lado
-}
-
-// Deslizar o dedo entre as sub-abas (Visão geral ↔ Agenda ↔ Contas…). Não atrapalha o que rola para o lado
-// (meses da projeção, tabelas largas) nem campos e controles.
-export function ligarDeslizar(resumo, haFolha) {
-  let x0 = null, y0 = 0;
-  resumo.addEventListener('touchstart', e => {
-    x0 = null;
-    if (!v8Ligada() || haFolha() || e.touches.length !== 1) return;
-    for (let el = e.target; el && el !== resumo; el = el.parentElement) {
-      if (/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) || el.classList?.contains('arrastavel') || el.scrollWidth > el.clientWidth + 2 && getComputedStyle(el).overflowX !== 'visible') return;
-    }
-    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
-  }, { passive: true });
-  resumo.addEventListener('touchend', e => {
-    if (x0 === null) return;
-    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
-    x0 = null;
-    if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
-    const subs = [...resumo.querySelectorAll('.subabas [data-sub]')];
-    const atual = subs.findIndex(b => b.classList.contains('on'));
-    const alvo = subs[atual + (dx < 0 ? 1 : -1)];
-    if (!alvo) return;
-    document.documentElement.style.setProperty('--v8-lado', dx < 0 ? '1' : '-1');
-    alvo.click();
-  }, { passive: true });
 }
 
 // Folha: arrastar pela alça (ou pelo topo, com a folha rolada para cima) fecha
 export function ligarArrastarFolha(folha, fechar) {
   let y0 = null, dy = 0;
   folha.addEventListener('pointerdown', e => {
-    if (!v8Ligada() || folha.scrollTop > 0 || e.target.closest('input,select,textarea,button,a')) return;
+    if (folha.scrollTop > 0 || e.target.closest('input,select,textarea,button,a')) return;
     if (e.clientY - folha.getBoundingClientRect().top > 64) return;
     y0 = e.clientY; dy = 0;
     folha.classList.add('v8-arrastando');
@@ -132,7 +91,7 @@ export function ligarPuxar(resumo, haFolha, buscar) {
   };
   resumo.addEventListener('touchstart', e => {
     d = 0;
-    y0 = v8Ligada() && resumo.scrollTop <= 0 && e.touches.length === 1 && !haFolha() && !el?.classList.contains('buscando') ? e.touches[0].clientY : null;
+    y0 = resumo.scrollTop <= 0 && e.touches.length === 1 && !haFolha() && !el?.classList.contains('buscando') ? e.touches[0].clientY : null;
   }, { passive: true });
   resumo.addEventListener('touchmove', e => {
     if (y0 === null) return;
@@ -158,8 +117,8 @@ export function ligarPuxar(resumo, haFolha, buscar) {
   }, { passive: true });
 }
 
-// Troca de aba com View Transition: o destaque e o título "viajam" de uma tela para a outra (v8.css)
+// Troca de aba com View Transition: o destaque e o título "viajam" de uma tela para a outra (estilo.css)
 export function comTransicao(desenhar) {
-  if (!v8Ligada() || calmo.matches || !document.startViewTransition) return desenhar();
+  if (calmo.matches || !document.startViewTransition) return desenhar();
   document.startViewTransition(desenhar);
 }

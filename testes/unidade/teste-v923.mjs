@@ -15,7 +15,7 @@ confere('digital: botão de destrancar e o link da senha', d.includes('id="destr
 confere('campos que o app já usa', ['id="senhaTrava"', 'id="erroTrava"', 'autocomplete="current-password"', 'usuarioX'].every(t => d.includes(t)));
 const s = htmlAberturaV10({ soSenha: true, agora: noite, usuario: '' });
 confere('só senha: formulário aberto, sem digital', !s.includes('id="destravar"') && !s.includes('id="usarSenha"') && !/id="formTrava" hidden/.test(s));
-const css = fs.readFileSync(new URL('../../app/v10.css', import.meta.url), 'utf8');
+const css = fs.readFileSync(new URL('../../app/estilo.css', import.meta.url), 'utf8');
 confere('anéis só acendem com movimento permitido', /@media \(prefers-reduced-motion: no-preference\)[\s\S]*anel-v10/.test(css));
 
 console.log(`v9.23 abertura no Carvão: ${ok} ok, ${falhas} falhas`);

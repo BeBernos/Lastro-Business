@@ -1,7 +1,7 @@
 // Peças de tela usadas no app inteiro (saíram do app.js em 14/11/2026): formatação, ícones do menu, aviso flutuante,
 // esconder os valores, folha inferior, confirmação e a pergunta "de quando vale". Não importa nada do app.js: o que a
 // folha precisa saber do app (estado do histórico e o menu) chega por configurarFolha, chamado uma vez pelo app.js.
-import { vibrar } from './v8.js';
+import { vibrar } from './movimento.js';
 
 export const $ = id => document.getElementById(id);
 export const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

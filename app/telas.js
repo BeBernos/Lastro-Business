@@ -1,19 +1,19 @@
-// Telas do app (Início, Mês, Cartão, Futuro, Análises), montadas a partir do motor (resumo.js).
+// Telas do app (Hoje, Mês, Patrimônio, Plano e o "Tudo do painel" de cada uma), montadas a partir do motor (resumo.js).
 // Funções puras: recebem os números e devolvem HTML. Cada seção é isolada — se faltar algum
 // dado nesta versão do painel, a seção simplesmente não aparece.
 
-import { anel, barrasH, brl, brl0, colunas, compacto, empilhada, esc, icTom, linhaSaldo, linhas, medidor, minilinha, svgIcone } from './graficos.js';
+import { anel, barrasH, brl, brl0, colunas, compacto, empilhada, esc, icTom, linhaSaldo, linhas, medidor, svgIcone } from './graficos.js';
 import { contexto, proximasContas } from './resumo.js';
-import { faixasDoHoje, htmlComposicaoV10, htmlHojeV10, saudeCarteira } from './v10.js';
-import { htmlHoje, htmlHojeV11, resumoHoje } from './hoje.js';
-import { treemap, acoesCv, areaCv, barrasAlvoCv, blocoCv, carrosselCv, CHECK, colunasCv, cartaoCv, codigoAtivo, diaCv, linhaCv, linkCv, listaCv, numerosCv, secaoCv, tudoDoPainelCv, variacaoCv } from './carvao.js';
+import { htmlComposicaoV10, saudeCarteira } from './v10.js';
+import { htmlHojeV11, resumoHoje } from './hoje.js';
+import { treemap, acoesCv, areaCv, barrasAlvoCv, blocoCv, carrosselCv, CHECK, colunasCv, cartaoCv, codigoAtivo, diaCv, linhaCv, linkCv, listaCv, secaoCv, tudoDoPainelCv, variacaoCv } from './carvao.js';
 import { blocosDoPainel } from './traduzir.js';
 import { mesBonito } from './painel.js';
-import { posicao, proximoPasso, reserva } from './carteira.js';
+import { posicao, reserva } from './carteira.js';
 import { adivinharCategoria, categoriaDoItem, iconeCategoria, nomeCategoria } from './categorias.js';
-import { dolarizacao, listaAtivos, nomeAtivo, planoDoMes, resultadoDoMes } from './investimentos.js';
+import { listaAtivos, nomeAtivo, planoDoMes, resultadoDoMes } from './investimentos.js';
 import { CATEGORIAS_RECEITA, hojeBrasil, LISTAS_CAIXA, tickerDividendo } from './lancamentos.js';
-import { composicaoFatura, gastoDoDia, resumoSemana } from './extrato.js';
+import { composicaoFatura, resumoSemana } from './extrato.js';
 import { alertasPlano, alocacaoVsAlvo, rendimentoRendaFixa } from './estrategia.js';
 import { gatilhos, INDICADORES, pausa, textoItem } from './ficha.js';
 import { prazoResgate } from './liquidez.js';
@@ -61,154 +61,6 @@ export function frescor(dados, agora = new Date()) {
   return { texto: `Atualizado ${quando} · ${pad(d)}/${pad(m)}`, alerta: dias > 3 };
 }
 
-// lancar: botão "+" (lançar gasto) no celular de quem publica (Fase 1)
-export function htmlTopo(aba, dados, { lancar = false, agora = new Date() } = {}) {
-  const ctx = contexto(dados, agora);
-  const f = frescor(dados, agora);
-  const titulo = aba === 'inicio' ? maiuscula(MESES[ctx.mes - 1]) : ABAS.find(a => a.id === aba).nome;
-  // v8.5: topo compacto; o "+" vai para o meio da barra e, no celular de quem publica, Análises sobe para cá
-  const analises = ABAS.find(a => a.id === 'analises');
-  return `<header class="topo">
-  <div class="topo-marca">
-    <img class="topo-logo" src="icons/logo.svg" alt="">
-    <div>
-      <h1>${esc(titulo)}</h1>
-      <p class="topo-sup ${f.alerta ? 'alerta' : ''}">${f.alerta ? icTom('atencao') : ''}${esc(f.texto)}</p>
-    </div>
-  </div>
-  <div class="topo-acoes">
-    <button type="button" class="topo-menu" id="appBusca" aria-label="Buscar no app">${svg('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>')}</button>
-    ${lancar ? `<button type="button" class="aba topo-menu topo-analises ${aba === 'analises' ? 'on' : ''}" data-aba="analises" aria-label="Análises" aria-current="${aba === 'analises' ? 'page' : 'false'}">${svg(analises.icone)}</button>` : ''}
-    <button type="button" class="topo-menu" id="appMenu" aria-label="Menu do app">${svg('<circle cx="12" cy="6" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="18" r="1.6"/>', 'cheio')}</button>
-  </div>
-</header>`;
-}
-
-export function htmlNav(aba, { lancar = false } = {}) {
-  const botao = a => `
-    <button type="button" class="aba ${a.id === aba ? 'on' : ''}" data-aba="${a.id}" aria-current="${a.id === aba ? 'page' : 'false'}">
-      ${svg(a.icone)}<span>${a.nome}</span>
-    </button>`;
-  if (!lancar) return `<nav class="abas" aria-label="Seções">${ABAS.map(botao).join('')}</nav>`;
-  // v8.5, quem publica: Início · Caixa · [+] · Cartão · Carteira (Análises fica no topo)
-  const [inicio, mes, cartao, carteira] = ABAS;
-  return `<nav class="abas com-mais" aria-label="Seções">${botao(inicio)}${botao(mes)}
-    <button type="button" class="aba-mais" id="appLancar" aria-label="Lançar" aria-haspopup="dialog">${svg('<path d="M12 5v14M5 12h14"/>')}</button>
-    ${botao(cartao)}${botao(carteira)}</nav>`;
-}
-
-// ---------- INÍCIO ----------
-function heroGastar({ c }, hoje = null) {
-  const dias = c.diasRest;
-  const porDia = dias > 0 ? c.saldo / dias : c.saldo;
-  const ritmo = c.taxaAtualLivre || 0;
-  const tom = c.saldo <= 0 ? 'ruim' : ritmo > porDia ? 'atencao' : 'bom';
-  // v9.6: uma barra só (o seu ritmo dentro do que cabe por dia) — antes "cabe por dia" repetia a linha de cima e a
-  // barra dele ficava sempre cheia; os dois números de rodapé ficam lado a lado em vez de pílulas de tamanhos diferentes
-  const acima = ritmo > porDia;
-  const comparacao = ritmo > 0 && c.saldo > 0 ? `
-    <div class="ritmo">
-      <div class="ritmo-item"><div class="ritmo-topo"><span>Seu ritmo no cartão</span><b>${brl0(ritmo)} <small>de ${brl0(porDia)} por dia</small></b></div>${medidor(ritmo / Math.max(porDia, 1), { classe: acima ? 'ruim' : 'bom' })}
-      ${acima ? `<p class="ritmo-alerta">${icTom('atencao')} Acima do que cabe: ${brl0(ritmo - porDia)} por dia a mais.</p>` : ''}</div>
-    </div>` : '';
-  const gastoHoje = hoje?.n ? `${brl0(hoje.total)}<small> · ${hoje.n} ${hoje.n === 1 ? 'gasto' : 'gastos'}</small>` : brl0(0);
-  return `<section class="cartao hero tom-${tom}">
-    <button type="button" class="olho" data-olho aria-label="Esconder os valores" aria-pressed="false">${svg('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>')}</button>
-    <p class="rotulo">Dá para gastar até o fim do mês</p>
-    <p class="hero-valor">${brl(Math.max(0, c.saldo))}</p>
-    <p class="hero-sub">${c.saldo <= 0
-      ? `O mês já está <b class="ruim">${brl(-c.saldo)}</b> no vermelho com o que foi lançado.`
-      : dias > 0 ? `<b>${brl0(porDia)} por dia</b> · faltam ${dias} dias` : 'Último dia do mês'}</p>
-    ${comparacao}
-    <div class="hero-grade">
-      <div><span>Fim do mês, no seu ritmo</span><b class="${c.saldoProj < 0 ? 'ruim' : 'bom'}">${brl0(c.saldoProj)}</b></div>
-      <div><span>Gasto hoje</span><b>${gastoHoje}</b></div>
-    </div>
-    <details class="explica">
-      <summary>Como chega nesse número</summary>
-      <ul class="linhas">
-        ${linha('Receitas do mês', brl(c.receitas))}
-        ${linha('− Contas fixas', brl(c.fixas))}
-        ${linha('− Já gasto (cartão e outros)', brl(c.variaveis))}
-        ${linha('= Dá para gastar', brl(c.saldo), tomValor(c.saldo))}
-      </ul>
-      <p class="nota">Conta as receitas previstas até o fim do mês (algumas estimadas). Compras no cartão contam no mês em que são feitas, mesmo pagas na fatura seguinte.</p>
-    </details>
-  </section>`;
-}
-
-function cartaoAcao({ acao }) {
-  if (!acao?.titulo) return '';
-  return `<section class="cartao acao tom-${acao.tom}">
-    <div class="acao-ic">${svg(ICONE_IDEIA)}</div>
-    <div class="acao-txt">
-      <p class="rotulo">Próxima ação</p>
-      <h3>${esc(acao.titulo)}</h3>
-      ${acao.corpo ? `<p class="recolhido" data-expandir>${acao.corpo}</p>` : ''}
-    </div>
-  </section>`;
-}
-
-function duplaContaCartao({ c, tl }, dados, ctx) {
-  const futuro = tl.porDia.filter(p => p.dia >= ctx.diaHoje);
-  const negativos = futuro.filter(p => p.saldo < 0);
-  let subConta = 'Positiva até o fim do mês';
-  if (negativos.length) {
-    const ultimo = negativos[negativos.length - 1].dia;
-    const volta = futuro.find(p => p.dia > ultimo && p.saldo >= 0);
-    subConta = volta ? `Volta ao azul dia ${volta.dia}` : 'Negativa até o fim do mês';
-  }
-  const limite = dados.regras?.limiteSaudavelItau || 0;
-  const uso = limite ? c.itau / limite : 0;
-  return `<div class="dupla">
-    <button type="button" class="cartao mini" data-ir-aba="mes/geral">
-      <p class="rotulo">Conta hoje</p>
-      <p class="mini-valor ${tomValor(c.caixa)}">${brl0(c.caixa)}</p>
-      ${minilinha(tl.porDia.map(p => p.saldo))}
-      <p class="mini-sub">${esc(subConta)}</p>
-    </button>
-    <button type="button" class="cartao mini" data-ir-aba="cartao/fatura">
-      <p class="rotulo">Cartão no mês</p>
-      <p class="mini-valor">${brl0(c.itau)}</p>
-      ${limite ? medidor(uso, { classe: uso > 1 ? 'ruim' : uso > 0.85 ? 'atencao' : 'destaque' }) : ''}
-      <p class="mini-sub">${limite ? `${Math.round(uso * 100)}% do limite de ${brl0(limite)}` : ''}</p>
-    </button>
-  </div>`;
-}
-
-// editavel: no celular de quem publica, cada conta ganha "Paguei"/"Recebi" (Fase 1, lancamentos.js)
-function listaContas(itens, ctx, editavel = false) {
-  return `<ul class="contas">${itens.map(i => {
-    const data = new Date(ctx.ano, ctx.mes - 1, i.dia);
-    const hoje = i.dia === ctx.diaHoje;
-    const valor = `<b class="conta-valor ${i.valor > 0 ? 'bom' : ''}">${i.valor > 0 ? '+' : ''}${brl(i.valor)}</b>`;
-    return `<li>
-      <div class="dia ${hoje ? 'hoje' : ''}"><b>${pad(i.dia)}</b><span>${hoje ? 'hoje' : SEMANA[data.getDay()]}</span></div>
-      ${editavel && i.lista && i.item
-        // v9.6: valor embaixo do nome e o botão sozinho à direita (antes valor e botão empilhados deixavam a linha alta)
-        ? `<span class="conta-nome conta-com-valor">${esc(nomeCurto(i.desc))}${valor}</span><button type="button" class="conta-pagar" data-pagar="${esc(i.lista)}|${esc(i.item)}">${i.valor > 0 ? 'Recebi' : 'Paguei'}</button>`
-        : `<span class="conta-nome">${esc(nomeCurto(i.desc))}</span>${valor}`}
-    </li>`;
-  }).join('')}</ul>`;
-}
-
-function proximas(m, dados, ctx, opcoes = {}) {
-  const itens = proximasContas(m, dados);
-  if (!itens.length) return '';
-  return `<section class="cartao">
-    <div class="cartao-topo"><h2>Próximas contas</h2><button type="button" class="link" data-ir-aba="mes/agenda">Ver a agenda</button></div>
-    ${listaContas(itens.slice(0, 3), ctx, !!opcoes.github)}
-  </section>`;
-}
-
-function alertasCompactos({ alertas }) {
-  if (!alertas?.length) return '';
-  return `<section class="cartao">
-    <div class="cartao-topo"><h2>Atenção</h2><button type="button" class="link" data-ir-aba="analises/saude">Análises</button></div>
-    <ul class="alertas compactos">${alertas.slice(0, 3).map(a => `<li>${icTom(a.tom)}<span>${esc(a.titulo)}</span></li>`).join('')}</ul>
-  </section>`;
-}
-
 // ---------- MÊS ----------
 function graficoCurva({ tl }, ctx) {
   const pontos = tl.porDia.map(p => {
@@ -249,9 +101,7 @@ function curvaMes(m, ctx) {
 
 // Destaque de Mês › Visão geral: saldo de hoje + curva do mês
 function heroSaldo(m, ctx, opcoes = {}) {
-  const { c, tl } = m;
-  const minimo = minimoDaqui(tl, ctx);
-  const final = tl.porDia[tl.porDia.length - 1];
+  const { tl } = m;
   const futuro = tl.porDia.filter(p => p.dia >= ctx.diaHoje);
   const pend = pendentesAteHoje(tl, ctx.diaHoje);
   const somaPend = pend.reduce((s, e) => s + e.valor, 0);
@@ -265,17 +115,11 @@ function heroSaldo(m, ctx, opcoes = {}) {
     const volta = futuro.find(p => p.dia > ultimo && p.saldo >= 0);
     sub = volta ? `Fica no vermelho até o dia ${ultimo} e <b>volta ao azul no dia ${volta.dia}</b>.` : 'Fica no vermelho até o fim do mês.';
   }
-  // v9.25: na interface nova o saldo de hoje está no topo — aqui só o resto
-  return `<section class="cartao${opcoes.v10 ? '' : ' hero'}">
-    ${opcoes.v10 ? '' : `<p class="rotulo">Saldo da conta hoje</p>
-    <p class="hero-valor ${tomValor(c.caixa)}">${brl(c.caixa)}</p>`}
+  // v9.25: o saldo de hoje, o mínimo e como fecha estão no topo — aqui só o resto
+  return `<section class="cartao">
     <p class="hero-sub">${sub}</p>
     ${aviso}
     <div class="hero-grafico">${graficoCurva(m, ctx)}</div>
-    ${opcoes.v10 ? '' : `<div class="chips">
-      ${minimo.saldo < 0 ? chip('ruim', `Pior momento ${brl0(minimo.saldo)} · dia ${minimo.dia}`) : chip('bom', `Mínimo daqui em diante ${brl0(minimo.saldo)} · dia ${minimo.dia}`)}
-      ${chip(final.saldo < 0 ? 'ruim' : 'bom', `Fecha o mês com ${brl0(final.saldo)}`)}
-    </div>`}
     ${opcoes.github ? '<button type="button" class="botao-sec hero-acao" data-conferir-banco>Conferir com o saldo do banco</button>' : ''}
   </section>`;
 }
@@ -1251,28 +1095,6 @@ function graficoDividendos(cart) {
 const comNegrito = t => esc(String(t || '')).replace(/&lt;(\/?)b&gt;/g, '<$1b>');
 const sinal = v => (typeof v === 'number' ? `${v > 0 ? '+' : ''}${v.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%` : '—');
 
-// Roteiro do plano da carteira: progresso e passos (dados do plano_acao)
-function roteiroCarteira(cart, podeMarcar = false) {
-  const pa = cart.plano_acao;
-  if (!pa?.passos?.length) return null;
-  const feitos = pa.passos.filter(p => /conclu|decidid|cancel/i.test(p.status || '')).length;
-  const tomStatus = st => (/conclu/i.test(st) ? 'bom' : /decidid|cancel/i.test(st) ? 'info' : 'atencao');
-  // v8.4: o que falta fazer em cima; os passos feitos ficam numa dobra; nota longa abre em "Ler mais"
-  const passo = p => `<li class="${/pendente/i.test(p.status || '') ? 'pendente' : ''}">
-      <span class="roteiro-n">${p.n}</span>
-      <div><b>${esc(p.titulo)}</b> ${chip(tomStatus(p.status || ''), esc(String(p.status || '').toLowerCase()))}
-      ${p.nota && /pendente/i.test(p.status || '') ? (String(p.nota).length > 220
-        ? `<details class="dobra pn-dobra"><summary><span class="pn-dobra-t">${esc(String(p.nota).replace(/\*\*/g, '').slice(0, 160).replace(/\s+\S*$/, ''))}… <small>Ler mais</small></span></summary><div class="pn-dobra-c"><p class="nota">${comNegrito(p.nota)}</p></div></details>`
-        : `<p class="nota">${comNegrito(p.nota)}</p>`) : ''}${podeMarcar && !/conclu|cancel/i.test(p.status || '') ? `<p class="passo-acoes"><button type="button" class="link" data-passo="${esc(p.n)}">Marcar como feito</button><button type="button" class="link suave" data-passo="${esc(p.n)}" data-como="cancelar">Não vou fazer</button></p>` : ''}</div>
-    </li>`;
-  const ok = p => /conclu|decidid|cancel/i.test(p.status || '');
-  const abertos = pa.passos.filter(p => !ok(p)), prontos = pa.passos.filter(ok);
-  return `<div class="cartao-topo"><h2>Roteiro da carteira</h2><span class="suave">${feitos} de ${pa.passos.length}</span></div>
-    ${medidor(feitos / pa.passos.length, { classe: 'bom' })}
-    ${abertos.length ? `<ol class="roteiro">${abertos.map(passo).join('')}</ol>` : '<p class="nota">Todos os passos do roteiro estão feitos.</p>'}
-    ${prontos.length ? `<details class="dobra pn-dobra"><summary><span class="pn-dobra-t">${prontos.length} ${prontos.length === 1 ? 'passo feito ou descartado' : 'passos feitos ou descartados'}</span></summary><div class="pn-dobra-c"><ol class="roteiro">${prontos.map(passo).join('')}</ol></div></details>` : ''}`;
-}
-
 // v10.0 (o Bruno: "o roteiro está muito confuso — tem que ficar claro o que eu tenho que fazer"): o que falta, agrupado
 // pelo dia (com quanto falta para ele), cada passo com o valor e o "Feito"; os feitos numa linha só que abre.
 export function roteiroCv(cart, podeMarcar = false, hoje = hojeBrasil()) {
@@ -1318,11 +1140,11 @@ function mercadoPorAtivo(cart) {
     <p class="nota">Opinião do Claude a partir da sua estratégia e do mercado na data indicada — não é recomendação profissional de investimento.</p>`;
 }
 
-function trocasDaCarteira(cart, podeMarcar = false, v10 = false) {
+function trocasDaCarteira(cart, podeMarcar = false) {
   return {
     lc: () => graficoEvolucaoCarteira(cart),
     'rp-chart': () => graficoDividendos(cart),
-    steps: () => (v10 ? `<div class="cartao-topo"><h2>Roteiro da carteira</h2></div><div class="roteiro-cv">${roteiroCv(cart, podeMarcar)}</div>` : roteiroCarteira(cart, podeMarcar)),
+    steps: () => `<div class="cartao-topo"><h2>Roteiro da carteira</h2></div><div class="roteiro-cv">${roteiroCv(cart, podeMarcar)}</div>`,
     'mkt-cards': () => mercadoPorAtivo(cart),
   };
 }
@@ -1425,16 +1247,9 @@ function heroCarteira(cart, opcoes) {
   const r = reserva(cart);
   const [, mm, dd] = String(p.data).split('-');
   const div = p.h.dividendos;
-  // v9.12.3: o resultado do mês da posição gravada (o mesmo "Result. mercado" do painel); a estimativa de agora só
-  // aparece num dia depois da posição — no mesmo dia eram dois números quase iguais e confusos (−715,65 × −722)
-  const base = baseMesAnterior(cart);
-  const noMes = base?.noMes(p.total);
-  // v9.21: na interface nova o patrimônio está no topo — aqui só o resto
-  return `<section class="cartao${opcoes.v10 ? '' : ' hero'}">
-    ${opcoes.v10 ? '' : `<p class="rotulo">Patrimônio investido</p>
-    <p class="hero-valor">${brl(p.total)}</p>`}
+  // v9.21: o patrimônio e a variação do mês estão no topo — aqui só o resto
+  return `<section class="cartao">
     <p class="hero-sub">Posição de ${dd}/${mm}, ${p.h.atualizacoesApp?.at(-1)?.data === p.data ? 'atualizada no app' : 'registrada pelo gestor de carteira'}</p>
-    ${noMes && !opcoes.v10 ? `<p class="est-var ${noMes.valor < 0 ? 'ruim' : 'bom'}">${noMes.valor < 0 ? '−' : '+'}${brl(Math.abs(noMes.valor))} (${pctSinal(noMes.valor / noMes.base)}) no mês · desde o fechamento de ${mesCurto(base.mes)}</p>` : ''}
     ${String(p.data).slice(0, 10) < hojeBrasil() ? blocoEstimativa(opcoes.estimativa, opcoes, cart) : ''}
     <div class="chips">
       ${r ? (r.atual >= r.alvo ? chip('bom', `Reserva de emergência completa · ${brl0(r.atual)}`) : chip('atencao', `Reserva ${brl0(r.atual)} de ${brl0(r.alvo)}`)) : ''}
@@ -1458,48 +1273,8 @@ function semCarteira(opcoes) {
   </section>`;
 }
 
-// ---------- Início como hub: patrimônio líquido ----------
-// "Proximos aportes: Cripto → Dolar → Ouro" já traz o rótulo: não repete "Próximo passo da carteira:"
-function rotuloPasso(titulo) {
-  const m = String(titulo).match(/^pr[oó]xim[oa]s? aportes?\s*:\s*(.+)$/i);
-  return m ? `<b>Próximos aportes:</b> ${esc(m[1])}` : `<b>Próximo passo da carteira:</b> ${esc(titulo)}`;
-}
-
 // v8.1: quanto do patrimônio investido tem exposição ao dólar e a meta (que o Claude revisa no modo PLANO)
 const pct1 = v => `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
-function linhaDolar(cart) {
-  const dz = dolarizacao(cart);
-  if (!dz) return '';
-  const [a, mm] = String(dz.prazo || '').split('-').map(Number);
-  const meta = dz.alvo ? `meta ${pct1(dz.alvo)}${a && mm ? ` até ${MES3[mm - 1].toLowerCase()}/${String(a).slice(2)}` : ''}` : 'sem meta ainda';
-  return linha(`Em dólar <small class="suave">· ${meta}</small>`, pct1(dz.pct));
-}
-
-function patrimonioLiquido({ c }, cart, conferencia, est, compacto = false) {
-  const p = posicao(cart);
-  const hoje = estimativaValida(est);
-  const investido = hoje ? est.total - est.oficial + p.total : p.total;
-  const total = investido + c.caixa - c.itau;
-  const passo = proximoPasso(cart);
-  const pendencias = conferencia.filter(i => i.tom === 'ruim' || i.tom === 'atencao').length;
-  const [, mm, dd] = String(p.data).split('-');
-  return `<section class="cartao">
-    <div class="cartao-topo"><h2>Patrimônio líquido</h2><button type="button" class="link" data-ir-aba="carteira/visao">Carteira</button></div>
-    <p class="mini-valor ${tomValor(total)}">${brl(total)}</p>
-    <ul class="linhas">
-      ${hoje
-        ? linha(`Investimentos hoje <small class="suave">· estimativa (${brlSinal(est.variacao)} desde ${dd}/${mm})</small>`, brl(investido))
-        : linha(`Investimentos <small class="suave">· posição de ${dd}/${mm}</small>`, brl(p.total))}
-      ${compacto ? '' : linha('Conta hoje', brl(c.caixa), tomValor(c.caixa))}
-      ${compacto ? '' : linha('Cartão em aberto', brl(-c.itau), 'ruim')}
-      ${linhaDolar(cart)}
-    </ul>
-    ${compacto ? `<p class="nota">Investimentos ${c.caixa >= 0 ? '+' : '−'} ${brl0(Math.abs(c.caixa))} na conta − ${brl0(c.itau)} do cartão em aberto.</p>` : ''}
-    ${passo ? `<p class="destaque-txt pequeno">${rotuloPasso(passo.titulo)}</p>` : ''}
-    ${pendencias ? `<div class="chips"><button type="button" class="chip-botao" data-ir-aba="analises/conferir">${chip('atencao', `${pendencias} ${pendencias === 1 ? 'ponto' : 'pontos'} para conferir entre caixa e carteira`)}</button></div>` : ''}
-  </section>`;
-}
-
 // ---------- v8.8: orçamento, renda passiva, dólar mês a mês, assinaturas, metas, imposto de renda ----------
 const pctBr = v => `${(v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
 
@@ -1753,55 +1528,6 @@ function entenda(lista, abertos = new Set()) {
   </section>`;
 }
 
-export function htmlSubabas(aba, sub) {
-  const lista = SUBABAS[aba];
-  if (!lista) return '';
-  return `<div class="subabas ${lista.length > 4 ? 'muitas' : ''}" role="tablist">${lista.map(([id, nome]) =>
-    `<button type="button" role="tab" class="${id === sub ? 'on' : ''}" aria-selected="${id === sub}" data-sub="${id}">${nome}</button>`).join('')}</div>`;
-}
-
-// Mês virou e o painel ainda é do anterior (v7): o fechamento é com o Claude, uma vez por mês
-function fecharMes(dados, ctx, cart) {
-  const mes = mesBonito(dados.periodoLabel) || dados.periodo;
-  // v8.1: até a carteira ter a meta de dolarização, o fechamento lembra de montar o Projeto único (docs/PROJETO-CLAUDE.md)
-  const projeto = cart && !cart.meta_dolarizacao ? `<p class="rotulo espaco">Desta vez: o Projeto "Vida financeira"</p>
-    <ol class="passos-curtos">
-      <li>No claude.ai, crie o Projeto <b>Vida financeira</b>.</li>
-      <li>Nas instruções, cole as do Agente Financeiro e, abaixo, o bloco <b>Instruções do Lastro</b> (docs/PROJETO-CLAUDE.md no GitHub).</li>
-      <li>Deixe ligados o Google Drive e a skill gestor de carteira.</li>
-      <li>Feche o caixa (aba Caixa) e a carteira (aba Carteira), cada um numa conversa nova do Projeto.</li>
-      <li>Depois, aba <b>Plano</b>: a primeira conversa define a meta de dolarização e o plano dos próximos 3 meses. Importe no Lastro o JSON da carteira que o Claude devolver.</li>
-    </ol>` : '';
-  return `<section class="cartao dica-agente">
-    <div class="cartao-topo"><h2>Hora de fechar ${esc(mes)}</h2></div>
-    <p class="cartao-sub">Leve o caixa (e a carteira) para o Claude fechar o mês e gerar o painel novo. Até lá, compras no cartão continuam pelo "+" e vão para a fatura de ${MESES[ctx.mes % 12]}.</p>
-    ${projeto}
-    <button type="button" class="botao-sec" data-levar-claude>Levar para o Claude</button>
-  </section>`;
-}
-
-// v8.7: cartões do Início (ordem padrão). Um cartão novo de uma versão futura entra ligado no fim da ordem salva.
-// v9.1: os secundários (aporte, orçamento, renda, metas, atenção) ficam desligados; o cartão "Para olhar" resume os cinco
-const SECUNDARIOS = ['aporte', 'orcamento', 'metas', 'renda', 'atencao'];
-export const CARTOES_INICIO = [
-  ['gastar', 'Dá para gastar'], ['proximas', 'Próximas contas'], ['acao', 'Próxima ação'],
-  ['contaCartao', 'Conta e cartão'], ['destaques', 'Hoje (o que fazer: aporte, passos do plano, gatilhos, orçamento e alertas)'], ['patrimonio', 'Patrimônio líquido'],
-  ['aporte', 'Aporte do mês (cartão completo)'], ['orcamento', 'Orçamento (cartão completo)'],
-  ['metas', 'Metas (cartão completo)'], ['renda', 'Renda passiva × custo de vida (cartão completo)'], ['atencao', 'Atenção (cartão completo)'],
-];
-export function ordemInicio(salva) {
-  const ids = CARTOES_INICIO.map(([id]) => id);
-  const lista = (Array.isArray(salva) ? salva : []).filter(c => ids.includes(c?.id)).map(c => ({ id: c.id, on: c.on !== false }));
-  const antiga = lista.length && !lista.some(c => c.id === 'destaques'); // ordem salva antes da v9.1: o resumo entra no lugar dos cinco
-  if (antiga) for (const c of lista) if (SECUNDARIOS.includes(c.id)) c.on = false;
-  for (const id of ids) {
-    if (lista.some(c => c.id === id)) continue;
-    const i = id === 'destaques' ? lista.findIndex(c => SECUNDARIOS.includes(c.id)) : -1;
-    lista.splice(i < 0 ? lista.length : i, 0, { id, on: !SECUNDARIOS.includes(id) });
-  }
-  return lista;
-}
-
 // v9.17: o Claude deixou o fechamento pronto pelo conector (rascunho); nada foi para a família até o Bruno aplicar.
 // Depois de aplicar, o mesmo lugar mostra "Fechamento aplicado · Desfazer" por 2 dias (`aplicado` = IDB antesDoFechamento).
 export function fechamentoPronto(rascunhos, aplicado = null) {
@@ -1862,9 +1588,7 @@ export function resumoSemanaHtml(m, dados, cart, ctx, opcoes = {}) {
   </section>`;
 }
 
-// v9.19 (repaginação, etapa 2): o Hoje com a chave da interface nova — quatro blocos + até 3 faixas de ação.
-// As faixas são as linhas do "Hoje" de sempre (linhasDoHoje) mais o que hoje são cartões soltos no Início: fechamento
-// pronto, hora de fechar o mês, resumo da semana (domingo) e a próxima conta em até 3 dias.
+// O Hoje: as linhas de sempre (linhasDoHoje) mais o fechamento pronto, a hora de fechar o mês e o resumo da semana (domingo)
 function hojeV10(m, dados, cart, ctx, opcoes) {
   const extras = [];
   if (opcoes.github && opcoes.rascunhos && Object.keys(opcoes.rascunhos).length) extras.push({ tom: 'atencao', texto: 'Fechamento pronto: ver e aplicar', attr: 'data-fech-pronto' });
@@ -1872,53 +1596,14 @@ function hojeV10(m, dados, cart, ctx, opcoes) {
   if (ehDomingo(opcoes.hoje) && !ctx.mesPassou) extras.push({ tom: 'info', texto: 'Resumo da semana', attr: 'data-semana' });
   let linhas = [];
   try { linhas = linhasDoHoje(m, dados, cart, ctx, opcoes); } catch { /* sem linhas */ }
-  // v11.0: na Meia-noite, o Hoje vira briefing (o número de cima é o "Livre de verdade"); quebrou, cai no da v10.2
-  if (opcoes.v11) {
-    try {
-      const r = resumoHoje(m, dados, cart, ctx, { linhas, extras, hoje: opcoes.hoje || hojeBrasil(), github: !!opcoes.github });
-      return htmlHojeV11({ r, l: livreDeVerdade(m, dados, cart, ctx), c: m.c, limite: dados.regras?.limiteSaudavelItau || 0, ctx, github: !!opcoes.github });
-    } catch (e) { console.warn('Hoje da Meia-noite indisponível:', e); }
-  }
-  // v10.2: o Hoje novo (hoje.js, modelo 13 do quadro); se faltar algum dado e ele quebrar, o Hoje de antes
-  try { return htmlHoje(resumoHoje(m, dados, cart, ctx, { linhas, extras, hoje: opcoes.hoje || hojeBrasil(), github: !!opcoes.github })); } catch (e) { console.warn('Hoje novo indisponível:', e); }
-  let investido = null;
-  try { if (cart) investido = { total: posicao(cart).total, mercado: Number(resultadoDoMes(cart)?.mercado) || 0 }; } catch { /* carteira incompleta */ }
-  return htmlHojeV10({ c: m.c, limite: dados.regras?.limiteSaudavelItau || 0, venceDia: dados.calendario?.faturaCartao, mesProx: ctx.mes === 12 ? 1 : ctx.mes + 1, investido, faixas: faixasDoHoje(linhas, extras), github: !!opcoes.github }) + hojeListasCv(m, dados, ctx, opcoes);
-}
-
-// v9.27 (pedido do Bruno: "o Hoje está cru"): as próximas contas (com o pago) e as últimas compras do cartão, para ler
-// sem sair do Hoje; cada lista leva à sua tela
-function hojeListasCv(m, dados, ctx, opcoes) {
-  const gh = !!opcoes.github, partes = [];
-  let contas = [];
-  try { contas = ctx.mesPassou ? [] : proximasContas(m, dados); } catch { /* sem agenda */ }
-  const hoje = opcoes.hoje || hojeBrasil();
-  if (contas.length) {
-    const aPagar = contas.filter(x => x.valor < 0).reduce((s, x) => s - x.valor, 0);
-    const aEntrar = contas.filter(x => x.valor > 0).reduce((s, x) => s + x.valor, 0);
-    partes.push(secaoCv(aEntrar ? 'Contas e entradas' : 'Contas a pagar', { contagem: contas.length, link: linkCv('Ver todas', 'data-ir-aba="mes/agenda"') }), blocoCv(`<p class="cv-resumo"><b>${esc(brl(aPagar))}</b> a pagar${aEntrar ? ` · <b class="sobe">${esc(brl(aEntrar))}</b> a entrar` : ''}</p>${listaCv(contas.slice(0, 4).map(x => {
-      const pode = gh && x.item && PAGAVEIS.includes(x.lista);
-      return linhaCv({
-        icone: diaCv(x.dia, semanaDe(x.data), x.data === hoje), titulo: nomeCurto(x.desc), sub: x.valor > 0 ? 'a receber' : 'a pagar',
-        valor: `${x.valor > 0 ? '+' : ''}${esc(brl(Math.abs(x.valor)))}`, attr: pode ? `data-conta="${esc(x.lista)}|${esc(x.item)}"` : '',
-        acao: pode ? { rotulo: x.valor > 0 ? 'Recebi' : 'Paguei', attr: `data-pagar="${esc(x.lista)}|${esc(x.item)}"`, icone: CHECK } : null,
-      });
-    }))}`));
-  }
+  // v11.0: o Hoje é um briefing (o número de cima é o "Livre de verdade")
   try {
-    const compras = composicaoFatura(dados).grupos.filter(g => g.k === 'compra' || g.k === 'fatura').flatMap(g => g.itens).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-    if (compras.length) {
-      partes.push(secaoCv('Últimas compras', { link: linkCv('Cartão', 'data-aba="cartao"') }), blocoCv(listaCv(compras.slice(0, 3).map(i => {
-        const [k, v] = Object.entries(i.abrir || {})[0] || [];
-        return linhaCv({
-          icone: iconeCategoria(i.categoria || 'Others', 'peq'), titulo: i.descricao,
-          sub: esc([i.data ? ddmm(i.data) : '', i.categoria ? nomeCategoria(i.categoria) : ''].filter(Boolean).join(' · ')),
-          valor: `${i.valor > 0 ? '−' : ''}${esc(brl(Math.abs(i.valor)))}`, attr: gh && ABRIR_FATURA[k] ? `${ABRIR_FATURA[k]}="${esc(v)}"` : '',
-        });
-      }))));
-    }
-  } catch { /* sem fatura detalhada */ }
-  return partes.join('');
+    const r = resumoHoje(m, dados, cart, ctx, { linhas, extras, hoje: opcoes.hoje || hojeBrasil(), github: !!opcoes.github });
+    return htmlHojeV11({ r, l: livreDeVerdade(m, dados, cart, ctx), c: m.c, limite: dados.regras?.limiteSaudavelItau || 0, ctx, github: !!opcoes.github });
+  } catch (e) {
+    console.warn('Hoje indisponível:', e);
+    return blocoCv('<p class="cv-nota">Não deu para montar o Hoje com estes dados. O Mês, o Patrimônio e o Plano continuam abertos.</p>');
+  }
 }
 
 // v9.1: um cartão só, uma linha por assunto; tocar leva à tela de cada um
@@ -1958,69 +1643,12 @@ export function linhasDoHoje(m, dados, cart, ctx, opcoes) {
   return linhas.sort((a, b) => peso(a) - peso(b));
 }
 
-function destaquesInicio(m, dados, cart, ctx, opcoes) {
-  const linhas = linhasDoHoje(m, dados, cart, ctx, opcoes);
-  if (!linhas.length) return '';
-  return `<section class="cartao hoje">
-    <div class="cartao-topo"><h2>Hoje</h2></div>
-    <ul class="destaques">${linhas.map(l => `<li><button type="button" ${l.attr || `data-ir-aba="${l.ir}"`}>${icTom(l.tom)}<span>${esc(l.texto)}</span>${l.acao && opcoes.github ? '' : svg('<path d="m9 6 6 6-6 6"/>', 'seta')}</button>${l.acao && opcoes.github ? `<button type="button" class="btn mini" ${l.acao.attr}>${esc(l.acao.rotulo)}</button>` : ''}</li>`).join('')}</ul>
-  </section>`;
-}
-
-// v8.9: o aporte planejado do mês (carteira.plano_aportes) e o dia seguro para fazer, calculado do saldo dia a dia
-function aporteCartao(m, dados, cart, ctx, opcoes = {}) {
-  const a = aportePlanejado(m, dados, cart, ctx);
-  if (!a) return '';
-  const dd = dia => `${String(dia).padStart(2, '0')}/${dados.periodo.slice(5, 7)}`;
-  const onde = a.itens.map(i => `${esc(i.nome)} ${brl0(i.falta)}`).join(' · ');
-  const aperto = d => (d ? `no dia ${d}` : 'no começo do mês que vem');
-  const corpo = a.dia
-    ? `<div class="chips">${chip('bom', a.dia <= ctx.diaHoje ? 'Hoje já dá para aportar' : `Pode aportar a partir de ${dd(a.dia)}`)}</div>
-      <p class="nota">Depois do aporte, o dia mais apertado da conta (${aperto(a.apertoDia)}) ainda fica com ${brl0(a.apertoSaldo)}${a.buffer ? `, acima da reserva de ${brl0(a.buffer)}` : ''}.</p>`
-    : `<div class="chips">${chip('atencao', a.cabe > 0 ? `Cabem ${brl0(a.cabe)} a partir de ${dd(a.cabeDia)}` : 'Não cabe neste mês')}</div>
-      <p class="nota">Mesmo sem o aporte, a conta chega a ${brl0(a.apertoSaldo)} ${aperto(a.apertoDia)}${a.buffer ? ` (reserva: ${brl0(a.buffer)})` : ''}. ${a.cabe > 0 ? 'Aporte só o que cabe' : 'Aportar agora tiraria dinheiro que vai faltar'}, ou revise o plano no modo PLANO com o Claude.</p>`;
-  return `<section class="cartao">
-    <div class="cartao-topo"><h2>Aporte do mês</h2>${opcoes.github ? '<button type="button" class="link" data-aporte-plano>Investir</button>' : ''}</div>
-    <p class="mini-valor">${brl0(a.valor)}</p>
-    <p class="cartao-sub">${onde}</p>
-    ${corpo}
-  </section>`;
-}
-
-function abaInicioHub(m, dados, ctx, opcoes) {
-  const cart = opcoes.carteira;
-  if (opcoes.v10) return hojeV10(m, dados, cart, ctx, opcoes);
-  let conf = [];
-  try {
-    if (cart) conf = itensConferencia(m, dados, cart, ctx);
-  } catch { /* conferência indisponível */ }
-  const fechar = (ctx.mesPassou || ctx.diaHoje === ctx.dias) && opcoes.github ? secao(() => fecharMes(dados, ctx, cart)) : '';
-  // v8.5: o que se faz todo dia primeiro (dá para gastar, próximas contas); conta e cartão aparecem uma vez só.
-  // v8.7: a ordem e o que aparece são escolhidos em menu → Organizar o Início (cada celular guarda a sua)
-  const cartoes = {
-    gastar: () => heroGastar(m, opcoes.hoje && !ctx.mesPassou ? gastoDoDia(dados, opcoes.hoje) : null),
-    proximas: () => proximas(m, dados, ctx, opcoes),
-    acao: () => cartaoAcao(m),
-    contaCartao: () => duplaContaCartao(m, dados, ctx),
-    patrimonio: () => (cart ? patrimonioLiquido(m, cart, conf, opcoes.estimativa, true) : ''),
-    atencao: () => alertasCompactos(m),
-    orcamento: () => orcamentoCartao(dados, ctx, opcoes, true),
-    metas: () => (cart ? metasCartao(cart, { ...opcoes, hoje: opcoes.hoje }, true) : ''),
-    renda: () => (cart ? rendaPassivaCartao(m, dados, cart, true) : ''),
-    aporte: () => (cart ? aporteCartao(m, dados, cart, ctx, opcoes) : ''),
-    destaques: () => destaquesInicio(m, dados, cart, ctx, opcoes),
-  };
-  const semana = ehDomingo(opcoes.hoje) && !ctx.mesPassou ? secao(() => resumoSemanaHtml(m, dados, cart, ctx, opcoes)) : '';
-  const pronto = opcoes.github ? secao(() => fechamentoPronto(opcoes.rascunhos, opcoes.fechamentoAplicado)) : '';
-  return [pronto, fechar, semana, ...ordemInicio(opcoes.ordemInicio).filter(c => c.on && cartoes[c.id]).map(c => secao(cartoes[c.id]))].join('');
-}
-
-// opcoes: { doc (painel do caixa), docCarteira, carteira (JSON), estimativa (cotacoes.js), sub, abertos (Set), github, agora }
+// opcoes: { doc (painel do caixa), docCarteira, carteira (JSON), estimativa (cotacoes.js), abertos (Set), github, agora, tudo }
 export function htmlAba(aba, m, dados, opcoes = {}) {
   const ctx = contexto(dados, opcoes.agora || new Date());
-  if (aba === 'inicio' || !SUBABAS[aba]) return abaInicioHub(m, dados, ctx, opcoes);
-  // v9.26: a interface nova desenha cada tela do zero; a leitura de antes (com os blocos do painel) só em "Tudo do painel"
-  if (opcoes.v10 && TELAS_CV[aba] && !opcoes.tudo) return ((opcoes.v11 && { mes: mesCv, carteira: patrimonioCv, analises: planoCv }[aba]) || TELAS_CV[aba])(m, dados, ctx, opcoes); // v11.1–2: Mês e Patrimônio da Meia-noite
+  if (aba === 'inicio' || !SUBABAS[aba]) return hojeV10(m, dados, opcoes.carteira, ctx, opcoes);
+  // v9.26: cada tela é desenhada do zero; os blocos do painel (a leitura de antes) só em "Tudo do painel"
+  if (TELAS_CV[aba] && !opcoes.tudo) return TELAS_CV[aba](m, dados, ctx, opcoes);
   let blocos = [];
   try {
     if (opcoes.doc) blocos = blocosDoPainel(opcoes.doc, { trocas: trocasDeGraficos(m, dados, ctx), abertos: opcoes.abertos, diaHoje: ctx.mesPassou ? 0 : ctx.diaHoje, pular: PULAR_DO_CAIXA });
@@ -2032,13 +1660,11 @@ export function htmlAba(aba, m, dados, opcoes = {}) {
   const temCarteira = !!(opcoes.docCarteira && opcoes.carteira);
   if (temCarteira) {
     try {
-      blocos = blocos.concat(blocosDoPainel(opcoes.docCarteira, { trocas: trocasDaCarteira(opcoes.carteira, !!opcoes.github, !!opcoes.v10), abertos: opcoes.abertos, prefixo: 'c-', fonte: 'carteira', pular: PULAR_DA_CARTEIRA }));
+      blocos = blocos.concat(blocosDoPainel(opcoes.docCarteira, { trocas: trocasDaCarteira(opcoes.carteira, !!opcoes.github), abertos: opcoes.abertos, prefixo: 'c-', fonte: 'carteira', pular: PULAR_DA_CARTEIRA }));
     } catch (e) {
       console.warn('Tradução da carteira indisponível:', e);
     }
   }
-  const sub = SUBABAS[aba].some(([id]) => id === opcoes.sub) ? opcoes.sub : subPadrao(aba);
-  const chave = `${aba}/${sub}`;
   // os blocos do painel de uma sub-aba, já na ordem e recolhidos
   const doLugar = chave => {
     let daqui = blocos.filter(b => lugarDoBloco(b, temCarteira) === chave);
@@ -2052,20 +1678,10 @@ export function htmlAba(aba, m, dados, opcoes = {}) {
     daqui = daqui.map(b => recolherBloco(b, opcoes.abertos));
     return recolherSecoes(daqui, opcoes.abertos);
   };
-  if (opcoes.v10 && LEITURAS_V10[aba]) {
-    const lugar = aba !== 'carteira' ? doLugar : k => { const l = doLugar(k); return k === 'carteira/visao' ? [...l.filter(ehRoteiro), ...l.filter(b => !ehRoteiro(b))] : l; };
-    const args = [m, dados, ctx, { ...opcoes, carteira: temCarteira ? opcoes.carteira : null }];
-    if (opcoes.tudo) return `<div class="tudo-topo-cv"><button type="button" class="link-cv" data-tudo="">‹ Voltar</button><h2>Tudo do painel</h2><p>Tudo o que o painel do Claude mostra, por assunto. Toque num assunto para ir até ele.</p></div>${tudoV10(aba, LEITURAS_V10[aba], lugar, opcoes.abertos, args)}`;
-    return leituraV10(LEITURAS_V10[aba], lugar, opcoes.abertos, VAZIO_V10[aba], args);
-  }
-  const daqui = doLugar(chave);
-  const partes = [
-    ...(ANTES[chave]?.(m, dados, ctx, { ...opcoes, carteira: temCarteira ? opcoes.carteira : null }) || []),
-    ...daqui.filter(b => !b.explicacao).map(b => b.html),
-    ...(DEPOIS[chave]?.(m, dados, ctx, opcoes) || []),
-    entenda(daqui.filter(b => b.explicacao), opcoes.abertos),
-  ].filter(Boolean);
-  return partes.join('') || '<section class="cartao"><p class="cartao-sub">Nada nesta parte por enquanto.</p></section>';
+  const lugar = aba !== 'carteira' ? doLugar : k => { const l = doLugar(k); return k === 'carteira/visao' ? [...l.filter(ehRoteiro), ...l.filter(b => !ehRoteiro(b))] : l; };
+  const args = [m, dados, ctx, { ...opcoes, carteira: temCarteira ? opcoes.carteira : null }];
+  if (opcoes.tudo) return `<div class="tudo-topo-cv"><button type="button" class="link-cv" data-tudo="">‹ Voltar</button><h2>Tudo do painel</h2><p>Tudo o que o painel do Claude mostra, por assunto. Toque num assunto para ir até ele.</p></div>${tudoV10(aba, LEITURAS_V10[aba], lugar, opcoes.abertos, args)}`;
+  return leituraV10(LEITURAS_V10[aba], lugar, opcoes.abertos, VAZIO_V10[aba], args);
 }
 
 // Repaginação (v9.20–v9.24): cada destino é uma leitura só, de cima para baixo, juntando as sub-abas de antes —
@@ -2331,18 +1947,6 @@ function investimentosCv(m, dados, ctx, o) {
     partes.push(secaoCv('Seus ativos', { id: 'v10-carteira-ativos', contagem: ativos.length, link: ativos.length > 2 ? (todos ? linkCv('Ver menos', 'data-fechar="cv:ativos"') : linkCv('Ver todos', 'data-abrir="cv:ativos"')) : '' }),
       todos ? `<div class="grade-cv">${ativos.map(cartao).join('')}</div>` : carrosselCv(ativos.map(cartao), 'Seus ativos'));
   }
-  // 2. estratégia: agora × alvo por classe, uma linha cada (a nota só onde está fora do alvo)
-  if (aloc && !o.v11) { // v11.2: na Meia-noite a estratégia é o mapa (patrimonioCv)
-    const s = saudeCarteira(aloc, reserva(cart));
-    const linhas = aloc.linhas.map(l => {
-      const d = l.pct - l.alvo, perto = Math.abs(d) < 2;
-      return { rotulo: l.nome, valor: pct1(l.pct), atual: l.pct, alvo: l.alvo, tom: perto ? '' : d < 0 ? 'atencao' : '', nota: perto ? '' : l.falta > 0 ? `faltam ${brl(l.falta)} para ${pct1(l.alvo)}` : `${brl(-l.falta)} acima de ${pct1(l.alvo)}` };
-    });
-    partes.push(secaoCv('Estratégia', { id: 'v10-carteira-aloc', link: linkCv('Ordem e gatilhos', 'data-tudo="carteira" data-tudo-secao="carteira-aloc"') }),
-      blocoCv(`<p class="cv-resumo"><b>${s.fiel}% fiel</b> ao alvo${aloc.revisada ? ` · revisada em ${esc(ddmm(aloc.revisada))}` : ''}</p>
-        ${barrasAlvoCv(linhas, { compacto: true })}<p class="cv-legenda"><i></i>agora<em></em>alvo</p>
-        ${gh ? acoesCv([{ rotulo: 'Revisar estratégia', attr: 'data-revisar-estrategia' }, { rotulo: 'Pesquisar ativo', attr: 'data-pesquisar=""' }]) : ''}`));
-  }
   // 3. o próximo passo, em destaque; o resto do que pede ação numa lista curta
   let fazer = [];
   try { fazer = linhasDoHoje(m, dados, cart, ctx, o).filter(l => (/^carteira/.test(l.ir || '') || l.attr === 'data-levar-claude') && (l.tom !== 'info' || l.acao)); } catch { /* sem linhas */ }
@@ -2353,22 +1957,6 @@ function investimentosCv(m, dados, ctx, o) {
     const acao1 = gh ? p1.acao || (/aporte/i.test(p1.texto) ? { rotulo: 'Investir', attr: 'data-aporte-plano' } : null) : null;
     partes.push(`<div class="passo-cv tom-${p1.tom}"><button type="button" class="passo-txt" ${destino(p1)}>${tomTile(p1.tom)}<span><b>${esc(p1.texto)}</b><small>próximo passo</small></span>${acao1 ? '' : svg('<path d="m9 6 6 6-6 6"/>', 'li-seta')}</button>${acao1 ? `<button type="button" class="li-acao principal" ${acao1.attr}>${esc(acao1.rotulo)}</button>` : ''}</div>`);
   }
-  // 3. evolução e renda num bloco só (o gráfico, os dividendos do mês, a renda passiva e, se houver, a estimativa de hoje)
-  const p = posicao(cart);
-  const nums = [];
-  // dividendos do mês pelo caixa (o que caiu e o que vai cair); sem nenhum, o registrado na carteira
-  const divs = (dados.receitas || []).filter(r => tickerDividendo(r.descricao));
-  const recebido = divs.filter(r => r.status === 'confirmado').reduce((s, r) => s + (r.valor || 0), 0);
-  const aReceber = divs.filter(r => r.status !== 'confirmado').reduce((s, r) => s + (r.valor || 0), 0);
-  if (divs.length) nums.push({ rotulo: `Dividendos de ${MESES[ctx.mes - 1]}`, valor: esc(brl(recebido + aReceber)), sub: `${esc(brl(recebido))} já caiu${aReceber ? ` · ${esc(brl(aReceber))} a cair` : ''}` });
-  else if (p.h.dividendos > 0) nums.push({ rotulo: 'Dividendos no mês', valor: esc(brl(p.h.dividendos)) });
-  try {
-    const rp = rendaPassiva(dados, cart, (m.c?.fixas || 0) + (m.c?.variaveis || 0));
-    if (rp?.atual && rp.atual.pct >= 0.005) nums.push({ rotulo: 'Renda passiva', valor: pctBr(rp.atual.pct), sub: `das despesas de ${esc(mesCurto(rp.atual.mes))}` });
-  } catch { /* sem histórico */ }
-  const evo = secao(() => evolucaoCv(cart));
-  const est = String(p.data).slice(0, 10) < hojeBrasil() ? secao(() => blocoEstimativa(o.estimativa, o, cart)) : '';
-  if ((evo || nums.length) && !o.v11) partes.push('<span id="v10-carteira-renda"></span>', secaoCv('Evolução e renda', { id: 'v10-carteira-futuro' }), blocoCv(`${evo || ''}${nums.length ? `<div class="separa-cv">${numerosCv(nums)}</div>` : ''}${est ? `<div class="separa-cv">${est}</div>` : ''}`));
   // 3b. v10.0 (áudio do Bruno, 18/11): a projeção de cada ativo, ao lado da do total. Quem calcula é o Claude no
   // fechamento (`projecao_ativos`, contrato em projeto.txt) — o app só mostra; sem o campo, nada aparece.
   const pj = cart.projecao_ativos;
@@ -2467,16 +2055,6 @@ function cartaoTelaCv(m, dados, ctx, o) {
         ${rec.length > 3 ? linkCv(`Ver todas (${rec.length})`, 'data-tudo="cartao" data-tudo-secao="cartao-parcelas"') : ''}`));
   }
   partes.push(tudoDoPainelCv('cartao', 'Parcelas mês a mês, onde cortar, histórico e mais'), ...modelos);
-  return partes.join('');
-}
-
-function caixaCv(m, dados, ctx, o) {
-  const gh = !!o.github;
-  const partes = ['<span id="v10-mes-geral"></span>'], modelos = [];
-  const curva = secao(() => curvaCv(m, ctx));
-  if (curva) partes.push(secaoCv('O mês, dia a dia'), blocoCv(`${curva}${gh ? acoesCv([{ rotulo: 'Conferir com o saldo do banco', attr: 'data-conferir-banco' }]) : ''}`));
-  partes.push(...contasCv(m, dados, ctx, o), ...mesesCv(m, modelos));
-  partes.push(tudoDoPainelCv('mes', 'Agenda, contas do mês, gráficos e projeções'), ...modelos);
   return partes.join('');
 }
 
@@ -2774,15 +2352,9 @@ function planoCv(m, dados, ctx, o) {
 function analisesCv(m, dados, ctx, o) {
   const cart = o.carteira;
   const partes = ['<span id="v10-analises-saude"></span>'], modelos = [];
-  // saúde do mês: a nota está no topo; aqui, de onde ela vem — cada critério na sua escala (cheio = pontos máximos)
+  // os critérios da nota do painel (a nota em si saiu na v11.3; servem para não repetir os alertas)
   const sc = m.sc;
   const crit = sc && typeof sc.total === 'number' ? sc.crit || [] : [];
-  if (crit.length && !o.v11) { // v11.3: a nota de saúde sai (aprovado pelo Bruno em 25/11) — no Plano entram os 5 números
-    const cheios = crit.filter(k => (k.v || 0) >= 0.999), faltam = crit.filter(k => (k.v || 0) < 0.999);
-    partes.push(secaoCv('De onde vem a nota', { contagem: crit.length }), blocoCv(`${barrasAlvoCv(faltam.map(k => ({
-      rotulo: k.n, valor: `${Math.round((k.v || 0) * k.p)}/${k.p}`, atual: (k.v || 0) * k.p, alvo: k.p, tom: k.v >= 0.8 ? '' : k.v >= 0.4 ? 'atencao' : 'ruim', nota: k.v >= 0.8 ? '' : k.d || '',
-    })), { porLinha: true })}${cheios.length ? `<p class="ok-cv">${icTom('bom')}<span><b>${cheios.length} ${cheios.length === 1 ? 'critério' : 'critérios'} no máximo</b><small>${esc(cheios.map(k => k.n).join(' · '))}</small></span></p>` : ''}`));
-  }
   // análises do Claude: um cartão por análise, a mais nova primeiro
   const tons = { alerta: 'ruim', atencao: 'atencao', dica: 'ideia', conquista: 'bom', info: 'info' };
   const validas = (l, de) => (Array.isArray(l) ? l.filter(a => a && (a.titulo || a.texto)).map(a => ({ ...a, de })) : []);
@@ -2836,17 +2408,6 @@ function curvaCv({ tl }, ctx) {
   });
   return areaCv(pontos, { hojeX: ctx.mesPassou ? null : ctx.diaHoje, fim: true, rotulosX: [1, 8, 15, 22, ctx.dias].map(d => ({ x: d, texto: String(d) })), rotulo: 'Saldo da conta dia a dia. Toque ou arraste para ver cada dia.' });
 }
-function evolucaoCv(cart) {
-  const meses = Object.keys(cart.historico_mensal || {}).sort();
-  const pontos = meses.map((k, i) => {
-    const h = cart.historico_mensal[k], v = valorMes(h);
-    return { x: i, y: v, mes: k, dica: `${rotuloMes(k).longo}${h.status === 'em_andamento' ? ' (até agora)' : ''}: ${brl(v)}${h.aportes ? ` · aportes ${brl(h.aportes)}` : ''}${h.resgates ? ` · resgates ${brl(h.resgates)}` : ''}` };
-  }).filter(p => p.y > 0);
-  if (pontos.length < 2) return null;
-  const d = pontos[pontos.length - 1].y - pontos[0].y;
-  return `<p class="cv-resumo"><b class="${d < 0 ? 'cai' : 'sobe'}">${d < 0 ? '−' : '+'}${esc(brl(Math.abs(d)))}</b> desde ${esc(rotuloMes(pontos[0].mes).curto)}</p>
-    ${areaCv(pontos, { fim: true, marcas: true, altura: 140, rotulosX: pontos.filter((_, i) => i === 0 || i === pontos.length - 1 || i % 3 === 0).map(p => ({ x: p.x, texto: rotuloMes(p.mes).curto })), rotulo: 'Patrimônio no fim de cada mês' })}`;
-}
 function fechadosCv(dados) {
   const lista = (dados.mesesFechados || []).filter(m => m.resultado && typeof m.resultado.saldo === 'number').slice(-8);
   if (!lista.length) return '';
@@ -2854,7 +2415,8 @@ function fechadosCv(dados) {
     { formato: v => compacto(v), rotulo: 'Sobra de cada mês fechado' });
 }
 
-export const TELAS_CV = { carteira: investimentosCv, cartao: cartaoTelaCv, mes: caixaCv, analises: analisesCv };
+// v11.1–11.3: as telas da Meia-noite (o Cartão mora no Mês; a tela dele só abre por fora, como antes)
+export const TELAS_CV = { mes: mesCv, cartao: cartaoTelaCv, carteira: patrimonioCv, analises: planoCv };
 
 // v9.22 (repaginação, etapa 5): a linha de situação dos itens do Mais que levam ao Caixa e às Análises
 export function situacoesMais(m, dados, cart, agora = new Date()) {

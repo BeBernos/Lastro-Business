@@ -5,7 +5,7 @@ const L = await import(R + 'lancamentos.js');
 const { planilhaFatura, extratoDoMes } = await import(R + 'extrato.js');
 const { parcelaNoMes } = await import(R + 'telas.js');
 const { valorPorFonte } = await import(R + 'investimentos.js');
-const { htmlHojeV10, numerosDoTopo } = await import(R + 'v10.js');
+const { htmlTopoCarvao, numerosDoTopo } = await import(R + 'v10.js');
 const { gerarDemo } = await import(R + 'demo/gerar.js');
 
 let ok = 0, falhas = 0;
@@ -57,11 +57,11 @@ erro = '';
 try { L.editarParcelamento(base, { indice: 0, itemAntes: 'Samsung — parcela R$169,90', loja: 'Samsung', valor: 169.9, atual: 17, total: 21, dataCompra: '2027-01-01' }, hoje); } catch (e) { erro = e.message; }
 confere('data depois de hoje: recusa', /depois de hoje/.test(erro));
 
-// 5. Hoje: passou do limite mostra quanto; valores exatos com centavos
+// 5. Hoje: passou do limite mostra quanto; valores exatos com centavos (v11.5: o topo da Meia-noite, o "Livre de verdade")
 const c = { saldo: 100, diasRest: 10, itau: 6123.45, caixa: 4247.97 };
-const h = nb(htmlHojeV10({ c, limite: 5600 }));
-confere('passou do limite: quanto (coral), não "cabe R$ 0"', h.includes('Passou do limite') && h.includes('+R$ 523<small class="cent">,45</small>') && !h.includes('Cabe no cartão'), h.slice(0, 300));
-confere('valores exatos no Hoje', h.includes('R$ 4.247<small class="cent">,97</small>'));
+const tHoje = numerosDoTopo('inicio', { c }, { periodo: '2026-11', regras: { limiteSaudavelItau: 5600 }, calendario: { faturaCartao: 7 }, receitas: [] }, null, new Date('2026-11-18T12:00:00-03:00'));
+confere('passou do limite: quanto, não "cabe R$ 0"', tHoje.eyebrow === 'O cartão passou do limite' && tHoje.valor === -523.45, JSON.stringify(tHoje));
+confere('valores exatos no topo', nb(htmlTopoCarvao(tHoje)).includes('−R$ 523<span class="cent">,45</span>') || nb(htmlTopoCarvao(tHoje)).includes('-R$ 523<span class="cent">,45</span>'), nb(htmlTopoCarvao(tHoje)).match(/topo-num[^<]*<[^<]*<[^<]*/)?.[0]);
 const { cf, cart } = gerarDemo('2026-11-18');
 const topoC = JSON.parse(nb(JSON.stringify(numerosDoTopo('cartao', { c: { ...c, itau: 6000 } }, { ...cf, regras: { ...cf.regras, limiteSaudavelItau: 5600 } }, cart, new Date('2026-11-18T12:00:00-03:00')))));
 confere('topo do cartão: "acima do limite" em vez de "cabem"', topoC.pilulas.some(x => x.texto === 'R$ 400,00 acima do limite' && x.tom === 'ruim'), JSON.stringify(topoC.pilulas));

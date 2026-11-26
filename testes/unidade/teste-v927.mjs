@@ -14,8 +14,8 @@ confere('só senha: sem botão de digital, formulário aberto', !s.includes('id=
 
 const nav = htmlNavV10('inicio', { lancar: true });
 const ordem = [...nav.matchAll(/data-aba="(\w+)"|id="appLancar"/g)].map(x => x[1] || '+').join(',');
-confere('barra por prioridade: Hoje, Caixa, ＋, Cartão, Investimentos', ordem === 'inicio,mes,+,cartao,carteira', ordem);
-confere('Caixa é um destino', DESTINOS.some(d => d.aba === 'mes' && d.nome === 'Caixa'));
+confere('barra: Hoje, Mês, ＋, Patrimônio, Plano (v11.3)', ordem === 'inicio,mes,+,carteira,analises', ordem);
+confere('Mês é um destino (era o Caixa)', DESTINOS.some(d => d.aba === 'mes' && d.nome === 'Mês'));
 confere('o ⋯ (menu) está no topo', /id="appMenu"/.test(htmlTopoCarvao({ titulo: 'x', pilulas: [] })) && !nav.includes('appMenu'));
 
 console.log(`v9.27 ajustes do Bruno: ${ok} ok, ${falhas} falhas`);

@@ -1,7 +1,5 @@
-// v10.2 — o Hoje novo (modelo 13 do quadro, escolhido pelo Bruno em 19/11/2026): a leitura do dia, os três resumos em
-// cartões coloridos (Caixa, Cartão, Carteira), a faixa da carteira, a agenda por dia, o que fazer e para onde vai.
-// Só os três resumos são cartões; o resto corre solto no fundo (o Bruno: "um card para cada assunto é extremamente feio").
-// resumoHoje = dados puros (testável em Node); htmlHoje = o desenho. Não importa do app.js nem do telas.js.
+// O Hoje. resumoHoje (v10.2) = os dados puros do dia (testável em Node): a leitura, caixa, cartão, carteira, agenda, o que
+// fazer e para onde vai; htmlHojeV11 (v11.0) = o desenho da Meia-noite, um briefing. Não importa do app.js nem do telas.js.
 import { brl, brl0, esc } from './graficos.js';
 import { posicao, reserva } from './carteira.js';
 import { resultadoDoMes } from './investimentos.js';
@@ -139,82 +137,6 @@ export function resumoHoje(m, dados, cart, ctx, { linhas = [], extras = [], hoje
     leitura = { t1, t2, texto: frases.join(' ') };
   }
   return { leitura, caixa, cartao, carteira, faixa, agenda, fazer: fazer.slice(0, 3), plano, rumo };
-}
-
-// ---------- o desenho ----------
-const X = (i, n, w) => (n > 1 ? (i * w) / (n - 1) : 0);
-function caminho(vals, w, h, pad = 6, min = Math.min(...vals), max = Math.max(...vals)) {
-  const Y = v => h - pad - ((v - min) / (max - min || 1)) * (h - 2 * pad);
-  return { d: vals.map((v, i) => `${i ? 'L' : 'M'}${X(i, vals.length, w).toFixed(1)} ${Y(v).toFixed(1)}`).join(' '), Y };
-}
-const SETA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
-
-function cartaoCaixa(cx) {
-  const { d, Y } = caminho(cx.pontos, 300, 80);
-  const hx = cx.diaHoje ? X(cx.diaHoje - 1, cx.pontos.length, 300) : null;
-  return `<button type="button" class="pilar-hoje caixa" data-aba="mes">
-    <span class="pl-topo"><b>Caixa</b><span>Abrir${SETA}</span></span>
-    <small>Fecha o mês com</small><b class="pl-num">${esc(brl0(cx.fecha))}</b>
-    <svg viewBox="0 0 300 80" class="pl-graf" role="img" aria-label="Saldo da conta dia a dia neste mês"><path d="${d} L300 80 L0 80 Z" class="pl-area"/><path d="${d}" class="pl-linha"/>${hx != null ? `<circle cx="${hx.toFixed(1)}" cy="${Y(cx.pontos[cx.diaHoje - 1]).toFixed(1)}" r="5" class="pl-ponto"/>` : ''}</svg>
-    <p>${cx.diaHoje ? `Hoje <b>${esc(brl0(cx.hoje))}</b> · ` : ''}${cx.pior.saldo < 0 ? `pior dia <b>${esc(brl0(cx.pior.saldo))}</b> (dia ${cx.pior.dia})` : cx.pior.dia === cx.diaHoje ? 'só sobe até o fim do mês' : `menor saldo ${esc(brl0(cx.pior.saldo))} (dia ${cx.pior.dia})`}</p>
-  </button>`;
-}
-function cartaoCartao(ct) {
-  const teto = Math.max(ct.ritmo, ct.limite, ct.fatura) || 1, pc = v => `${Math.min(100, (v / teto) * 100).toFixed(1)}%`;
-  const barra = ct.limite ? `<span class="pl-limite" role="img" aria-label="Fatura ${esc(brl0(ct.fatura))}, limite ${esc(brl0(ct.limite))}, ritmo ${esc(brl0(ct.ritmo))}">
-      <i class="pl-feito" style="width:${pc(ct.fatura)}"></i>${ct.ritmo > ct.fatura ? `<i class="pl-ritmo" style="left:${pc(ct.fatura)};width:${(Math.min(100, (ct.ritmo / teto) * 100) - Math.min(100, (ct.fatura / teto) * 100)).toFixed(1)}%"></i>` : ''}<em style="left:${pc(ct.limite)}"></em></span>
-    <span class="pl-legenda"><span>hoje</span><span>limite ${esc(brl0(ct.limite))}</span>${ct.ritmo ? `<span>ritmo ${esc(brl0(ct.ritmo))}</span>` : ''}</span>` : '';
-  const pe = ct.fatura > ct.limite && ct.limite ? `Passou <b>${esc(brl0(ct.fatura - ct.limite))}</b> do limite` : ct.limite ? `Cabem <b>${esc(brl0(ct.cabe))}</b>${ct.porDia ? ` · <b>${esc(brl0(ct.porDia))} por dia</b> até o fechamento` : ''}` : '';
-  return `<button type="button" class="pilar-hoje cartao" data-aba="cartao">
-    <span class="pl-topo"><b>Cartão</b><span>Abrir${SETA}</span></span>
-    <small>Fatura até agora${ct.vence ? ` · vence ${ct.vence}` : ''}</small><b class="pl-num">${esc(brl0(ct.fatura))}</b>
-    ${barra}${pe ? `<p>${pe}</p>` : ''}
-  </button>`;
-}
-function cartaoCarteira(cr) {
-  const vs = cr.meses.map(x => x.v), min = Math.min(...vs) * 0.92, max = Math.max(...vs);
-  const cols = cr.meses.map((x, i) => `<i style="height:${Math.max(8, ((x.v - min) / (max - min || 1)) * 100).toFixed(0)}%"${i === cr.meses.length - 1 ? ' class="agora"' : ''}></i>`).join('');
-  const de = cr.meses[0]?.mes, ate = cr.meses[cr.meses.length - 1]?.mes, rot = k => (k ? `${MES3[Number(k.slice(5, 7)) - 1]}/${k.slice(2, 4)}` : '');
-  return `<button type="button" class="pilar-hoje carteira" data-aba="carteira">
-    <span class="pl-topo"><b>Carteira</b><span>Abrir${SETA}</span></span>
-    <small>Investido${cr.mercado ? ` · ${cr.mercado < 0 ? '▼' : '▲'} ${esc(brl0(Math.abs(cr.mercado)))} no mês` : ''}</small><b class="pl-num">${esc(curto(cr.total))}</b>
-    ${cols ? `<span class="pl-colunas" role="img" aria-label="Patrimônio investido mês a mês">${cols}</span>` : ''}
-    <p>${cr.dividendos ? `Dividendos <b>${esc(brl0(cr.dividendos))}</b> · ` : ''}${rot(de)} → ${rot(ate)}</p>
-  </button>`;
-}
-
-export function htmlHoje(r) {
-  const p = [];
-  if (r.leitura) p.push(`<section class="leitura-hoje"><span class="cap-hoje"><i></i>Leitura do dia</span><p class="lh-titulo">${esc(r.leitura.t1)} <span>${esc(r.leitura.t2)}</span></p>${r.leitura.texto ? `<p class="lh-texto">${r.leitura.texto}</p>` : ''}</section>`);
-  const pilares = [r.caixa && cartaoCaixa(r.caixa), cartaoCartao(r.cartao), r.carteira && cartaoCarteira(r.carteira)].filter(Boolean);
-  const faixa = r.faixa?.length ? `<div class="faixa-hoje">${r.faixa.map(f => `<div><span>${esc(f.rotulo)}</span><b>${esc(f.valor)}${f.extra ? `<small>${esc(f.extra)}</small>` : ''}</b><i><i style="width:${f.pct.toFixed(0)}%"${f.brasa ? ' class="brasa"' : ''}></i></i></div>`).join('')}</div>` : '';
-  p.push(`<section><div class="pilares-hoje">${pilares.join('')}</div>${faixa}</section>`);
-  if (r.agenda.length) {
-    const linhaAg = i => `<div class="ag-linha"><span>${esc(i.nome)}</span><b class="${i.valor > 0 ? 'sobe' : ''}">${esc(`${i.valor > 0 ? '+' : '−'}${brl(Math.abs(i.valor))}`)}</b></div>`;
-    p.push(`<section class="agenda-hoje"><div class="tit-hoje"><h2>Agenda</h2><button type="button" class="link-cv" data-ir-aba="mes/agenda">Ver o mês</button></div>
-      <div class="ag-dias" role="radiogroup" aria-label="Dias">${r.agenda.map((d, i) => `<label class="ag-dia"><input type="radio" name="ag-dia" value="${i}"${i === (r.agenda[0].vazio && r.agenda[1] ? 1 : 0) ? ' checked' : ''}><span>${esc(d.sem)}</span><b>${esc(d.dia)}</b><i class="${d.total > 0 ? 'sobe' : d.total < 0 ? 'sai' : ''}"></i></label>`).join('')}</div>
-      ${r.agenda.map((d, i) => `<div class="ag-painel" data-i="${i}"><div class="ag-cab"><span><b>${esc(d.titulo)}</b>${d.quando !== 'hoje' ? ` · ${esc(d.quando)}` : ''}</span>${d.total ? `<b class="${d.total > 0 ? 'sobe' : 'cai'}">${esc(sinal(d.total))}</b>` : ''}</div>
-        ${d.vazio ? `<p class="cv-nota">${esc(d.vazio)}</p>` : d.itens.map(linhaAg).join('')}${d.mais ? `<p class="cv-nota">e mais ${d.mais}</p>` : ''}</div>`).join('')}</section>`);
-  }
-  if (r.fazer.length) {
-    p.push(`<section class="fazer-hoje"><div class="tit-hoje"><h2>Para fazer</h2>${r.plano ? `<span><b>${r.plano.feitos} de ${r.plano.total}</b> do plano</span>` : ''}</div>
-      ${r.plano ? `<i class="fz-progresso"><i style="width:${Math.round((r.plano.feitos / (r.plano.total || 1)) * 100)}%"></i></i>` : ''}
-      ${r.fazer.map(f => `<div class="fz-linha tom-${f.tom}">${f.passo != null ? `<button type="button" class="fz-check" data-passo="${esc(f.passo)}" aria-label="Marcar como feito"></button>` : '<i class="fz-ponto"></i>'}
-        <button type="button" class="fz-txt" ${f.attr || ''}><b>${esc(f.titulo)}</b>${f.sub ? `<small>${esc(f.sub)}</small>` : ''}</button></div>`).join('')}</section>`);
-  }
-  if (r.rumo) {
-    const ru = r.rumo, todos = ru.meses.flatMap(x => [x.fim, x.piso]), mn = Math.min(...todos), mx = Math.max(...todos);
-    const fim = caminho(ru.meses.map(x => x.fim), 300, 64, 6, mn, mx).d, piso = caminho(ru.meses.map(x => x.piso), 300, 64, 6, mn, mx).d;
-    const frase = ru.piso < 0 ? `A conta fica negativa em algum dia do próximo ano (pior: <b class="cai">${esc(brl0(ru.piso))}</b>) — vale rever o plano com o Claude.`
-      : ru.porMes < 0 ? `A conta perde <b class="cai">${esc(brl0(-ru.porMes))} por mês</b>, mas nunca desce de <b>${esc(curto(ru.piso))}</b>${ru.piso >= 5000 ? ': tem dinheiro parado que pode render' : ''}.`
-        : `A conta cresce <b class="sobe">${esc(brl0(ru.porMes))} por mês</b> e nunca desce de <b>${esc(curto(ru.piso))}</b>.`;
-    p.push(`<section class="rumo-hoje"><h2>Para onde vai</h2>
-      <div class="rumo-nums">${ru.patrimonio ? `<div><span>Patrimônio em ${esc(ru.patrimonio.label)}</span><b class="ouro">${esc(curto(ru.patrimonio.valor))}</b></div>` : ''}<div><span>Conta em ${esc(ru.contaLabel.toLowerCase())}</span><b>${esc(curto(ru.conta))}</b></div></div>
-      <svg viewBox="0 0 300 64" class="rumo-graf" role="img" aria-label="Saldo da conta no fim de cada mês e no pior dia, nos próximos 12 meses"><path d="${fim} L300 64 L0 64 Z" class="rg-area"/><path d="${fim}" class="rg-fim"/><path d="${piso}" class="rg-piso"/></svg>
-      <p class="rumo-leg"><span><i></i>conta no fim do mês</span><span><i class="tr"></i>pior dia</span><span class="rg-ate">${esc(ru.meses[0].label.toLowerCase())} → ${esc(ru.contaLabel.toLowerCase())}</span></p>
-      <p class="lh-texto">${frase}</p></section>`);
-  }
-  return `<div class="hoje-cv">${p.join('')}</div>`;
 }
 
 // ---------- v11.0 (Repaginação 360, Meia-noite): o Hoje como briefing ----------

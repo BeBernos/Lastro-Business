@@ -23,7 +23,7 @@ const h = iconeDe({ nome: 'Velha', cor: '#16a34a', icone: 'saude' });
 confere('ícone de categoria salva com verde sai sem verde', !/#16a34a/.test(h) && /--cat:#/.test(h), h.slice(0, 80));
 
 const { htmlTopoCarvao } = await import('../../app/v10.js');
-const css = fs.readFileSync(new URL('../../app/v10.css', import.meta.url), 'utf8');
+const css = fs.readFileSync(new URL('../../app/estilo.css', import.meta.url), 'utf8');
 const t = htmlTopoCarvao({ titulo: 'Boa noite', sub: 'nov · 16 dias', eyebrow: 'Fatura até agora', valor: 2800, pilulas: [] });
 confere('cabeçalho pequeno fora do topo (o overflow do topo o escondia)', t.indexOf('topo-mini') > t.indexOf('</header>') && t.includes('R$'), t.slice(-200));
 confere('o topo não encolhe mais ao rolar (era o que fazia a página pular)', !/.compacto .topo-(carvao|num|eyebrow|pilulas)/.test(css) && !/topo-carvao {[^}]*sticky/.test(css));

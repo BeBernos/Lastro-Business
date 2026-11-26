@@ -27,7 +27,7 @@ confere('um bloco aberto por bloco do painel, com o resumo', (t.match(/class="tu
 confere('bloco recolhido perde a dobra de dentro e o "Toque para abrir"', !/Toque para abrir/.test(t) && !/<details class="dobra"/.test(t), t);
 confere('grupo vazio some; as explicações vão para "Entenda"', !t.includes('Gastos') && /<h2>Entenda<small>1<\/small>/.test(t));
 
-const css = fs.readFileSync(new URL('../../app/v10.css', import.meta.url), 'utf8');
+const css = fs.readFileSync(new URL('../../app/estilo.css', import.meta.url), 'utf8');
 confere('movimento dos gráficos só com animações permitidas', /@media \(prefers-reduced-motion: no-preference\)[\s\S]*v10-traco/.test(css));
 
 console.log(`v9.28 gráficos, telas enxutas e índice: ${ok} ok, ${falhas} falhas`);

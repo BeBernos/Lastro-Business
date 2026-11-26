@@ -11,7 +11,7 @@ const confere = (nome, cond, extra = '') => { if (cond) { ok++; console.log('PAS
 const a = htmlAberturaV10({ agora: new Date('2026-11-15T21:00:00-03:00') });
 confere('abertura: só a marca da digital, sem "Toque para abrir"', /class="abertura-dica"><svg/.test(a) && !/Toque para abrir/i.test(a), a.match(/abertura-dica[\s\S]{0,80}/)?.[0]);
 const nav = htmlNavV10('inicio', { lancar: true });
-confere('barra: "Carteira" no lugar de "Investimentos"', /<span>Carteira<\/span>/.test(nav) && !/Investimentos/.test(nav));
+confere('barra: "Patrimônio" (era Carteira, antes Investimentos)', /<span>Patrimônio<\/span>/.test(nav) && !/Investimentos|Carteira/.test(nav));
 
 // Tudo do painel: as peças do app que as telas novas mostram ficam de fora
 const semDuplicar = { mes: ['mes/geral', 'mes/agenda', 'mes/meses'], carteira: ['carteira/visao'], analises: ['analises/saude', 'analises/conferir'] };
@@ -34,11 +34,11 @@ const anos = { 'carteira/futuro': [{ titulo: 'Ano a ano', html: '<section class=
 const tf = tudoV10('carteira', [['Evolução', 'carteira/futuro', [], []]], k => anos[k] || [], new Set(), []);
 confere('Tudo: várias dobras (ano a ano) ficam fechadas e tocáveis; dobra única já abre', (tf.match(/<details data-varias class/g) || []).length === 2 && /<details data-unica open class/.test(tf), tf.match(/<details[^>]*>/g)?.join(' '));
 
-const css = fs.readFileSync(new URL('../../app/v10.css', import.meta.url), 'utf8');
+const css = fs.readFileSync(new URL('../../app/estilo.css', import.meta.url), 'utf8');
 confere('Tudo: sem o recuo de 50px', !/\.tudo-corpo \{ margin-left: 50px/.test(css));
-confere('o "próximo passo" não estraga o texto da folha "Levar para o Claude"', !/^html\.v10 \.passo-txt/m.test(css) && /#folha \.passo-txt \{ display: block/.test(css));
+confere('o "próximo passo" não estraga o texto da folha "Levar para o Claude"', !/^html\.lastro \.passo-txt/m.test(css) && /#folha \.passo-txt \{ display: block/.test(css));
 
-confere('9.29.1: o ✓ do aviso Salvo sem verde no Carvão', css.includes('html.v10 .aviso.ok > .ic { color: var(--v10-sobe); }'));
+confere('9.29.1: o ✓ do aviso Salvo sem verde no Carvão', css.includes('html.lastro .aviso.ok > .ic { color: var(--v10-sobe); }'));
 
 console.log(`v9.29 ajustes do Bruno: ${ok} ok, ${falhas} falhas`);
 process.exitCode = falhas ? 1 : 0;

@@ -2,6 +2,11 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '11.5.0': [
+    ['Uma interface só', 'A Meia-noite agora é a única interface do Lastro: o código das anteriores (Brasa e Carvão) saiu. Nada muda na tela — o app fica mais leve e mais fácil de cuidar.', 'melhoria'],
+    ['Configurações mais curtas', 'Saíram as chaves de interface e o Organizar o Início (ele só valia para o Início antigo).', 'melhoria'],
+    ['Escuro sempre', 'Com o computador no modo claro, as folhas (menu, lançar, detalhes) agora abrem com o mesmo fundo escuro do celular.', 'correcao'],
+  ],
   '11.4.0': [
     ['Lastro de cara nova: Meia-noite', 'A interface nova agora é a de todo mundo: azul-noite, com quatro abas — Hoje (o resumo do dia e quanto dá para gastar), Mês (conta e cartão juntos), Patrimônio e Plano.', 'nova'],
     ['Ícone novo', 'O mesmo pássaro de origami, agora em azul e coral. No celular, o ícone troca quando o Chrome atualizar o app (até um dia).', 'nova'],
