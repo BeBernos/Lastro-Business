@@ -1241,6 +1241,22 @@ function blocoEstimativa(est, opcoes, cart) {
   </div>`;
 }
 
+// v11.6: a estimativa no Patrimônio — uma linha (valor de hoje e a variação) que abre a gaveta com o ativo por ativo. Só
+// num dia depois da posição gravada (no mesmo dia são dois números quase iguais) e com cotação para metade da carteira.
+function estimativaCv(est, o, cart, modelos) {
+  if (String(posicao(cart).data).slice(0, 10) >= (o.hoje || hojeBrasil())) return '';
+  if (!estimativaValida(est)) return est?.faltaChaveB3 && o.github ? blocoCv('<p class="cv-nota">Para ver o valor de hoje pelas cotações, falta a chave gratuita da brapi no Cloudflare (passo a passo no README).</p>') : '';
+  const base = baseMesAnterior(cart), noMes = base?.noMes(est.total);
+  const v = noMes ? noMes.valor : est.variacao, ref = noMes ? noMes.base : est.oficial;
+  const varItem = i => (base ? base.var(i.chave, i.hoje) : i.variacao);
+  const parcial = est.cobertura < 0.995 ? ` ${Math.round(est.cobertura * 100)}% da carteira tem cotação; o resto fica no valor oficial.` : '';
+  modelos.push(detalheCv('det-estimativa', 'Quanto vale hoje', `<p class="cv-resumo"><b>${esc(brl(est.total))}</b> pelas cotações de ${esc(horaCotacao(est.cotadoEm))}</p>
+    ${linhasDet(est.itens.map(i => [i.nome, esc(brl0(i.hoje)), `${esc(i.fonte)} · ${varItem(i) == null ? '—' : pctSinal(varItem(i))}`]))}
+    <p class="cv-texto">Conta do app: valor oficial × variação de cada ativo desde ${ddmm(est.ref)}.${base ? ` As porcentagens comparam com o fechamento de ${mesCurto(base.mes)}, sem os aportes e resgates do mês.` : ''} B3 com até 30 min de atraso.${parcial} É uma estimativa — o número oficial é o do gestor de carteira.</p>`));
+  return blocoCv(listaCv([linhaCv({ titulo: 'Hoje, pelas cotações', sub: 'estimativa · toque para ver ativo por ativo', valor: `≈ ${esc(brl(est.total))}`,
+    valorSub: `<span class="${v < 0 ? 'cai' : 'sobe'}">${esc(brlSinal(v))} (${pctSinal(ref ? v / ref : 0)}) ${noMes ? 'no mês' : `desde ${ddmm(est.ref)}`}</span>`, attr: 'data-detalhe="det-estimativa"' })]));
+}
+
 // Destaque de Carteira › Visão: a posição registrada pelo gestor de carteira
 function heroCarteira(cart, opcoes) {
   const p = posicao(cart);
@@ -2021,7 +2037,12 @@ function cartaoTelaCv(m, dados, ctx, o) {
   // vencimento, e a composição e as compras vêm logo abaixo (pedido do Bruno: estava duplicado)
   const futuras = (m.cf?.meses || []).slice(0, 6);
   futuras.forEach((f, i) => modelos.push(detalheCv(`det-fatura-${i + 1}`, `Fatura de ${MESES[f.mes - 1]} ${f.ano}`,
-    `<p class="cv-resumo"><b>${esc(brl(f.total))}</b> já comprometido</p>${listaCv([...f.ativas].sort((a, b) => b.valor - a.valor).map(pc => linhaCv({ titulo: nomeCurto(pc.nome), sub: esc((n => (n ? `parcela ${n.num}/${n.tot}${n.num === n.tot ? ' · última' : ''}` : pc.atual ? `parcela ${pc.atual}` : ''))(parcelaNoMes(pc, f.chave))), valor: esc(brl(pc.valor)) })))}${(m.cf.recorrentes || []).length ? `<p class="cv-nota">Mais ${m.cf.recorrentes.length} recorrentes, iguais todo mês.</p>` : ''}`)));
+    // v11.6 (pedido do Bruno): as compras que já caem nesta fatura e as recorrentes uma por uma, como nas telas antigas
+    `<p class="cv-resumo"><b>${esc(brl(f.total))}</b> já comprometido</p>${listaCv([
+      ...(dados.faturaProximoCiclo?.ciclo === f.chave ? dados.faturaProximoCiclo.comprasNovas || [] : []).map(cp => linhaCv({ icone: iconeCategoria(cp.cat || 'Others', 'peq'), titulo: cp.descricao, sub: esc(`compra ${String(cp.data || '').slice(8, 10)}/${String(cp.data || '').slice(5, 7)}`), valor: esc(brl(cp.valor)) })),
+      ...[...f.ativas].sort((a, b) => b.valor - a.valor).map(pc => linhaCv({ titulo: nomeCurto(pc.nome), sub: esc((n => (n ? `parcela ${n.num}/${n.tot}${n.num === n.tot ? ' · última' : ''}` : pc.atual ? `parcela ${pc.atual}` : ''))(parcelaNoMes(pc, f.chave))), valor: esc(brl(pc.valor)) })),
+      ...(m.cf.recorrentes || []).map(r => linhaCv({ titulo: nomeCurto(r.cat || r.nome || 'Recorrente'), sub: esc(`todo mês${r.dia ? ` · dia ${r.dia}` : ''}`), valor: esc(brl(r.media ?? r.valor ?? 0)) })),
+    ])}`)));
   partes.push(secao(() => htmlComposicaoV10({ c, limite })));
   const faturas = futuras.map((f, i) => cartaoCv({
     codigo: maiuscula(MESES[f.mes - 1]), nome: String(f.ano), valor: esc(brl(f.total)), classe: 'fatura', destaque: i === 0, attr: `data-detalhe="det-fatura-${i + 1}"`,
@@ -2187,6 +2208,9 @@ function patrimonioCv(m, dados, ctx, o) {
   const cart = o.carteira;
   if (!cart) return investimentosCv(m, dados, ctx, o);
   const partes = [], modelos = [], gh = !!o.github; // a âncora v10-carteira-visao vem do investimentosCv
+  // 0. v11.6 (pedido do Bruno): quanto a carteira vale hoje pelas cotações (o topo é o valor da última atualização)
+  const est = secao(() => estimativaCv(o.estimativa, o, cart, modelos));
+  if (est) partes.push(est);
   // 1. o mapa
   let aloc = null;
   try { aloc = alocacaoVsAlvo(cart); } catch { /* carteira sem estratégia */ }

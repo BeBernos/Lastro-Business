@@ -2,6 +2,15 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '11.6.1': [
+    ['Gráfico do ritmo sem letras encavaladas', 'No Hoje, perto do fim do mês, o dia de hoje não cai mais em cima do último dia no eixo do gráfico do ritmo do gasto livre.', 'correcao'],
+  ],
+  '11.6.0': [
+    ['Abertura mais limpa', 'Na tela de abrir o Lastro, o ícone aparece sem o fundo quadrado: só o pássaro e o anel, soltos dentro dos arcos.', 'melhoria'],
+    ['Quanto a carteira vale hoje', 'No Patrimônio, a linha "Hoje, pelas cotações" mostra o valor estimado de agora e quanto mudou. Toque para ver ativo por ativo.', 'nova'],
+    ['O aporte do mês no Hoje', 'Quando chega o dia em que o aporte do mês cabe sem apertar a conta, ele aparece entre as coisas para fazer, com o Investir já preenchido.', 'nova'],
+    ['Faturas futuras completas', 'Ao tocar numa fatura futura (Mês › Cartão), aparecem também as assinaturas, uma por linha, e as compras que já caem nela.', 'melhoria'],
+  ],
   '11.5.0': [
     ['Uma interface só', 'A Meia-noite agora é a única interface do Lastro: o código das anteriores (Brasa e Carvão) saiu. Nada muda na tela — o app fica mais leve e mais fácil de cuidar.', 'melhoria'],
     ['Configurações mais curtas', 'Saíram as chaves de interface e o Organizar o Início (ele só valia para o Início antigo).', 'melhoria'],

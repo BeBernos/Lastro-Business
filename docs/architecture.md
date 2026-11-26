@@ -2,7 +2,9 @@
 
 *[Leia em português](architecture.pt-BR.md)*
 
-![Architecture](img/arquitetura-en.svg)
+![Architecture](img/arquitetura-en.png)
+
+![A purchase, end to end](img/fluxo-en.png)
 
 ## Constraints that shaped it
 
@@ -76,7 +78,7 @@ Everything else is the same code the family uses.
 ## Testing
 
 - **Unit** (Node): pure functions with fixtures built from real data shapes.
-- **Regression** (Playwright, ≈260 checks): every tab and sheet, light and dark, phone and desktop, no horizontal scroll,
+- **Regression** (Playwright, 257 checks): every tab, drawer and sheet, phone and desktop (dark only), no horizontal scroll,
   no `undefined/NaN` on screen.
 - **End to end** (62 checks): runs the real Worker with `wrangler dev`, a fake GitHub that understands the Git Data API
   and a fake push service validating VAPID JWTs; the owner logs, publishes, closes and reopens the app, and the second

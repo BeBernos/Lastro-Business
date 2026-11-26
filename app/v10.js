@@ -171,10 +171,11 @@ export function saudeCarteira(aloc, res) {
 const DIGITAL = '<path d="M7.5 18.5c1.3-1.7 2-3.9 2-6.5a2.5 2.5 0 0 1 5 0c0 1-.1 2-.3 3"/><path d="M5 15.5c.6-1.1 1-2.3 1-3.5a6 6 0 0 1 10.6-3.9"/><path d="M18.4 10.5c.1.5.1 1 .1 1.5 0 2.8-.7 5.3-1.9 7.4"/><path d="M12 12c0 3.3-1 6.2-2.6 8.3"/><path d="M14.6 17.5c-.4 1.3-1 2.5-1.7 3.5"/>';
 export function htmlAberturaV10({ soSenha = false, agora = new Date(), usuario = '' } = {}) {
   // v9.27 (pedido do Bruno): sem o pedido automático da digital e sem o botão dela — a tela inteira (marca, anéis,
-  // saudação) é o botão; tocar chama a digital. Só a senha da família continua como link.
+  // saudação) é o botão; tocar chama a digital. Só a senha da família continua como link. v11.6 (Bruno): o ícone sem o
+  // fundo quadrado (icons/marca.svg), solto dentro dos anéis
   const marca = `<span class="abertura-marca">
       <i class="anel-v10 a1"></i><i class="anel-v10 a2"></i><i class="anel-v10 a3"></i>
-      <img src="icons/logo.svg" alt="">
+      <img class="marca-solta" src="icons/marca.svg" alt="">
     </span>
     <span class="abertura-oi">${esc(saudacao(agora))}</span>`;
   return `<div class="abertura-v10">

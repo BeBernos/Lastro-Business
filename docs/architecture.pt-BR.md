@@ -2,7 +2,9 @@
 
 *[Read in English](architecture.md)*
 
-![Arquitetura](img/arquitetura-pt.svg)
+![Arquitetura](img/arquitetura-pt.png)
+
+![Uma compra, de ponta a ponta](img/fluxo-pt.png)
 
 ## Restrições que deram a forma
 
@@ -75,7 +77,7 @@ O resto é o mesmo código que a família usa.
 ## Testes
 
 - **Unidade** (Node): funções puras com dados no formato real.
-- **Regressão** (Playwright, ≈260 verificações): todas as abas e folhas, tema claro e escuro, celular e computador, sem
+- **Regressão** (Playwright, 257 verificações): todas as abas, gavetas e folhas, celular e computador (escuro sempre), sem
   rolagem lateral, sem `undefined/NaN` na tela.
 - **Ponta a ponta** (62 verificações): roda o Worker de verdade com `wrangler dev`, um GitHub falso que entende a API
   Git Data e um serviço de push falso que valida o JWT VAPID; quem lança publica, fecha e reabre o app, e o segundo

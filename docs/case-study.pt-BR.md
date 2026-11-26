@@ -33,7 +33,7 @@ mês?") pediam um computador e vinte minutos.
 
 ## O que foi entregue
 
-- Início que responde "ainda dá para gastar?" com o ritmo do dia × o que cabe por dia.
+- Hoje que responde "quanto está livre de verdade?" — o que sobra até a fatura fechar, já sem as contas e os aportes do plano.
 - Lançamento em dois toques pelo "+" ou pelo SMS do banco (vários de uma vez, com aviso de repetido e categoria lembrada).
 - Cartão item a item, orçamentos com aviso em 80%/100%, revisão de assinaturas, planilha em Excel de verdade.
 - Carteira com estimativa ao vivo, metas, dividendos, escada de liquidez, simulador de troca na renda fixa e plano de
@@ -51,7 +51,7 @@ mês?") pediam um computador e vinte minutos.
 
 ## Qualidade
 
-≈260 verificações de regressão em Playwright, 62 de ponta a ponta com dois celulares simulados e o Worker de verdade,
+257 verificações de regressão em Playwright, 62 de ponta a ponta com dois celulares simulados e o Worker de verdade,
 mais de 30 arquivos de teste de unidade e uma varredura de telas que acusa `undefined/NaN`, rolagem lateral e cartões
 vazios — rodados com dados no formato real antes de cada versão. Uma tela de diagnóstico (sem valores) transformou
 relatos de "não funciona" em bugs corrigíveis.

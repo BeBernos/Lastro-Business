@@ -33,7 +33,7 @@ investment go?") needed a laptop and twenty minutes.
 
 ## What shipped
 
-- Home screen that answers "can we still spend?" with the daily rhythm vs. what fits per day.
+- A "Today" briefing that answers "what is truly free to spend?" — what is left until the card bill closes, after bills and the plan's investments.
 - Two-tap logging from the "+" or from the bank SMS (several at once, with duplicate detection and remembered categories).
 - Credit card item by item, budgets with 80%/100% alerts, subscriptions review, a real Excel export.
 - Portfolio with live estimate, goals, dividends, liquidity ladder, fixed-income switch simulator and an investment plan
@@ -51,7 +51,7 @@ investment go?") needed a laptop and twenty minutes.
 
 ## Quality
 
-≈260 Playwright regression checks, 62 end-to-end checks across two simulated phones with the real Worker, 30+ unit test
+257 Playwright regression checks, 62 end-to-end checks across two simulated phones with the real Worker, 30+ unit test
 files, a screen sweeper that flags `undefined/NaN`, horizontal overflow and empty cards — run against real-shaped data
 before each release. A built-in diagnostics screen (no values) turned "it doesn't work" reports into fixable bugs.
 

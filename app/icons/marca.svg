@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><defs>
+  <radialGradient id="bg" cx="256" cy="80" r="520" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1c2a52"/><stop offset=".5" stop-color="#0f1630"/><stop offset="1" stop-color="#070a14"/></radialGradient>
+  <linearGradient id="anel" x1="120" y1="110" x2="400" y2="410" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#A9BDFF"/><stop offset=".55" stop-color="#5B7CFF"/><stop offset="1" stop-color="#FF8A6B"/></linearGradient>
+  <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="16"/></filter>
+  <linearGradient id="lE" x1="112" y1="318" x2="304" y2="162" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FF7A5C"/><stop offset="1" stop-color="#FFB49A"/></linearGradient>
+  <linearGradient id="lD" x1="248" y1="336" x2="400" y2="236" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#DCE5FF"/><stop offset="1" stop-color="#F4F7FF"/></linearGradient></defs><circle cx="256" cy="256" r="156" fill="none" stroke="#fff" stroke-opacity=".07" stroke-width="26"/>
+  <path d="M256.0 100.0 A156 156 0 1 1 105.3 215.6" fill="none" stroke="url(#anel)" stroke-width="26" stroke-linecap="round" filter="url(#glow)" opacity=".5"/>
+  <path d="M256.0 100.0 A156 156 0 1 1 105.3 215.6" fill="none" stroke="url(#anel)" stroke-width="26" stroke-linecap="round"/><g transform="translate(256 260) scale(.74) translate(-256 -249)">
+  <path d="M112 318 L304 162 L248 336 Z" fill="url(#lE)"/>
+  <path d="M248 336 L304 162 L400 236 Z" fill="url(#lD)"/>
+  <path d="M248 336 L336 306 L306 252 Z" fill="#1C2A85" opacity=".28"/>
+  <path d="M112 318 L248 336 L210 300 Z" fill="#000" opacity=".22"/></g></svg>

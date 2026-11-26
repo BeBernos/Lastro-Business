@@ -104,6 +104,9 @@ export function resumoHoje(m, dados, cart, ctx, { linhas = [], extras = [], hoje
       fazer.push({ titulo: p.titulo, sub: `${q === hoje ? 'hoje' : `${atrasado ? 'era ' : ''}${q.slice(8, 10)}/${q.slice(5, 7)}`}${p.valor ? ` · ${brl(p.valor)}` : ''} · do plano`,
         tom: atrasado ? 'ruim' : 'info', attr: 'data-aba="carteira"', passo: github ? p.n : null });
     });
+  // v11.6 (pedido do Bruno): o aporte do mês (plano_aportes) quando chega o dia seguro — tocar abre o Investir já preenchido
+  const aporte = linhas.find(l => l.acao?.attr === 'data-aporte-plano');
+  if (aporte) fazer.push({ titulo: `Investir o ${String(aporte.texto).split(' · ')[0].replace(/^Aporte do mês/, 'aporte do mês:')}`, sub: 'hoje já dá sem apertar a conta', tom: 'info', urgente: true, attr: github ? 'data-aporte-plano' : 'data-aba="carteira"' });
   if (!ctx.mesPassou && limite && cartao.ritmo > limite) {
     fazer.push(c.limiteJaRompido || cartao.fatura > limite
       ? { titulo: `O cartão já passou ${brl(cartao.fatura - limite)} do limite`, sub: `no ritmo de hoje fecha em ${brl(cartao.ritmo)}`, tom: 'ruim', attr: 'data-aba="cartao"' }
@@ -155,7 +158,7 @@ export function htmlHojeV11({ r, l, c = {}, limite = 0, ctx, github = false }) {
   // até 3 coisas para hoje; se os aportes do plano passam do caixa do mês que vem, isso entra em segundo
   const fazer = [...r.fazer];
   if (l.planoPassa) fazer.splice(1, 0, { titulo: 'Antes de investir: rever os aportes do plano', sub: `com todos, ${l.mesProx.toLowerCase()} fica em −${brl0(l.planoPassa)} no pior dia`, tom: 'atencao', attr: 'data-detalhe="det-plano"' });
-  const peso = f => (f.tom === 'ruim' ? 0 : f.tom === 'atencao' ? 1 : 2); // o mais urgente primeiro (sort estável)
+  const peso = f => (f.tom === 'ruim' ? 0 : f.tom === 'atencao' || f.urgente ? 1 : 2); // o mais urgente primeiro (sort estável)
   const tres = fazer.map((f, i) => ({ f, i })).sort((a, b) => peso(a.f) - peso(b.f) || a.i - b.i).slice(0, 3).map(x => x.f);
   if (tres.length) p.push(`<section class="hj11-sec"><div class="tit-hoje"><h2>Hoje</h2><span>${tres.length} ${tres.length === 1 ? 'coisa' : 'coisas'}</span></div>
     ${tres.map(f => `<div class="fz-linha tom-${f.tom}">${f.passo != null && github ? `<button type="button" class="fz-check" data-passo="${esc(f.passo)}" aria-label="Marcar como feito"></button>` : '<i class="fz-ponto"></i>'}<button type="button" class="fz-txt" ${f.attr || ''}><b>${esc(f.titulo)}</b>${f.sub ? `<small>${esc(f.sub)}</small>` : ''}</button></div>`).join('')}</section>`);
@@ -170,7 +173,7 @@ export function htmlHojeV11({ r, l, c = {}, limite = 0, ctx, github = false }) {
         <line x1="${X(1)}" y1="${Y(0)}" x2="${X(dia).toFixed(1)}" y2="${Y(gasto).toFixed(1)}" class="hr-real ${dif > 0 ? 'acima' : ''}"></line>
         <circle cx="${X(dia).toFixed(1)}" cy="${Y(gasto).toFixed(1)}" r="5" class="hr-pt ${dif > 0 ? 'acima' : ''}"></circle>
         <text x="${Math.min(X(dia) + 10, 230).toFixed(1)}" y="${(Y(gasto) - 8).toFixed(1)}" class="hr-val ${dif > 0 ? 'acima' : ''}">${esc(brl0(gasto))} (${dif > 0 ? '+' : '−'}${esc(brl0(Math.abs(dif)))})</text>
-        <text x="${X(1)}" y="128" class="hr-eixo">dia 1</text><text x="${X(dia).toFixed(1)}" y="128" text-anchor="middle" class="hr-eixo hj">dia ${dia}</text><text x="${X(ctx.dias)}" y="128" text-anchor="end" class="hr-eixo">dia ${ctx.dias}</text>
+        ${dia > 5 ? `<text x="${X(1)}" y="128" class="hr-eixo">dia 1</text>` : ''}<text x="${X(dia).toFixed(1)}" y="128" text-anchor="${dia > 5 ? (ctx.dias - dia > 5 ? 'middle' : 'end') : 'start'}" class="hr-eixo hj">dia ${dia}</text>${ctx.dias - dia > 5 ? `<text x="${X(ctx.dias)}" y="128" text-anchor="end" class="hr-eixo">dia ${ctx.dias}</text>` : ''}
       </svg>
       <p class="rumo-leg"><span><i class="hr-i"></i>gasto livre (cartão + Pix)</span><span><i class="tr"></i>ritmo que fecha no limite</span></p></section>`);
     p.push(tpl('det-ritmo', 'Ritmo do gasto livre', [['Gasto livre até o dia ' + dia, brl(gasto), dif > 0 ? 'cai' : ''], ['O ritmo que fecha no limite', brl(ideal)], ['Livre no mês (limite − já comprometido)', brl(livreLimite)], ['Já comprometido (recorrentes e parcelas)', brl(c.comprometido || 0)]],

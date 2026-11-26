@@ -5,6 +5,8 @@
 Lastro handles a family's complete financial life, so the design starts from one rule: **no server ever sees financial
 data in the clear** — with a single, opt-in, revocable exception described at the end.
 
+![Security model](docs/img/seguranca-en.png)
+
 ## Threat model
 
 | Threat | Mitigation |
