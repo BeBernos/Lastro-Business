@@ -130,11 +130,12 @@ A interface do app desde a **v10.0** (18/11/2026; construída da v9.18 à v9.30)
 ("Brasa", v8 — `app/v8.css`) só aparece com a chave desligada (`localStorage lastro-v10 = '0'`) e sai de vez quando a
 bateria de testes for reescrita para o Carvão.
 
-> **Em transição (v11, Repaginação 360, desde 25/11/2026):** a paleta **Meia-noite** está sendo construída por cima do
-> Carvão, atrás da chave `lastro-v11` (`app/v11.css` troca só as variáveis `--cv-*` do `v10.css`). Cores: chão
+> **Padrão desde a v11.4 (26/11/2026): a Meia-noite** (Repaginação 360). Fica por cima do
+> Carvão; `lastro-v11 = '0'` volta a ele (`app/v11.css` troca só as variáveis `--cv-*` do `v10.css`). Cores: chão
 > `#090D18`, bloco `#111829`, ação e dado azul `#7C9CFF`, atenção coral `#FF8A6B`, subiu `#8FB4FF`, caiu `#FF7A6E`,
-> número do topo em branco. Estrutura alvo: Hoje (briefing com o "Livre de verdade") · Mês · Patrimônio · Plano — ver
-> `docs/ROADMAP.md` › REPAGINAÇÃO 360. Quando virar padrão (v11.4), este documento é reescrito.
+> número do topo em branco; fonte **Manrope** (texto e números, `app/fontes/manrope.woff2`); ícone = o mesmo pássaro com
+> anel azul → coral sobre azul-noite. Estrutura: Hoje (briefing com o "Livre de verdade") · Mês · Patrimônio · Plano — ver
+> `docs/ROADMAP.md` › REPAGINAÇÃO 360. O resto deste documento ainda descreve o Carvão (cores âmbar/brasa, Bricolage): vale a estrutura, não as cores nem a fonte.
 
 ## Overview
 

@@ -30,9 +30,9 @@ export function v10Ligada() {
 export function ligarV10(on) {
   try { localStorage.setItem(CHAVE, on ? '1' : '0'); } catch { /* fica só nesta abertura */ }
 }
-// v11.0 (Repaginação 360, 25/11/2026): a Meia-noite em construção, sobre o Carvão — desligada até o Bruno ligar em
-// Configurações; vira padrão na v11.4
-export const v11Ligada = () => { try { return v10Ligada() && localStorage.getItem('lastro-v11') === '1'; } catch { return false; } };
+// v11.0 (Repaginação 360, 25/11/2026): a Meia-noite, sobre o Carvão. Padrão desde a v11.4 (ok do Bruno em 26/11/2026):
+// só '0' (chave desligada em Configurações) volta ao Carvão
+export const v11Ligada = () => { try { return v10Ligada() && localStorage.getItem('lastro-v11') !== '0'; } catch { return v10Ligada(); } };
 export const ligarV11 = on => { try { localStorage.setItem('lastro-v11', on ? '1' : '0'); } catch { /* fica só nesta abertura */ } };
 
 function saudacao(agora) {

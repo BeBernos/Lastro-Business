@@ -2,6 +2,15 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '11.4.0': [
+    ['Lastro de cara nova: Meia-noite', 'A interface nova agora é a de todo mundo: azul-noite, com quatro abas — Hoje (o resumo do dia e quanto dá para gastar), Mês (conta e cartão juntos), Patrimônio e Plano.', 'nova'],
+    ['Ícone novo', 'O mesmo pássaro de origami, agora em azul e coral. No celular, o ícone troca quando o Chrome atualizar o app (até um dia).', 'nova'],
+    ['Letra nova', 'Textos e números com a fonte Manrope, mais fácil de ler.', 'melhoria'],
+    ['Se precisar da anterior', 'Menu ⋮ → Configurações → Interface Meia-noite: desligue para voltar à anterior por um tempo.', 'melhoria'],
+  ],
+  '11.3.2': [
+    ['Cartão de cima inteiro no computador', 'Na Meia-noite, no computador, o conteúdo não sobe mais por cima do cartão do número (cortava a borda de baixo) e saiu a marca laranja antiga que aparecia cortada no canto.', 'correcao'],
+  ],
   '11.3.1': [
     ['App instalado igual ao site', 'A barra de cima da janela do app instalado agora acompanha a interface (azul-noite na Meia-noite) e não fica mais bege com o Windows claro.', 'correcao'],
     ['Atualiza sem fechar', 'A janela do app no computador agora procura a versão nova sempre que você volta para ela, sem precisar fechar e abrir.', 'correcao'],

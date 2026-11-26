@@ -33,7 +33,7 @@ import { abrirDiscar, abasLancar, ligarAbasLancar, botaoCategoria, abrirConta, m
 import { conciliarAgora, depoisDoAviso, atualizarCriptoBinance, atualizarItau, configurarIntegracoes } from './integracoes.js';
 import { animarNumeros, ESQUELETO, lerChaveV8, ligarArrastarFolha, ligarDeslizar, ligarPuxar, comTransicao } from './v8.js';
 
-const VERSAO_APP = '11.3.1';
+const VERSAO_APP = '11.4.0';
 lerChaveV8(); // v8: interface nova (Brasa) antes do primeiro desenho, sem piscar
 document.documentElement.classList.toggle('v10', v10Ligada()); // v9.18: a repaginação (Carvão), atrás da chave em Configurações
 document.documentElement.classList.toggle('v11', v11Ligada()); // v11.0: a Meia-noite (Repaginação 360), também atrás de uma chave
@@ -1598,7 +1598,7 @@ async function configHtml() {
     <h2>Configurações</h2>
     <p class="grupo">Neste celular</p>
     ${itemChave('v10', 'novidade', 'Interface Carvão', 'A interface do Lastro desde a v10 — desligue só se precisar da anterior por um tempo', v10Ligada())}
-    ${v10Ligada() ? itemChave('v11', 'novidade', 'Interface Meia-noite (em teste)', 'A repaginação nova, tela por tela — ligue para testar; o resto da família não muda', v11Ligada()) : ''}
+    ${v10Ligada() ? itemChave('v11', 'novidade', 'Interface Meia-noite', 'A interface do Lastro desde a v11.4 — desligue só se precisar do Carvão por um tempo', v11Ligada()) : ''}
     ${suportaAvisos() && !DEMO ? itemChave('avisos', 'avisos', 'Avisos de atualização', 'Notifica quando sai painel novo', !!estado.avisos) : ''}
     ${itemChave('lembretes', 'sino', 'Lembretes de contas', 'Na véspera e no dia de cada conta', !!estado.lembretes)}
     ${itemMenu('protecao', 'cadeado', 'Proteção do app', estado.salvo?.modo === 'senha' ? 'Senha da família a cada abertura' : 'Digital a cada abertura · trancar agora')}
