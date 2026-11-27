@@ -55,7 +55,7 @@ export function numerosDoTopo(aba, m, dados, cart, agora = new Date()) {
     const dv = [p.data, ...Object.values(p.h?.ativos_atualizado_em || {})].filter(d => /^\d{4}-\d{2}-\d{2}/.test(d || '')).sort().pop() || p.data;
     return { ...base, titulo: 'Patrimônio', sub: `valores de ${dv.slice(8, 10)}/${dv.slice(5, 7)}`, eyebrow: 'Patrimônio investido', valor: p.total,
       fontes: valorPorFonte(cart), // v9.30: Itaú e Binance logo embaixo do total
-      pilulas: [...(s.estado ? [{ texto: s.estado, tom }] : []), { texto: `${brl(Math.abs(mercado))} no mês`, seta: mercado < 0 ? 'cai' : 'sobe' }, ...(s.fiel != null ? [`${s.fiel}% fiel`] : [])] };
+      pilulas: [...(s.estado ? [{ texto: { Saudável: 'Carteira saudável', Atenção: 'Carteira pede atenção' }[s.estado] || s.estado, tom }] : []), { texto: `${brl(Math.abs(mercado))} no mês`, seta: mercado < 0 ? 'cai' : 'sobe' }, ...(s.fiel != null ? [`${s.fiel}% fiel ao alvo`] : [])] }; // v11.6.2: rótulos que dizem de quê
   }
   if (aba === 'cartao') {
     const limite = dados.regras?.limiteSaudavelItau || 0;

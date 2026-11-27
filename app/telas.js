@@ -2152,10 +2152,11 @@ function mesCv(m, dados, ctx, o) {
   let d = null;
   try { d = ctx.mesPassou ? null : descasamento(m, dados); } catch { /* sem agenda */ }
   if (d) {
+    const passou = d.dias[d.dias.length - 1] < ctx.diaHoje; // v11.6.2: no dia 27, "fica no negativo nos dias 7 a 9" falava do passado
     const faixa = d.dias.length > 1 ? `nos dias ${d.dias[0]} a ${d.dias[d.dias.length - 1]}` : `no dia ${d.dias[0]}`;
     modelos.push(detalheCv('det-venc', 'A conta no negativo', `${linhasDet([['Dias no negativo', d.dias.join(', ')], ['Pior saldo', esc(brl(d.pior.saldo)), `dia ${d.pior.dia}`], d.venc ? ['A fatura vence', `dia ${d.venc}`] : null, d.volta ? ['A conta volta ao positivo', `dia ${d.volta}`] : null])}
       <p class="cv-texto">${d.sugestao ? `A fatura vence antes de o dinheiro entrar. Pedir ao Itaú para mudar o vencimento para o <b>dia ${d.sugestao}</b> tira a conta do negativo todo mês.` : 'Deixe a reserva de liquidez diária pronta para cobrir esses dias.'} No cheque especial o banco cobra juros e IOF por dia.</p>`));
-    partes.push(`<button type="button" class="aviso11" data-detalhe="det-venc"><span><b>A conta fica no negativo ${faixa}</b><small>${d.sugestao ? `a fatura vence dia ${d.venc} e o dinheiro só entra dia ${d.volta} — cheque especial cobra juros e IOF` : `pior saldo ${esc(brl(d.pior.saldo))} no dia ${d.pior.dia}`}</small></span><em>Como evitar</em></button>`);
+    partes.push(`<button type="button" class="aviso11" data-detalhe="det-venc"><span><b>A conta ${passou ? 'ficou' : 'fica'} no negativo ${faixa}</b><small>${d.sugestao ? `a fatura vence dia ${d.venc} e o dinheiro só entra dia ${d.volta} — ${passou ? 'vai se repetir no mês que vem' : 'cheque especial cobra juros e IOF'}` : `pior saldo ${esc(brl(d.pior.saldo))} no dia ${d.pior.dia}`}</small></span><em>Como evitar</em></button>`);
   }
   // 2. a vista do mês
   const curva = secao(() => curvaCv(m, ctx));

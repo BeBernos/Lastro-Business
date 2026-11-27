@@ -68,10 +68,10 @@ confere('topo do cartão: "acima do limite" em vez de "cabem"', topoC.pilulas.so
 
 // 6. Itaú e Binance embaixo do total da carteira
 const f = valorPorFonte(cart);
-confere('Itaú e Binance pelas marcações das atualizações (e o resto, v10.0.1)', f?.length === 3 && f[2].nome === 'Outros' && f[0].nome === 'Itaú' && f[0].valor > 0 && f[1].nome === 'Binance', JSON.stringify(f));
+confere('só as duas corretoras: Binance pela marcação, o resto no Itaú (v11.6.2)', f?.length === 2 && f[0].nome === 'Itaú' && f[0].valor > 0 && f[1].nome === 'Binance', JSON.stringify(f));
 confere('sem marcação: nada', valorPorFonte({ historico_mensal: { '2026-11': { ativos: {} } } }) === null);
 const topoInv = numerosDoTopo('carteira', { c }, cf, cart, new Date('2026-11-18T12:00:00-03:00'));
-confere('o topo da Carteira leva as fontes', topoInv.fontes?.length === 3);
+confere('o topo da Carteira leva as fontes', topoInv.fontes?.length === 2);
 
 console.log(`v9.30 anotações do Bruno: ${ok} ok, ${falhas} falhas`);
 process.exitCode = falhas ? 1 : 0;
@@ -112,8 +112,8 @@ if (falhas2) process.exitCode = 1;
     fontes_app: { itau: ['active_fix_all', 'hglg11'], binance: ['cripto'] } } } };
   const f2 = valorPorFonte(cartF);
   const soma = f2.reduce((s, x) => s + x.valor, 0);
-  const okF = f2.map(x => x.nome).join() === 'Itaú,Binance,Tesouro Direto' && f2[2].valor === 13879.24 && Math.abs(soma - 37773.76) < 0.005;
-  console.log(okF ? 'PASSA' : 'FALHA', 'fontes: o Tesouro sem ligação entra à parte e a soma fecha com o total', JSON.stringify(f2));
+  const okF = f2.map(x => x.nome).join() === 'Itaú,Binance' && f2[0].valor === 36551.83 && Math.abs(soma - 37773.76) < 0.005;
+  console.log(okF ? 'PASSA' : 'FALHA', 'fontes: o Tesouro (comprado pelo Itaú) entra no Itaú e a soma fecha com o total', JSON.stringify(f2));
   if (!okF) process.exitCode = 1;
 }
 

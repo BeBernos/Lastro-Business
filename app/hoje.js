@@ -106,7 +106,7 @@ export function resumoHoje(m, dados, cart, ctx, { linhas = [], extras = [], hoje
     });
   // v11.6 (pedido do Bruno): o aporte do mês (plano_aportes) quando chega o dia seguro — tocar abre o Investir já preenchido
   const aporte = linhas.find(l => l.acao?.attr === 'data-aporte-plano');
-  if (aporte) fazer.push({ titulo: `Investir o ${String(aporte.texto).split(' · ')[0].replace(/^Aporte do mês/, 'aporte do mês:')}`, sub: 'hoje já dá sem apertar a conta', tom: 'info', urgente: true, attr: github ? 'data-aporte-plano' : 'data-aba="carteira"' });
+  if (aporte) fazer.push({ titulo: `Investir o ${String(aporte.texto).split(' · ')[0].replace(/^Aporte do mês/, 'aporte do mês:')}`, sub: 'hoje já dá sem apertar a conta', tom: 'info', urgente: true, aporteMes: true, attr: github ? 'data-aporte-plano' : 'data-aba="carteira"' });
   if (!ctx.mesPassou && limite && cartao.ritmo > limite) {
     fazer.push(c.limiteJaRompido || cartao.fatura > limite
       ? { titulo: `O cartão já passou ${brl(cartao.fatura - limite)} do limite`, sub: `no ritmo de hoje fecha em ${brl(cartao.ritmo)}`, tom: 'ruim', attr: 'data-aba="cartao"' }
@@ -156,7 +156,8 @@ export function htmlHojeV11({ r, l, c = {}, limite = 0, ctx, github = false }) {
     p.push(`<p class="hj11-frase"><b>${esc(t1)}</b> ${esc(r.leitura.t2)}</p>${r.leitura.texto ? `<p class="hj11-sub">${r.leitura.texto}</p>` : ''}`);
   }
   // até 3 coisas para hoje; se os aportes do plano passam do caixa do mês que vem, isso entra em segundo
-  const fazer = [...r.fazer];
+  // v11.6.2: com o mês que vem negativo, "investir o aporte, hoje já dá" contradizia o "rever" — fica só o "rever"
+  const fazer = l.planoPassa ? r.fazer.filter(f => !f.aporteMes) : [...r.fazer];
   if (l.planoPassa) fazer.splice(1, 0, { titulo: 'Antes de investir: rever os aportes do plano', sub: `com todos, ${l.mesProx.toLowerCase()} fica em −${brl0(l.planoPassa)} no pior dia`, tom: 'atencao', attr: 'data-detalhe="det-plano"' });
   const peso = f => (f.tom === 'ruim' ? 0 : f.tom === 'atencao' || f.urgente ? 1 : 2); // o mais urgente primeiro (sort estável)
   const tres = fazer.map((f, i) => ({ f, i })).sort((a, b) => peso(a.f) - peso(b.f) || a.i - b.i).slice(0, 3).map(x => x.f);

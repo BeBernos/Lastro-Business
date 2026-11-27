@@ -2,6 +2,13 @@
 // (mostrarNovidades, app.js) e ficam em menu → Novidades e histórico. Escrever para o Bruno e o Rafael, em linguagem simples.
 // Cada item: [título, texto, tipo?] — tipo = nova | melhoria | correcao. **A cada versão, a entrada nova vai no topo.**
 export const NOVIDADES = {
+  '11.6.2': [
+    ['Itaú e Binance', 'No Patrimônio, embaixo do total, agora só as duas corretoras: o Tesouro Direto entra no Itaú, que é onde ele está.', 'correcao'],
+    ['Hoje sem conselho contraditório', 'Quando os aportes do plano deixam o mês que vem negativo, o Hoje pede para rever os aportes e não manda mais investir o aporte do mês ao mesmo tempo.', 'correcao'],
+    ['Aviso do negativo no tempo certo', 'No Mês, depois que os dias no negativo passam, o aviso diz que a conta ficou no negativo e que vai se repetir no mês que vem.', 'correcao'],
+    ['Etiquetas mais claras', 'No Patrimônio: "Carteira pede atenção" e "89% fiel ao alvo", em vez de "Atenção" e "89% fiel" soltos.', 'melhoria'],
+    ['Telas de entrada', 'O texto pequeno do alto ("Lastro · família") voltou para cima do título; estava espremido no canto.', 'correcao'],
+  ],
   '11.6.1': [
     ['Gráfico do ritmo sem letras encavaladas', 'No Hoje, perto do fim do mês, o dia de hoje não cai mais em cima do último dia no eixo do gráfico do ritmo do gasto livre.', 'correcao'],
   ],

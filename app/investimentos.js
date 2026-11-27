@@ -370,11 +370,11 @@ export function valorPorFonte(cart) {
   if (!fontes) return null;
   const valor = Object.fromEntries(listaAtivos(cart).map(a => [a.chave, a.valor || 0]));
   const soma = l => centavos((l || []).reduce((s, k) => s + (valor[k] || 0), 0));
-  // v10.0.1 (o Bruno: "os dados não batem"): o que não veio de nenhuma das duas entra também, para a soma fechar com o
-  // total — os títulos do Tesouro (sem ligação na Pluggy) à parte, o resto em "Outros"
-  const marcados = new Set([...(fontes.itau || []), ...(fontes.binance || [])]);
-  const fora = Object.keys(valor).filter(k => !marcados.has(k) && valor[k] > 0);
-  const out = [['Itaú', soma(fontes.itau)], ['Binance', soma(fontes.binance)], ['Tesouro Direto', soma(fora.filter(k => k.startsWith('tesouro_')))],
-    ['Outros', soma(fora.filter(k => !k.startsWith('tesouro_')))]].filter(([, v]) => v > 0).map(([nome, v]) => ({ nome, valor: v }));
+  // v11.6.2 (o Bruno: "são duas corretoras, o Tesouro está dentro do Itaú"): Binance = o que ela marca; Itaú = todo o
+  // resto. A marcação do Itaú só é regravada quando a atualização muda algum valor, então ficava velha (o Tesouro, ligado
+  // depois, caía numa linha própria) — não depender dela
+  const binance = new Set(fontes.binance || []);
+  const out = [['Itaú', soma(Object.keys(valor).filter(k => !binance.has(k)))], ['Binance', soma([...binance])]]
+    .filter(([, v]) => v > 0).map(([nome, v]) => ({ nome, valor: v }));
   return out.length ? out : null;
 }

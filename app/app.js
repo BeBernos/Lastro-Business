@@ -33,7 +33,7 @@ import { abrirDiscar, abasLancar, ligarAbasLancar, botaoCategoria, abrirConta, m
 import { conciliarAgora, depoisDoAviso, atualizarCriptoBinance, atualizarItau, configurarIntegracoes } from './integracoes.js';
 import { animarNumeros, ESQUELETO, ligarArrastarFolha, ligarPuxar, comTransicao } from './movimento.js';
 
-const VERSAO_APP = '11.6.1';
+const VERSAO_APP = '11.6.2';
 const REMOTO = 'data/painel.enc';
 const REMOTO_CARTEIRA = 'data/carteira.enc';
 const GITHUB_PADRAO = { repo: 'usuario/repositorio', branch: 'main', caminho: 'app/data/painel.enc' };
